@@ -59,6 +59,10 @@
         el.setAttribute('fastseek','');
         el.setAttribute('subtitlepicker','');
         el.setAttribute('fallback','native');
+        // Prioriza el decodificador de audio del navegador para obtener
+        // la salida nativa cuando el contenedor y los códecs sean compatibles.
+        // MKV y formatos no admitidos vuelven al motor WASM de Movi.
+        el.setAttribute('engine','native wasm');
         el.setAttribute('theme','dark');
         // Conserva ajustes útiles sin restaurar compresión de volumen ni una pista distinta.
         el.setAttribute('persist','volume speed subtitlelang');
@@ -76,7 +80,7 @@
         activePlayer=el;
         $('frame-container').replaceChildren(el);
         el.src=signed.url;
-        hint.textContent='Reproductor Movi · Archivo original de tu catálogo privado. Audio y subtítulos en los controles.';
+        hint.textContent='Reproductor Movi · Audio nativo cuando sea compatible; motor Movi para MKV y otros formatos. Audio y subtítulos en los controles.';
         if(typeof el.play==='function')Promise.resolve(el.play()).catch(()=>{});
       } catch(e){
         if(playId!==playRequest)return;
