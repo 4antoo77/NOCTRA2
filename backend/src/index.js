@@ -247,6 +247,18 @@ async function metadataSweep(db,env,limit=5){
         const data=await tmdbGet(env,item.type+'/'+result.id);
         if(data instanceof Response)throw Error('TMDB details unavailable');
         payload=metadataPayloadFromTmdb(data,item.type);tmdbId=data.id;
+        // Respect meaningful pre-existing editorial data. Automatic matching
+        // fills missing fields; it doesn't silently replace custom artwork.
+        const old=item.type==='tv'
+          ?await db.prepare('SELECT title,genre,year,description,poster FROM catalog WHERE series_name=? LIMIT 1').bind(item.seriesName).first()
+          :await db.prepare("SELECT title,genre,year,description,poster FROM catalog WHERE file_id=? AND series_name='' LIMIT 1").bind(item.fileId).first();
+        if(old){
+          if(old.genre&&old.genre!=='Otros')payload.genre=old.genre;
+          if(old.year)payload.year=old.year;
+          if(old.description)payload.description=old.description;
+          if(old.poster)payload.poster=old.poster;
+          if(item.type==='movie'&&(old.poster||old.description))payload.title=old.title;
+        }
         await metadataApply(db,item,payload);
         state='auto';completed++;
       }else{review++;}
@@ -265,9 +277,9 @@ async function metadataSaveManual(db,req){
   const group=isTv?String(x.seriesName||''):null;
   const fileId=isTv?null:itemKey.slice(6);
   const found=isTv
-    ?await db.prepare('SELECT title,series_name AS seriesName,file_id AS fileId FROM catalog WHERE LOWER(TRIM(series_name))=? LIMIT 1').bind(itemKey.slice(3)).first()
+    ?await db.prepare('SELECT title,series_name AS seriesName,file_id AS fileId FROM catalog WHERE series_name=? LIMIT 1').bind(group).first()
     :await db.prepare("SELECT title,series_name AS seriesName,file_id AS fileId FROM catalog WHERE file_id=? AND series_name='' LIMIT 1").bind(fileId).first();
-  if(!found||Boolean(found.seriesName)!==isTv)return fail('La película o serie ya no existe.',404);
+  if(!found||Boolean(found.seriesName)!==isTv||metadataKey(found)!==itemKey)return fail('La película o serie ya no existe.',404);
   const validGenres=['Acción','Ciencia ficción','Drama','Suspenso','Documental','Animación','Comedia','Terror','Otros'];
   if(!validGenres.includes(x.genre))return fail('Género no válido.',400);
   if(x.year&&!/^\d{4}$/.test(x.year))return fail('Año no válido.',400);
