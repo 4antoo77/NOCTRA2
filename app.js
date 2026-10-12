@@ -2,7 +2,6 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const KEY='noctra.catalog.v1';
 let movies=[],page='home',genre='Todas',editing=null,active=null,storageOK=true;
-const samples=[['Horizonte','Documental','mountain'],['Después de medianoche','Suspenso','city'],['El último bosque','Drama','forest'],['Marea profunda','Documental','ocean'],['Tierra de nadie','Acción','desert']];
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function driveId(s){try{const u=new URL(s);if(u.protocol!=='https:'||u.hostname!=='drive.google.com')return null;const id=u.pathname.match(/^\/file\/d\/([\w-]+)(?:\/|$)/)?.[1]||(u.pathname==='/open'?u.searchParams.get('id'):null);return id&&/^[\w-]{10,}$/.test(id)?id:null;}catch{return null;}}
 function posterURL(s){if(!s)return '';try{const u=new URL(s);return u.protocol==='https:'?u.href:'';}catch{return '';}}
@@ -16,11 +15,12 @@ $$('.close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
 function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='home');$$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#section-title').textContent=p==='list'?'Tu lista, tu próximo plan':p==='library'?'Todas tus películas':'Tu próxima gran noche';render();window.scrollTo(0,0);}
 $$('.nav').forEach(b=>b.onclick=()=>setPage(b.dataset.page));
 $$('.brand').forEach(a=>a.onclick=e=>{e.preventDefault();setPage('home');});
-$('#explore').onclick=()=>$('#showcase').scrollIntoView({behavior:'smooth'});
+$('#explore').onclick=()=>$('#catalog').scrollIntoView({behavior:'smooth'});
 $('.search-trigger').onclick=()=>{if(page==='home')$('#catalog').scrollIntoView();$('#search').focus();};
 $('#search').oninput=render;$('#sort').onchange=render;
 $$('.chip').forEach(b=>b.onclick=()=>{genre=b.dataset.genre;$$('.chip').forEach(c=>c.classList.toggle('selected',c===b));render();});
 function render(){
+ noctraSpotlight.update();
  const local=window.noctraCloud?.user?.role==='admin'?movies:[];
  $('#count').textContent=local.filter(m=>!m.seriesName).length+(window.serverMovies?.length||0);
  let list=[...local.filter(m=>!m.seriesName),...(window.serverMovies||[])].filter(m=>(page!=='list'||m.saved)&&(genre==='Todas'||m.genre===genre)&&m.title.toLocaleLowerCase().includes($('#search').value.toLocaleLowerCase()));
@@ -31,8 +31,147 @@ function render(){
  $('#empty').hidden=list.length>0;
  if(!list.length){$('#empty h3').textContent=page==='list'?'Aquí van las que no te quieres perder.':movies.length||window.serverMovies?.length?'No encontramos esa película.':'El mejor catálogo es el tuyo.';$('#empty p').textContent=page==='list'?'Abre una película y añádela a tu lista.':movies.length||window.serverMovies?.length?'Prueba con otro título o cambia el filtro.':'Añade el enlace de una película de Drive y empieza tu colección.';}
 }
-$('#sample-grid').innerHTML=samples.map(([title,g,img],i)=>`<button class="movie-card" data-sample="${i}"><div class="poster"><img src="assets/${img}.jpg" alt="" loading="lazy"><span class="card-tag">EJEMPLO</span><div class="poster-text">${esc(title)}<small>UNA HISTORIA POR DESCUBRIR</small></div></div><div class="card-info"><strong>${esc(title)}</strong><span>＋</span></div><p>${g} · Diseño de muestra</p></button>`).join('');
-$$('[data-sample]').forEach(b=>b.onclick=()=>{toast('Esta portada es un ejemplo de diseño. Añade tu propia película para verla.');openEditor();});
+// Abyss-inspired vertical spotlight: real published movies, no demo posters.
+// Stable daily selection: a visitor sees the same six within their local day.
+// As the local date changes, the chosen six rotate through the catalog.
+const noctraSpotlight=(()=>{
+ const hero=$('#hero'),carousel=$('#hero-carousel'),track=$('#hero-feature-track');
+ const title=$('#hero-feature-title'),description=$('#hero-feature-description');
+ const eyebrow=$('#hero-feature-eyebrow'),counter=$('#hero-feature-counter');
+ const backdrop=$('#hero-feature-backdrop');
+ const play=$('#hero-feature-play'),info=$('#hero-feature-info');
+ const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches||false;
+ let chosen=[],activeIndex=0,visualIndex=0,interval=null,dayKey='',signature='',paused=false;
+ const timerDelay=5400;
+ const hash=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
+ const seededShuffle=(arr,seed)=>{
+   const a=[...arr];let state=(seed>>>0)||123456789;
+   for(let i=a.length-1;i>0;i--){
+     state^=state<<13;state^=state>>>17;state^=state<<5;
+     const j=(state>>>0)%(i+1);
+     [a[i],a[j]]=[a[j],a[i]];
+   }
+   return a;
+ };
+ const today=()=>{
+   const d=new Date(),y=d.getFullYear(),m=d.getMonth(),n=d.getDate();
+   return {key:y+'-'+String(m+1).padStart(2,'0')+'-'+String(n).padStart(2,'0'),
+           number:Math.floor(Date.UTC(y,m,n)/86400000)};
+ };
+ const poster=m=>posterURL(m.poster);
+ const movieKey=m=>String(m.fileId||m.id||m.title);
+ function stop(){if(interval){clearInterval(interval);interval=null;}}
+ function start(){
+   stop();
+   if(reduced||paused||chosen.length<2||document.hidden)return;
+   interval=setInterval(()=>{
+     const now=today();
+     if(now.key!==dayKey){update();return;}
+     show((activeIndex+1)%chosen.length,true);
+   },timerDelay);
+ }
+ function applyVisual(animate){
+   if(!track)return;
+   track.style.transition=animate?'':'none';
+   track.style.transform='translate3d(0, calc(var(--hero-rowstep) * -'+(visualIndex-1)+'), 0)';
+   if(!animate)requestAnimationFrame(()=>{if(track)track.style.transition='';});
+   track.querySelectorAll('.abyss-hero-slide').forEach(btn=>{
+     const match=Number(btn.dataset.featureIndex)===activeIndex;
+     btn.classList.toggle('active',match);
+     btn.setAttribute('aria-pressed',String(match));
+   });
+ }
+ function show(i,autoplay=false){
+   if(!chosen.length)return;
+   const before=activeIndex;
+   activeIndex=i;
+   visualIndex=chosen.length+i;
+   if(autoplay&&before===chosen.length-1&&i===0)visualIndex=chosen.length*2;
+   const m=chosen[i],art=poster(m);
+   eyebrow.textContent=[m.year,m.genre].filter(Boolean).join(' · ').toUpperCase()||'PELÍCULA DESTACADA';
+   title.textContent=m.title;
+   description.textContent=m.description?.trim()||'Disponible en tu catálogo. Selecciona Reproducir para disfrutarla.';
+   counter.textContent=String(i+1).padStart(2,'0')+' / '+String(chosen.length).padStart(2,'0');
+   if(art){backdrop.hidden=false;if(backdrop.src!==art)backdrop.src=art;}
+   else{backdrop.removeAttribute('src');backdrop.hidden=true;}
+   applyVisual(autoplay||before!==i);
+ }
+ function buildTrack(){
+   track.replaceChildren();
+   // Three copies make the last-to-first upward movement continuous.
+   for(let copy=0;copy<3;copy++)for(let i=0;i<chosen.length;i++){
+     const m=chosen[i],btn=document.createElement('button');
+     btn.type='button';btn.className='abyss-hero-slide';
+     btn.dataset.featureIndex=String(i);
+     btn.setAttribute('aria-label','Destacar '+m.title);
+     btn.tabIndex=copy===1?0:-1;
+     const art=document.createElement('img');art.alt='';art.loading=copy===1?'eager':'lazy';
+     art.src=poster(m)||'assets/mountain.svg';
+     art.onerror=()=>{art.onerror=null;art.src='assets/mountain.svg';};
+     const detail=document.createElement('span');detail.className='abyss-hero-slide-detail';
+     const number=document.createElement('small');number.textContent=String(i+1).padStart(2,'0');
+     const name=document.createElement('strong');name.textContent=m.title;
+     detail.append(number,name);btn.append(art,detail);
+     btn.onclick=()=>{show(i);start();};
+     track.append(btn);
+   }
+   visualIndex=chosen.length;
+   track.style.transition='none';
+   track.style.transform='translate3d(0, calc(var(--hero-rowstep) * -'+(visualIndex-1)+'), 0)';
+   requestAnimationFrame(()=>{track.style.transition='';});
+ }
+ track?.addEventListener('transitionend',e=>{
+   if(e.propertyName!=='transform'||visualIndex<chosen.length*2)return;
+   visualIndex=chosen.length;
+   applyVisual(false);
+ });
+ backdrop?.addEventListener('error',()=>{
+   backdrop.removeAttribute('src');backdrop.hidden=true;
+ });
+ carousel?.addEventListener('mouseenter',()=>{paused=true;stop();});
+ carousel?.addEventListener('mouseleave',()=>{paused=false;start();});
+ carousel?.addEventListener('focusin',()=>{paused=true;stop();});
+ carousel?.addEventListener('focusout',e=>{if(!carousel.contains(e.relatedTarget)){paused=false;start();}});
+ document.addEventListener('visibilitychange',start);
+ play.onclick=()=>{
+   const m=chosen[activeIndex];
+   if(m)window.noctraCloud?.play(m);
+ };
+ info.onclick=()=>{
+   const m=chosen[activeIndex];
+   if(m)openDetail(m);
+ };
+ function update(){
+   if(!hero||!carousel||!track)return;
+   const day=today();
+   const pool=(window.noctraCloud?.movies||[])
+     .filter(m=>m&&!m.seriesName&&m.title&&(m.fileId||m.id))
+     .sort((a,b)=>movieKey(a).localeCompare(movieKey(b)));
+   const seen=new Set();
+   const distinct=pool.filter(m=>{const id=movieKey(m);if(seen.has(id))return false;seen.add(id);return true;});
+   // Prefer actual poster art when there are enough posters for a full row.
+   const withArt=distinct.filter(poster);
+   const eligible=withArt.length>=6?withArt:distinct;
+   const current=day.key+'|'+eligible.map(movieKey).join('|');
+   if(signature===current)return;
+   signature=current;dayKey=day.key;stop();
+   if(!eligible.length){
+     chosen=[];carousel.hidden=true;play.hidden=true;info.hidden=true;
+     backdrop.hidden=true;title.textContent='Descubre tu próxima película.';
+     description.textContent='Explora el catálogo de NOCTRA2 y disfruta de tus películas favoritas.';
+     return;
+   }
+   const base=seededShuffle(eligible,hash('noctra|'+eligible.map(movieKey).join('|')));
+   const offset=base.length>6?((day.number*6)%base.length):0;
+   chosen=[];
+   for(let j=0;j<Math.min(6,base.length);j++)chosen.push(base[(offset+j)%base.length]);
+   chosen=seededShuffle(chosen,hash('noctra-day|'+day.key));
+   carousel.hidden=false;play.hidden=false;info.hidden=false;
+   hero.classList.add('is-abyss-feature');
+   activeIndex=0;buildTrack();show(0);start();
+ }
+ return {update};
+})();
 function openEditor(m=null){if(window.noctraCloud?.user?.role!=='admin')return;editing=m?.id||null;$('#movie-form').reset();$('#variants').innerHTML='';$('#form-error').textContent='';$('#edit-title').textContent=m?'Editar película':'Añadir película';if(m){for(const key of ['title','genre','year','description','poster','drive'])$('#movie-form').elements[key].value=m[key]||'';m.variants.forEach(v=>addVariant(v));}dialog('#editor');}
 $$('[data-add]').forEach(b=>b.onclick=()=>openEditor());
 function addVariant(v={label:'1080p',url:''}){if($('#variants').children.length>=8)return;const row=document.createElement('div');row.className='variant';row.innerHTML=`<select aria-label="Calidad declarada">${['360p','480p','720p','1080p','1440p','2160p','Original'].map(q=>`<option ${q===v.label?'selected':''}>${q}</option>`).join('')}</select><input type="url" placeholder="Enlace de esta versión en Drive" aria-label="Enlace de la versión" required value="${esc(v.url)}"><button type="button" aria-label="Eliminar versión">×</button>`;row.querySelector('button').onclick=()=>row.remove();$('#variants').append(row);}
