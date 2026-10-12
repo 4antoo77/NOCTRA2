@@ -41,8 +41,53 @@ async function updateUser(db,req,me,id){const v=await input(req);const u=await d
 if(v.password!==undefined){if(!passValid(v.password))return fail('La contraseña debe tener 12 caracteres como mínimo.',400);const p=await createPassword(v.password);await db.prepare('UPDATE users SET password_hash=?,salt=? WHERE id=?').bind(p.hash,p.salt,id).run();await db.prepare('DELETE FROM sessions WHERE user_id=?').bind(id).run();}return json({ok:true});}
 const itemId=(u)=>{const m=/\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u);const o=/[?&]id=([A-Za-z0-9_-]{10,})/.exec(u);return m?.[1]||o?.[1]||'';};
 function validateMovie(x){if(!x ||typeof x.title!=='string'||x.title.length<1||x.title.length>150)return null;const f=x.fileId||x.file_id||itemId(x.drive||'');if(!/^[a-zA-Z0-9_-]{10,150}$/.test(f))return null;const obj={id:'gdrive-'+f,title:x.title.trim(),genre:String(x.genre||'Otros').slice(0,50),year:String(x.year||'').slice(0,8),description:String(x.description||'').slice(0,750),poster:String(x.poster||'').slice(0,1000),fileId:f,seriesName:String(x.seriesName||x.series_name||'').slice(0,180),path:String(x.path||'').slice(0,500),height:Number(x.height)||0,size:Number(x.size)||0};if(obj.poster&&!/^https:\/\//i.test(obj.poster))obj.poster='';return obj;}
-async function getCatalog(db){const r=await db.prepare('SELECT id,title,genre,year,description,poster,file_id AS fileId,series_name AS seriesName,path,height,size FROM catalog ORDER BY updated_at DESC').all();return json({movies:(r.results||[]).map(m=>({...m,drive:`https://drive.google.com/file/d/${m.fileId}/view`,variants:[],added:0,connected:true,cloud:true}))});}
-async function saveCatalog(db,req){let v=await input(req);const list=Array.isArray(v)?v:v.movies;if(!Array.isArray(list)||list.length>1000)return fail('Se admite un máximo de 1000 películas.',400);const objs=list.map(validateMovie);if(objs.some(x=>!x))return fail('Hay archivos o enlaces de Drive inválidos.',400);const seen=new Set();const distinct=objs.filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true;});const stmts=[db.prepare('DELETE FROM catalog')];for(const m of distinct)stmts.push(db.prepare('INSERT INTO catalog(id,title,genre,year,description,poster,file_id,series_name,path,height,size,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').bind(m.id,m.title,m.genre,m.year,m.description,m.poster,m.fileId,m.seriesName,m.path,m.height,m.size,now()));await db.batch(stmts);return json({ok:true,count:distinct.length});}
+const metadataKey=m=>m.seriesName?'tv:'+m.seriesName.toLocaleLowerCase('es').trim():'movie:'+m.fileId;
+async function metadataTable(db){
+  // Created automatically on first admin metadata request; no manual migration.
+  await db.prepare("CREATE TABLE IF NOT EXISTS metadata_match (item_key TEXT PRIMARY KEY, status TEXT NOT NULL, tmdb_id INTEGER, payload_json TEXT NOT NULL DEFAULT '{}', checked_at INTEGER NOT NULL)").run();
+}
+async function metadataRows(db){
+  try{return (await db.prepare('SELECT item_key,status,tmdb_id,payload_json,checked_at FROM metadata_match').all()).results||[];}catch{return [];}
+}
+async function getCatalog(db){
+  const [r,metadata]=await Promise.all([
+    db.prepare('SELECT id,title,genre,year,description,poster,file_id AS fileId,series_name AS seriesName,path,height,size FROM catalog ORDER BY updated_at DESC').all(),
+    metadataRows(db)
+  ]);
+  const statuses=new Map(metadata.map(x=>[x.item_key,x]));
+  return json({movies:(r.results||[]).map(m=>{
+    const meta=statuses.get(metadataKey(m));let extra={};
+    if(meta){try{const payload=JSON.parse(meta.payload_json);extra={rating:payload.rating||0,duration:payload.duration||0,tmdbId:meta.tmdb_id||null,metadataStatus:meta.status};}catch{}}
+    return {...m,drive:'https://drive.google.com/file/d/'+m.fileId+'/view',variants:[],added:0,connected:true,cloud:true,...extra};
+  })});
+}
+async function saveCatalog(db,req){
+  const v=await input(req),list=Array.isArray(v)?v:v.movies;
+  if(!Array.isArray(list)||list.length>1000)return fail('Se admite un máximo de 1000 películas y episodios.',400);
+  const objs=list.map(validateMovie);if(objs.some(x=>!x))return fail('Hay archivos o enlaces de Drive inválidos.',400);
+  const distinct=[],seen=new Set();
+  for(const m of objs){if(!seen.has(m.id)){seen.add(m.id);distinct.push(m);}}
+  // Re-synchronizing Drive must NEVER erase TMDB matches or manual corrections.
+  const previous=(await db.prepare('SELECT id,title,genre,year,description,poster,file_id AS fileId,series_name AS seriesName,path,height,size FROM catalog').all()).results||[];
+  const existing=new Map(previous.map(m=>[m.id,m]));
+  const matches=new Map((await metadataRows(db)).filter(x=>x.status==='auto'||x.status==='manual').map(x=>[x.item_key,x]));
+  const merged=distinct.map(m=>{
+    const match=matches.get(metadataKey(m)),old=existing.get(m.id);
+    if(!match)return m;
+    let payload={};try{payload=JSON.parse(match.payload_json||'{}');}catch{}
+    return {...m,
+      title:m.seriesName?m.title:(payload.title||old?.title||m.title),
+      genre:payload.genre||old?.genre||m.genre,
+      year:payload.year||old?.year||m.year,
+      description:payload.description||old?.description||m.description,
+      poster:payload.poster||old?.poster||m.poster
+    };
+  });
+  const stmts=[db.prepare('DELETE FROM catalog')];
+  for(const m of merged)stmts.push(db.prepare('INSERT INTO catalog(id,title,genre,year,description,poster,file_id,series_name,path,height,size,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').bind(m.id,m.title,m.genre,m.year,m.description,m.poster,m.fileId,m.seriesName,m.path,m.height,m.size,now()));
+  await db.batch(stmts);
+  return json({ok:true,count:merged.length});
+}
 // TMDB metadata lookup: admin-only, token stays in Worker secrets.
 const TMDB_IMAGE='https://image.tmdb.org/t/p/w500';
 const TMDB_GENRES={'Action':'Acción','Adventure':'Acción','Animation':'Animación','Comedy':'Comedia','Crime':'Suspenso','Documentary':'Documental','Drama':'Drama','Family':'Animación','Fantasy':'Ciencia ficción','History':'Drama','Horror':'Terror','Music':'Otros','Mystery':'Suspenso','Romance':'Drama','Science Fiction':'Ciencia ficción','Sci-Fi & Fantasy':'Ciencia ficción','Thriller':'Suspenso','War':'Acción','Western':'Acción','Kids':'Animación'};
