@@ -18,7 +18,9 @@
   };
   function focusRegion(){
     const dialogs=[...document.querySelectorAll('dialog[open]')];
-    return dialogs.length?dialogs[dialogs.length-1]:document.getElementById('noctra-app');
+    if(dialogs.length)return dialogs[dialogs.length-1];
+    if(document.body.classList.contains('auth-locked'))return document.getElementById('noctra-login');
+    return document.getElementById('noctra-app');
   }
   const center=r=>({x:(r.left+r.right)/2,y:(r.top+r.bottom)/2});
   function navigate(key){
@@ -28,7 +30,8 @@
     if(!elements.length)return;
     let selected=document.activeElement;
     // Do not override text editing, selects or the player's keyboard handling.
-    if(selected?.matches('input,textarea,select,[contenteditable="true"]'))return;
+    if(selected?.matches('textarea,select,[contenteditable="true"]'))return;
+    if(selected?.matches('input')&&(key==='ArrowLeft'||key==='ArrowRight'))return;
     if(region.id==='player')return;
     if(!elements.includes(selected)){
       selected=elements.find(el=>el.matches('header nav .nav.active'))||elements[0];
@@ -64,7 +67,8 @@
     }
     // Many TV remotes map Back to Backspace. Keep the browser from navigating
     // away when a dialog can instead be closed.
-    if((e.key==='Backspace'||e.key==='BrowserBack')&&!e.target.matches('input,textarea,[contenteditable="true"]')){
+    if((e.key==='Backspace'||e.key==='BrowserBack')&&
+      !(e.target instanceof Element&&e.target.matches('input,textarea,[contenteditable="true"]'))){
       const dialog=[...document.querySelectorAll('dialog[open]')].at(-1);
       if(dialog){dialog.close();e.preventDefault();}
     }
