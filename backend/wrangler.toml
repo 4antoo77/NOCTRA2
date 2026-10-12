@@ -8,6 +8,10 @@ workers_dev = true
 [vars]
 PAGES_ORIGIN = "https://antooserver.win"
 
+# Automatically fills missing TMDB metadata even when no admin is online.
+[triggers]
+crons = ["*/5 * * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "noctra2-db"
