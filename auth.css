@@ -1,0 +1,32 @@
+/* Estilos de acceso. GitHub Pages sirve la interfaz; los permisos los verifica el Worker. */
+body.auth-locked {overflow:hidden}
+body.auth-locked #noctra-app{display:none!important}
+#noctra-login{min-height:100dvh;display:grid;place-items:center;padding:28px 16px;position:relative;isolation:isolate;background:radial-gradient(ellipse at 80% 0,#51306f48,transparent 60%),radial-gradient(ellipse at 5% 90%,#241739,transparent 60%),#0a090f}
+#noctra-login[hidden]{display:none!important}
+#noctra-login .login-frame{max-width:460px;width:100%;padding:clamp(26px,6vw,44px);background:#16131f;border:1px solid #bda4f32e;border-radius:18px;box-shadow:0 30px 90px #0009}
+#noctra-login .login-brand{text-align:center;font:800 31px Manrope,'DM Sans',sans-serif;letter-spacing:5px;color:#f4edff}
+#noctra-login .login-brand span{color:#bca1ff}
+#noctra-login h1{font-size:clamp(23px,5vw,29px);letter-spacing:-1px;line-height:1.2;text-align:center;margin:19px 0 9px;font-weight:650}
+#noctra-login p{font-size:13px;color:#aea4ba;text-align:center;line-height:1.7;margin:0 0 24px}
+#noctra-login form{display:grid;gap:16px}
+#noctra-login label{font-size:12px;font-weight:600;letter-spacing:.2px}
+#noctra-login input{font-size:16px;min-height:48px;border:1px solid #ffffff26;background:#0c0a13}
+#noctra-login button{min-height:49px;font-size:13px;border-radius:9px}
+#noctra-login .login-error{min-height:18px;color:#ffa9be;text-align:left;font-size:12px;margin:0;overflow-wrap:anywhere}
+#noctra-login .login-footnote{color:#80738e;font-size:11px;margin:20px 0 0}
+#noctra-setup[hidden],#noctra-login-form[hidden]{display:none!important}
+#noctra-admin-dialog{width:min(690px,94vw);max-width:94vw;max-height:87dvh;overflow:auto}
+#noctra-admin-dialog .admin-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid #ffffff16}
+#noctra-admin-dialog .admin-row small{display:block;margin-top:5px}
+#noctra-admin-dialog .admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+#noctra-admin-dialog .admin-actions button{min-height:36px;border:1px solid #ffffff22;padding:7px 10px;border-radius:7px;background:#ffffff0b;font-size:11px}
+#noctra-admin-dialog form{display:grid;gap:12px}
+#noctra-admin-dialog form input{min-height:42px}
+#noctra-admin-dialog .admin-note{color:#aea0bd;font-size:12px;line-height:1.65}
+#noctra-admin-dialog .admin-error{color:#ffa9be;font-size:12px;min-height:17px}
+#noctra-admin-dialog section{padding:17px 0;border-top:1px solid #ffffff18}
+#noctra-admin-dialog .admin-subtitle{font-size:16px;margin:4px 0 12px}
+.noctra-userbar{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.noctra-userbar button{background:#ffffff11;border:1px solid #ffffff22;border-radius:7px;padding:8px 10px;font-size:11px}
+.noctra-userbar .auth-user{font-size:11px;color:#c4b2d9}
+@media(max-width:700px){.noctra-userbar{width:100%;justify-content:center}.noctra-userbar .auth-user{display:none}.noctra-userbar button{min-height:40px}.login-frame{box-shadow:none!important}#noctra-admin-dialog .admin-row{align-items:flex-start;flex-direction:column}}
