@@ -16,6 +16,8 @@
   }
   document.getElementById('player').addEventListener('close',()=>{
     playRequest++;
+    const qualityRow=$('quality')?.closest('label');
+    if(qualityRow)qualityRow.hidden=false;
     if(activePlayer){try{activePlayer.pause();activePlayer.src=null;}catch{}activePlayer.remove();activePlayer=null;}
     document.getElementById('frame-container').replaceChildren();
   });
@@ -33,151 +35,69 @@
     request,
     async reloadCatalog(){const d=await request('/api/catalog');let fav;try{fav=new Set(JSON.parse(localStorage.getItem('noctra2.favorites')||'[]'));}catch{fav=new Set();}cloud=(d.movies||[]).map(m=>({...m,saved:fav.has(m.fileId)}));if(typeof showLibrary==='function')showLibrary();else {window.serverMovies=[...cloud];if(typeof render==='function')render();}return cloud;},
     async play(m){
-      const fileId=m.fileId || (typeof driveId==='function'?driveId(m.drive):null) ||
+      const fileId=m.fileId||(typeof driveId==='function'?driveId(m.drive):null)||
         (typeof m.id==='string'&&m.id.startsWith('gdrive-')?m.id.slice(7):null);
       if(!fileId){if(typeof toast==='function')toast('No se encontró el archivo de Google Drive.');return;}
       const playId=++playRequest;
       const dialog=$('player'),hint=dialog.querySelector('.hint');
       $('player-title').textContent=m.title;
-      $('drive-open').href=m.drive || 'https://drive.google.com/file/d/'+encodeURIComponent(fileId)+'/view';
-      const label=$('quality-label');
-      if(label)label.textContent='Audio';
-      $('quality').replaceChildren(new Option('Cargando idiomas…',''));
-      $('quality').disabled=true;
-      $('quality').onchange=null;
-      hint.textContent='Preparando Movi Player…';
+      $('drive-open').href=m.drive||'https://drive.google.com/file/d/'+encodeURIComponent(fileId)+'/view';
+      // El selector externo añadido en pruebas no era parte de Movi Player.
+      // Las pistas reales se eligen desde la configuración integrada (⚙).
+      const row=$('quality').closest('label');
+      if(row)row.hidden=true;
+      hint.textContent='Preparando Movi Player y las pistas originales del MKV…';
       $('frame-container').textContent='Cargando reproductor…';
       if(!dialog.open)dialog.showModal();
       $('retry').onclick=()=>cloudApi.play(m);
-      try {
+      try{
         const signed=await request('/api/play/'+encodeURIComponent('gdrive-'+fileId),{method:'POST'});
         await loadMovi();
         if(playId!==playRequest)return;
-        if(activePlayer){try{activePlayer.pause();}catch{}activePlayer.remove();activePlayer=null;}
+        if(activePlayer){
+          try{activePlayer.pause();activePlayer.removeAttribute('src');}catch{}
+          activePlayer.remove();activePlayer=null;
+        }
         const el=document.createElement('movi-player');
-        el.setAttribute('controls','');
-        el.setAttribute('autoplay','');
-        el.setAttribute('playsinline','');
-        el.setAttribute('resume','');
-        el.setAttribute('fastseek','');
-        el.setAttribute('subtitlepicker','');
-        el.setAttribute('fallback','native');
-        // Navegador para formatos compatibles, WASM para MKV y E-AC3.
-        el.setAttribute('engine','native wasm');
+        ['controls','autoplay','playsinline','resume','fastseek','subtitlepicker'].forEach(a=>el.setAttribute(a,''));
+        // Recupera la configuración original de Movi usada para el MKV.
+        // No forzar primero "native": puede limitar el acceso a las pistas muxed.
+        el.setAttribute('sw','auto');
         el.setAttribute('theme','dark');
-        // Conserva ajustes útiles sin restaurar compresión de volumen ni una pista distinta.
-        el.setAttribute('persist','volume speed subtitlelang');
+        el.setAttribute('persist','volume speed audiolang subtitlelang');
         el.setAttribute('persistkey','noctra2-cine');
         el.setAttribute('resumekey','noctra2-'+fileId);
         el.setAttribute('title',m.title||'NOCTRA2');
         el.style.cssText='display:block;width:100%;height:100%;min-height:230px;background:#000';
-        // El elemento <movi-player> publica getAudioLangs/selectAudioLang.
-        // No consultar el atributo interno .player: puede no existir.
-        const audioSelect=$('quality');
-        let preferredAudioApplied=false, chosenByUser=false;
-        const audioPreferenceKey='noctra2.audio.language';
-        const spanish=/^(es|spa|esp)(?:[-_]|$)/i;
-        function spanishTrack(t){
-          return spanish.test(String(t.lang||'')) ||
-            /espa[nñ]ol|spanish|latino|castellano/i.test(String(t.label||''));
-        }
-        function audioName(t){
-          const name=String(t.label||'').trim(),language=String(t.lang||'').trim();
-          if(spanishTrack(t))return /latino/i.test(name)?'Español latino':name||'Español';
-          if(/^(en|eng)([-_]|$)/i.test(language))return name||'Inglés';
-          return name||language.toUpperCase()||'Idioma sin identificar';
-        }
-        let audioCheck=0, audioTimer=null;
-        function refreshAudioTracks(){
-          if(playId!==playRequest)return;
-          const player=el.player;
-          let tracks=[];
-          try{
-            if(typeof el.getAudioLangs==='function')tracks=el.getAudioLangs()||[];
-            if(!tracks.length && player?.getAudioTracks){
-              tracks=(player.getAudioTracks()||[]).map(t=>({
-                lang:String(t.language||t.lang||''),label:String(t.title||t.label||''),
-                id:t.id,active:t.id===player.trackManager?.getActiveAudioTrack?.()?.id,
-                channels:t.channels,codec:t.codec
-              }));
-            }
-          }catch(e){console.warn('NOCTRA2: error leyendo audio',e);}
-          if(!tracks.length){
-            audioCheck++;
-            if(audioCheck<13){
-              if(!audioTimer)audioTimer=setTimeout(()=>{audioTimer=null;refreshAudioTracks()},1000);
-              if(audioCheck>=3)audioSelect.replaceChildren(new Option('Buscando pistas…',''));
-            }else{
-              audioSelect.replaceChildren(new Option('No se detectaron idiomas',''));
-              audioSelect.disabled=true;
-              hint.textContent='No se pudieron identificar las pistas del MKV. La película sigue reproduciéndose, pero este archivo o esta versión del reproductor no informó sus idiomas.';
-            }
-            return;
-          }
-          const original=tracks.map((t,i)=>({
-            ...t,lang:String(t.lang||t.language||''),
-            label:String(t.label||t.title||'Pista '+(i+1))
-          }));
-          if(!preferredAudioApplied){
-            preferredAudioApplied=true;
-            let preferred=null;
-            try{preferred=localStorage.getItem(audioPreferenceKey)}catch{}
-            const chosen=original.find(t=>t.lang===preferred) || original.find(spanishTrack);
-            if(chosen && !chosen.active){
-              if(chosen.id!==undefined&&typeof player?.selectAudioTrack==='function')player.selectAudioTrack(Number(chosen.id));
-              else if(chosen.lang&&typeof el.selectAudioLang==='function')el.selectAudioLang(chosen.lang);
-            }
-          }
-          audioSelect.replaceChildren(...original.map((t,i)=>new Option(
-            audioName(t)+(t.channels?' · '+(t.channels===2?'Estéreo':t.channels===6?'5.1':t.channels+' canales'):''),
-            String(i)
-          )));
-          audioSelect.disabled=original.length<2;
-          const activeIndex=original.findIndex(t=>t.active);
-          if(activeIndex>=0)audioSelect.value=String(activeIndex);
-          else if(audioSelect.selectedIndex<0)audioSelect.selectedIndex=0;
-          audioSelect.onchange=()=>{
-            const t=original[Number(audioSelect.value)];
-            if(!t)return;
-            let ok=false;
-            if(t.id!==undefined&&typeof player?.selectAudioTrack==='function')ok=player.selectAudioTrack(Number(t.id))!==false;
-            else if(t.lang&&typeof el.selectAudioLang==='function')ok=el.selectAudioLang(t.lang)!==false;
-            if(ok){
-              chosenByUser=true;
-              try{if(t.lang)localStorage.setItem(audioPreferenceKey,t.lang)}catch{}
-              hint.textContent='Pista seleccionada: '+audioName(t)+'.';
-            }else hint.textContent='Movi Player no permitió seleccionar esa pista.';
-          };
-          if(!chosenByUser){
-            hint.textContent=original.length>1
-              ?'Pistas detectadas: '+original.map(audioName).join(', ')+'. Elige la que prefieras en Audio.'
-              :'Solo se detectó una pista: '+audioName(original[0])+'.';
-          }
-        }
-        el.addEventListener('loadedmetadata',refreshAudioTracks);
-        el.addEventListener('loadeddata',refreshAudioTracks);
-        el.addEventListener('canplay',refreshAudioTracks);
-        el.addEventListener('trackschange',refreshAudioTracks);
-        el.addEventListener('audiotrackchange',refreshAudioTracks);
         el.addEventListener('loadedmetadata',()=>{
-          // Audio original: sin compresor de volumen estable aplicado automáticamente.
-          try{el.player?.setStableAudio?.(false);}catch{}
+          if(playId!==playRequest)return;
+          const tracks=el.player?.getAudioTracks?.()||[];
+          if(tracks.length>1){
+            hint.textContent='Hay '+tracks.length+' pistas de audio en el archivo. Cámbialas en los controles de Movi Player.';
+          }else if(tracks.length===1){
+            hint.textContent='Movi Player ha detectado una pista de audio en este archivo. Las opciones disponibles aparecen en los controles.';
+          }else{
+            hint.textContent='Reproducción original del MKV. Los idiomas y subtítulos aparecerán dentro de Movi Player cuando se detecten.';
+          }
+        });
+        el.addEventListener('trackschange',()=>{
+          if(playId!==playRequest)return;
+          const tracks=el.player?.getAudioTracks?.()||[];
+          if(tracks.length>1)hint.textContent='Hay '+tracks.length+' pistas de audio. Usa los controles de Movi Player para elegir idioma.';
         });
         el.addEventListener('error',()=>{
-          if(playId===playRequest)hint.textContent='Movi Player no pudo cargar este video. Comprueba que Cloudflare devuelve rangos de bytes (206) y que el formato sea compatible.';
+          if(playId===playRequest)hint.textContent='Movi Player no pudo abrir este archivo. Comprueba el formato y la conexión.';
         });
         activePlayer=el;
         $('frame-container').replaceChildren(el);
         el.src=signed.url;
-        hint.textContent='Movi Player · Detectando idiomas disponibles…';
         if(typeof el.play==='function')Promise.resolve(el.play()).catch(()=>{});
-        refreshAudioTracks();
-      } catch(e){
+      }catch(e){
         if(playId!==playRequest)return;
         const message=/Película no encontrada/i.test(e.message)
-          ? 'Este archivo todavía no está publicado. Usa Administrar → Publicar catálogo actual y vuelve a probar.'
-          : e.message;
-        hint.textContent='No se pudo cargar Movi Player: '+message;
+          ?'Este archivo no está publicado. Ve a Administrar → Publicar catálogo actual.'
+          :e.message;
+        hint.textContent='Error al iniciar el reproductor: '+message;
         $('frame-container').textContent=message;
         if(typeof toast==='function')toast(message);
       }
