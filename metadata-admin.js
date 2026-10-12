@@ -15,6 +15,10 @@ function mount(target,api,request){
  const syncBtn=el('button','secondary','Comprobar ahora');syncBtn.type='button';
  const label=(text,child)=>{const node=el('label','',text);node.append(child);return node;};
  const picker=el('select');picker.id='metadata-item';
+ const filter=el('input');filter.type='search';filter.placeholder='Buscar dentro de tu catálogo';
+ const onlyReview=el('input');onlyReview.type='checkbox';onlyReview.style.width='auto';
+ const reviewLabel=label('Mostrar solo títulos que necesitan revisión',onlyReview);
+ reviewLabel.classList.add('noctra-meta-review-switch');
  const query=el('input');query.type='search';query.placeholder='Título para buscar en TMDB';query.maxLength=120;
  const tools=el('div','button-row');
  const searchBtn=el('button','secondary','Buscar y elegir');
@@ -38,7 +42,7 @@ function mount(target,api,request){
  const tmdb=document.createElement('a');tmdb.href='https://www.themoviedb.org';tmdb.target='_blank';tmdb.rel='noopener';tmdb.textContent='The Movie Database';
  const logo=document.createElement('img');logo.alt='TMDB';logo.width=44;logo.style.cssText='width:44px;height:auto;vertical-align:middle;margin-right:8px';logo.src='https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_1-5bdc75aaebeb75dc7ae79426ddd9be3b2be1e342510f8202baf6bffa71d7f5c4.svg';
  credit.prepend(logo,tmdb,document.createTextNode(' — '));
- box.append(msg,progress,label('Selecciona una película o serie',picker),label('Buscar título',query),tools,results,form,credit);
+ box.append(msg,progress,label('Buscar en el catálogo',filter),reviewLabel,label('Selecciona una película o serie',picker),label('Buscar título en TMDB',query),tools,results,form,credit);
  target.append(box);
  let items=[],current=null,lastTmdb=null;
  function status(s){msg.textContent=s;}
@@ -54,11 +58,14 @@ function mount(target,api,request){
    items.sort((a,b)=>a.name.localeCompare(b.name,'es'));
    picker.replaceChildren();
    if(!items.length){picker.add(new Option('Publica primero tus películas',''));form.hidden=true;status('El catálogo está vacío.');return;}
-   for(const x of items){
+   const term=norm(filter.value);
+   const displayed=items.filter(x=>(!term||norm(x.name).includes(term))&&(!onlyReview.checked||x.movie.metadataStatus==='review'));
+   if(!displayed.length){picker.add(new Option('No hay títulos con esos filtros',''));form.hidden=true;current=null;status('No hay títulos con esos filtros.');return;}
+   for(const x of displayed){
      const flag=x.movie.metadataStatus==='auto'?'✓ ':x.movie.metadataStatus==='manual'?'✎ ':x.movie.metadataStatus==='review'?'⚠ ':'○ ';
      picker.add(new Option(flag+(x.type==='tv'?'Serie: ':'Película: ')+x.name,x.key));
    }
-   picker.value=items.some(x=>x.key===previous)?previous:(items.find(x=>x.movie.metadataStatus==='review')||items[0]).key;
+   picker.value=displayed.some(x=>x.key===previous)?previous:(displayed.find(x=>x.movie.metadataStatus==='review')||displayed[0]).key;
    changed();
  }
  function changed(){
@@ -73,7 +80,8 @@ function mount(target,api,request){
    results.hidden=true;results.replaceChildren();form.hidden=false;
    status(m.metadataStatus==='review'?'No se encontró una coincidencia segura: busca y selecciona la ficha correcta.':m.metadataStatus==='auto'?'Metadatos automáticos: puedes corregirlos si no coinciden.':m.metadataStatus==='manual'?'Esta ficha se editó manualmente y no será reemplazada automáticamente.':'NOCTRA2 procesará este título automáticamente.');
  }
- picker.onchange=changed;target.noctraRefresh=refresh;
+ picker.onchange=changed;filter.oninput=refresh;onlyReview.onchange=refresh;
+ target.noctraRefresh=refresh;
  async function lookup(){
    if(query.value.trim().length<2)throw Error('Introduce un título.');
    const data=await request('/api/admin/metadata/search?type='+current.type+'&q='+encodeURIComponent(query.value.trim()));
