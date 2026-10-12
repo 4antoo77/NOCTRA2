@@ -57,7 +57,7 @@ async function getCatalog(db){
   const statuses=new Map(metadata.map(x=>[x.item_key,x]));
   return json({movies:(r.results||[]).map(m=>{
     const meta=statuses.get(metadataKey(m));let extra={};
-    if(meta){try{const payload=JSON.parse(meta.payload_json);extra={rating:payload.rating||0,duration:payload.duration||0,tmdbId:meta.tmdb_id||null,metadataStatus:meta.status};}catch{}}
+    if(meta){try{const payload=JSON.parse(meta.payload_json);extra={rating:payload.rating||0,duration:payload.duration||0,tmdbId:meta.tmdb_id||null,metadataStatus:meta.status,...(m.seriesName&&payload.title?{seriesTitle:payload.title}:{})};}catch{}}
     return {...m,drive:'https://drive.google.com/file/d/'+m.fileId+'/view',variants:[],added:0,connected:true,cloud:true,...extra};
   })});
 }
@@ -285,9 +285,9 @@ async function metadataSaveManual(db,req){
   if(x.year&&!/^\d{4}$/.test(x.year))return fail('Año no válido.',400);
   if(typeof x.description!=='string'||x.description.length>750)return fail('Sinopsis demasiado larga.',400);
   if(typeof x.poster!=='string'||x.poster.length>1000||(x.poster&&!/^https:\/\//i.test(x.poster)))return fail('Portada HTTPS inválida.',400);
-  if(!isTv&&(typeof x.title!=='string'||!x.title.trim()||x.title.length>150))return fail('Título inválido.',400);
+  if(typeof x.title!=='string'||!x.title.trim()||x.title.length>150)return fail('Título inválido.',400);
   const payload={
-    title:isTv?found.title:x.title.trim(),genre:x.genre,
+    title:String(x.title||'').trim()|| (isTv?found.seriesName:found.title),genre:x.genre,
     year:String(x.year||''),description:x.description,poster:x.poster,
     rating:Math.max(0,Math.min(10,Number(x.rating)||0)),duration:Math.max(0,Math.min(600,Number(x.duration)||0))
   };
