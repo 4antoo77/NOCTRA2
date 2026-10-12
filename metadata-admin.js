@@ -65,7 +65,7 @@ function mount(target,api,request){
    current=items.find(x=>x.key===picker.value);
    if(!current)return;
    const m=current.movie;lastTmdb={tmdbId:m.tmdbId||null,rating:m.rating||0,duration:m.duration||0};
-   title.value=current.name;title.readOnly=current.type==='tv';
+   title.value=m.seriesTitle||current.name;title.readOnly=false;
    genre.value=TYPES.includes(m.genre)?m.genre:'Otros';
    year.value=m.year||'';description.value=m.description||'';poster.value=m.poster||'';
    poster.dispatchEvent(new Event('input'));
@@ -134,11 +134,10 @@ function mount(target,api,request){
  form.onsubmit=async event=>{
    event.preventDefault();if(!current)return;
    const name=title.value.trim(),image=https(poster.value.trim());
-   if(current.type==='movie'&&!name){status('Escribe un título.');return;}
+   if(!name){status('Escribe un título.');return;}
    if(poster.value.trim()&&!image){status('La portada debe tener una URL HTTPS válida.');return;}
    if(year.value.trim()&&!/^\d{4}$/.test(year.value.trim())){status('Introduce un año de cuatro cifras.');return;}
-   const data={genre:genre.value,year:year.value.trim(),description:description.value.trim(),poster:image};
-   if(current.type==='movie')data.title=name;
+   const data={title:name,genre:genre.value,year:year.value.trim(),description:description.value.trim(),poster:image};
    data.key=current.key;
    if(current.type==='tv')data.seriesName=current.name;
    if(lastTmdb)Object.assign(data,lastTmdb);
