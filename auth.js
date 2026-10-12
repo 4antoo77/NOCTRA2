@@ -49,7 +49,7 @@
       // Las pistas reales se eligen desde la configuración integrada (⚙).
       const row=$('quality').closest('label');
       if(row)row.hidden=true;
-      hint.textContent='Preparando Movi Player y las pistas originales del MKV…';
+      hint.textContent='Es normal que algunas películas tarden un poco en iniciar. Espera unos momentos.';
       $('frame-container').textContent='Cargando reproductor…';
       if(!dialog.open)dialog.showModal();
       $('retry').onclick=()=>cloudApi.play(m);
@@ -89,94 +89,33 @@
           const tracks=el.player?.getAudioTracks?.()||[];
           if(tracks.length>1)hint.textContent='Hay '+tracks.length+' pistas de audio. Usa los controles de Movi Player para elegir idioma.';
         });
-        // Indicador dentro del reproductor: porcentaje REAL del búfer
-        // necesario para arrancar (primeros 12 segundos), NO porcentaje
-        // de descarga del MKV completo. Movi emite el último segundo almacenado
-        // en el detalle de su evento "progress".
-        const meter=document.createElement('div');
-        meter.className='noctra-buffer-meter';
-        meter.setAttribute('role','status');
-        meter.setAttribute('aria-label','Precarga del video');
-        const meterTitle=document.createElement('span');
-        meterTitle.className='noctra-buffer-title';
-        meterTitle.textContent='Preparando reproducción';
-        const meterNumber=document.createElement('strong');
-        meterNumber.className='noctra-buffer-value';
-        meterNumber.textContent='0%';
-        const meterTrack=document.createElement('div');
-        meterTrack.className='noctra-buffer-track';
-        const meterFill=document.createElement('div');
-        meterFill.className='noctra-buffer-fill';
-        meterTrack.append(meterFill);
-        const meterDescription=document.createElement('small');
-        meterDescription.className='noctra-buffer-description';
-        meterDescription.textContent='Precarga de los primeros 12 segundos';
-        meter.append(meterTitle,meterNumber,meterTrack,meterDescription);
-        let lastBufferedEnd=0,bufferAnchor=0,meterVisible=true;
-        function updateBufferMeter(){
-          if(playId!==playRequest||!meterVisible)return;
-          const remain=Number(el.duration)-bufferAnchor;
-          const target=Number.isFinite(remain)&&remain>0?Math.min(12,remain):12;
-          const ahead=Math.max(0,lastBufferedEnd-bufferAnchor);
-          const pct=Math.max(0,Math.min(100,Math.floor(ahead/target*100)));
-          meterFill.style.width=pct+'%';
-          if(pct>=100){
-            // El 100% SOLO significa que la ventana inicial de búfer
-            // se ha llenado: NO implica que el MKV ya pueda reproducirse.
-            meter.dataset.phase='decoding';
-            meterTitle.textContent='Búfer inicial listo';
-            meterNumber.textContent='Preparando video…';
-            meterDescription.textContent='Esperando el primer fotograma; todavía no está reproduciendo';
-            hint.textContent='El búfer inicial está completo, pero Movi Player aún prepara la imagen. Puede tardar en algunos MKV.';
-          }else{
-            meter.dataset.phase='buffering';
-            meterNumber.textContent=pct+'%';
-            meterDescription.textContent='Precarga de los primeros '+Math.round(target)+' segundos';
-          }
-        }
-        function showBufferMeter(stalled=false){
-          if(playId!==playRequest)return;
-          meterVisible=true;
-          meter.hidden=false;
-          meterTitle.textContent=stalled?'Cargando más video':'Preparando reproducción';
-          const t=Number(el.currentTime);
-          bufferAnchor=Number.isFinite(t)&&t>=0?t:0;
-          updateBufferMeter();
-        }
-        function hideBufferMeter(){
-          meterVisible=false;
-          meter.hidden=true;
-        }
-        el.addEventListener('progress',event=>{
-          if(playId!==playRequest)return;
-          const detail=event.detail;
-          const end=typeof detail==='number'?detail:
-            (typeof detail?.end==='number'?detail.end:
-            (typeof detail?.bufferedEnd==='number'?detail.bufferedEnd:NaN));
-          if(Number.isFinite(end)&&end>=0){
-            lastBufferedEnd=Math.max(lastBufferedEnd,end);
-            updateBufferMeter();
-          }
-        });
+        // Aviso sencillo durante la preparación inicial o nuevas esperas.
+        // No representa el progreso de descarga ni altera el motor Movi.
+        const notice=document.createElement('div');
+        notice.className='noctra-loading-notice';
+        notice.setAttribute('role','status');
+        const noticeHeading=document.createElement('strong');
+        noticeHeading.textContent='La película se está preparando';
+        const noticeText=document.createElement('span');
+        noticeText.textContent='Algunas películas tardan un poco en iniciar. Es normal, espera unos momentos.';
+        notice.append(noticeHeading,noticeText);
         el.addEventListener('waiting',()=>{
           if(playId!==playRequest)return;
-          showBufferMeter(true);
-          hint.textContent='Cargando datos del MKV. El porcentaje dentro del video indica la precarga inicial, no la película entera.';
+          notice.hidden=false;
+          hint.textContent='Es normal que esta película tarde un poco en comenzar. Espera mientras se prepara.';
         });
         el.addEventListener('playing',()=>{
           if(playId!==playRequest)return;
-          hideBufferMeter();
+          notice.hidden=true;
           hint.textContent='Reproduciendo con Movi Player.';
         });
-        el.addEventListener('error',hideBufferMeter);
         el.addEventListener('error',()=>{
-          if(playId===playRequest){
-            meter.hidden=true;
-            hint.textContent='Movi Player no pudo abrir este archivo. Comprueba el formato y la conexión.';
-          }
+          if(playId!==playRequest)return;
+          notice.hidden=true;
+          hint.textContent='Movi Player no pudo abrir este archivo. Comprueba el formato y la conexión.';
         });
         activePlayer=el;
-        $('frame-container').replaceChildren(el,meter);
+        $('frame-container').replaceChildren(el,notice);
         el.src=signed.url;
 
         // Movi Player es el único reproductor. La preparación de este MKV
