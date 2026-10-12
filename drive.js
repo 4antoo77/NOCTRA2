@@ -60,7 +60,7 @@
      m.seriesName &&
      (page!=='list'||m.saved) &&
      (genre==='Todas'||m.genre===genre) &&
-     (m.title.toLocaleLowerCase('es').includes(term)||m.seriesName.toLocaleLowerCase('es').includes(term))
+     (m.title.toLocaleLowerCase('es').includes(term)||m.seriesName.toLocaleLowerCase('es').includes(term)||String(m.seriesTitle||'').toLocaleLowerCase('es').includes(term))
    );
    const groups=new Map();
    for(const m of shown){
@@ -77,7 +77,8 @@
      b.type='button';
      b.className='movie-card';
      const poster=episodes.find(m=>posterURL(m.poster));
-     b.innerHTML='<div class="poster"><img src="'+esc(poster?posterURL(poster.poster):'assets/city.svg')+'" alt="" loading="lazy"><span class="card-tag">SERIE · '+episodes.length+' EPISODIOS</span><div class="poster-text">'+esc(name)+'<small>SERIE</small></div></div><div class="card-info"><strong>'+esc(name)+'</strong><span>↗</span></div>';
+     const displayName=episodes.find(m=>m.seriesTitle)?.seriesTitle||name;
+     b.innerHTML='<div class="poster"><img src="'+esc(poster?posterURL(poster.poster):'assets/city.svg')+'" alt="" loading="lazy"><span class="card-tag">SERIE · '+episodes.length+' EPISODIOS</span><div class="poster-text">'+esc(displayName)+'<small>SERIE</small></div></div><div class="card-info"><strong>'+esc(displayName)+'</strong><span>↗</span></div>';
      b.onclick=()=>openEpisodes(name,episodes);
      grid.append(b);
    }
