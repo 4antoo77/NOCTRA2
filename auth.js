@@ -7,6 +7,18 @@
   const error=document.getElementById('login-error');
   const $=id=>document.getElementById(id);
   let token=sessionStorage.getItem('noctra2.token')||'',me=null,loaded=false,cloud=[];
+  let moviLoader=null,activePlayer=null,playRequest=0;
+  async function loadMovi(){
+    if(customElements.get('movi-player'))return;
+    if(!moviLoader)moviLoader=import('https://cdn.jsdelivr.net/npm/movi-player/dist/element.js').catch(e=>{moviLoader=null;throw e;});
+    await moviLoader;
+    if(!customElements.get('movi-player'))throw Error('El componente Movi Player no está disponible.');
+  }
+  document.getElementById('player').addEventListener('close',()=>{
+    playRequest++;
+    if(activePlayer){try{activePlayer.pause();activePlayer.src=null;}catch{}activePlayer.remove();activePlayer=null;}
+    document.getElementById('frame-container').replaceChildren();
+  });
   function msg(s){error.textContent=s;}
   async function request(path,opts={}){
     if(!validApi)throw Error('Falta configurar la URL del Worker en config.js.');
@@ -20,8 +32,55 @@
     get user(){return me},get movies(){return cloud},get token(){return token},
     request,
     async reloadCatalog(){const d=await request('/api/catalog');let fav;try{fav=new Set(JSON.parse(localStorage.getItem('noctra2.favorites')||'[]'));}catch{fav=new Set();}cloud=(d.movies||[]).map(m=>({...m,saved:fav.has(m.fileId)}));if(typeof showLibrary==='function')showLibrary();else {window.serverMovies=[...cloud];if(typeof render==='function')render();}return cloud;},
-    async play(m){try{const d=await request('/api/play/'+encodeURIComponent(m.id),{method:'POST'});const dialog=$('player');$('player-title').textContent=m.title;$('drive-open').href=m.drive;$('quality').innerHTML='<option>Original</option>';$('quality').disabled=true;const video=document.createElement('video');video.controls=true;video.playsInline=true;video.autoplay=true;video.preload='metadata';video.referrerPolicy='no-referrer';video.style.cssText='width:100%;height:100%;background:#000';video.src=d.url;$('frame-container').replaceChildren(video);dialog.querySelector('.hint').textContent='Reproducción privada desde Google Drive. Formatos como MKV pueden no funcionar en todos los navegadores.';if(!dialog.open)dialog.showModal();video.play().catch(()=>{});$('retry').onclick=()=>{video.load();video.play().catch(()=>{})};dialog.addEventListener('close',()=>{video.pause();video.removeAttribute('src');video.load()},{once:true});}
-      catch(e){if(typeof toast==='function')toast(e.message);else alert(e.message);}},
+    async play(m){
+      const fileId=m.fileId || (typeof driveId==='function'?driveId(m.drive):null) ||
+        (typeof m.id==='string'&&m.id.startsWith('gdrive-')?m.id.slice(7):null);
+      if(!fileId){if(typeof toast==='function')toast('No se encontró el archivo de Google Drive.');return;}
+      const playId=++playRequest;
+      const dialog=$('player'),hint=dialog.querySelector('.hint');
+      $('player-title').textContent=m.title;
+      $('drive-open').href=m.drive || 'https://drive.google.com/file/d/'+encodeURIComponent(fileId)+'/view';
+      $('quality').innerHTML='<option>Original · Movi Player</option>';
+      $('quality').disabled=true;
+      hint.textContent='Preparando Movi Player…';
+      $('frame-container').textContent='Cargando reproductor…';
+      if(!dialog.open)dialog.showModal();
+      $('retry').onclick=()=>cloudApi.play(m);
+      try {
+        const signed=await request('/api/play/'+encodeURIComponent('gdrive-'+fileId),{method:'POST'});
+        await loadMovi();
+        if(playId!==playRequest)return;
+        if(activePlayer){try{activePlayer.pause();}catch{}activePlayer.remove();activePlayer=null;}
+        const el=document.createElement('movi-player');
+        el.setAttribute('controls','');
+        el.setAttribute('autoplay','');
+        el.setAttribute('playsinline','');
+        el.setAttribute('resume','');
+        el.setAttribute('fastseek','');
+        el.setAttribute('subtitlepicker','');
+        el.setAttribute('fallback','native');
+        el.setAttribute('theme','dark');
+        el.setAttribute('resumekey','noctra2-'+fileId);
+        el.setAttribute('title',m.title||'NOCTRA2');
+        el.style.cssText='display:block;width:100%;height:100%;min-height:230px;background:#000';
+        el.addEventListener('error',()=>{
+          if(playId===playRequest)hint.textContent='Movi Player no pudo cargar este video. Comprueba que Cloudflare devuelve rangos de bytes (206) y que el formato sea compatible.';
+        });
+        activePlayer=el;
+        $('frame-container').replaceChildren(el);
+        el.src=signed.url;
+        hint.textContent='Reproductor Movi · Archivo original de tu catálogo privado. Audio y subtítulos en los controles.';
+        if(typeof el.play==='function')Promise.resolve(el.play()).catch(()=>{});
+      } catch(e){
+        if(playId!==playRequest)return;
+        const message=/Película no encontrada/i.test(e.message)
+          ? 'Este archivo todavía no está publicado. Usa Administrar → Publicar catálogo actual y vuelve a probar.'
+          : e.message;
+        hint.textContent='No se pudo cargar Movi Player: '+message;
+        $('frame-container').textContent=message;
+        if(typeof toast==='function')toast(message);
+      }
+    },
     saveFavorite(m){m.saved=!m.saved;let x=[];try{x=JSON.parse(localStorage.getItem('noctra2.favorites')||'[]');}catch{}const s=new Set(x);m.saved?s.add(m.fileId):s.delete(m.fileId);localStorage.setItem('noctra2.favorites',JSON.stringify([...s]));if(typeof render==='function')render();},
     async logout(){try{await request('/api/logout',{method:'POST'});}catch{}sessionStorage.removeItem('noctra2.token');token='';location.reload();}
   };
