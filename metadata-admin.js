@@ -6,7 +6,7 @@ const TYPES=['Acción','Ciencia ficción','Drama','Suspenso','Documental','Anima
 const el=(tag,cls,text)=>{const x=document.createElement(tag);if(cls)x.className=cls;if(text)x.textContent=text;return x;};
 const https=v=>{if(!v)return '';try{let u=new URL(v);return u.protocol==='https:'?u.href:'';}catch{return '';}};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-const clean=s=>String(s||'').replace(/\.(mkv|mp4|avi|webm)$/i,'').replace(/\b(1080p|2160p|720p|webrip|web-dl|bluray|x264|x265|hevc)\b/gi,'').replace(/[._]/g,' ').trim();
+const clean=s=>String(s||'').replace(/\.(mkv|mp4|avi|webm)$/i,'').replace(/[._]/g,' ').replace(/[\[(]((?:19|20)\d{2})[\])]/g,' ').replace(/\b(?:19|20)\d{2}\b/g,' ').replace(/\b(1080p|2160p|720p|480p|webrip|web.?dl|bluray|x264|x265|hevc|brrip|hdr|dual|latino)\b/gi,' ').replace(/\s{2,}/g,' ').trim();
 function mount(target,api,request){
  if(!target||api?.user?.role!=='admin')return;
  if(target.firstChild){target.noctraRefresh?.();return;}
