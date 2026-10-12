@@ -6,7 +6,7 @@ workers_dev = true
 # CAMBIA ESTE ORIGEN al URL real de GitHub Pages, SIN barra final.
 # Ejemplo: https://tuusuario.github.io
 [vars]
-PAGES_ORIGIN = "https://4antoo77.github.io"
+PAGES_ORIGIN = "https://antooserver.win"
 
 [[d1_databases]]
 binding = "DB"
