@@ -33,7 +33,7 @@ $('#search').addEventListener('keydown',e=>{
 $('#sort').onchange=render;
 $('#filters [data-genre]').forEach(b=>b.addEventListener('click',()=>{
  genre=b.dataset.genre;
- $(' #filters [data-genre]'.trim()).forEach(c=>{
+ $('#filters [data-genre]').forEach(c=>{
   const selected=c===b;
   c.classList.toggle('selected',selected);
   c.setAttribute('aria-pressed',String(selected));
