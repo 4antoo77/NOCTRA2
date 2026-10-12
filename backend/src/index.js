@@ -43,6 +43,47 @@ const itemId=(u)=>{const m=/\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u);const o=/[?
 function validateMovie(x){if(!x ||typeof x.title!=='string'||x.title.length<1||x.title.length>150)return null;const f=x.fileId||x.file_id||itemId(x.drive||'');if(!/^[a-zA-Z0-9_-]{10,150}$/.test(f))return null;const obj={id:'gdrive-'+f,title:x.title.trim(),genre:String(x.genre||'Otros').slice(0,50),year:String(x.year||'').slice(0,8),description:String(x.description||'').slice(0,750),poster:String(x.poster||'').slice(0,1000),fileId:f,seriesName:String(x.seriesName||x.series_name||'').slice(0,180),path:String(x.path||'').slice(0,500),height:Number(x.height)||0,size:Number(x.size)||0};if(obj.poster&&!/^https:\/\//i.test(obj.poster))obj.poster='';return obj;}
 async function getCatalog(db){const r=await db.prepare('SELECT id,title,genre,year,description,poster,file_id AS fileId,series_name AS seriesName,path,height,size FROM catalog ORDER BY updated_at DESC').all();return json({movies:(r.results||[]).map(m=>({...m,drive:`https://drive.google.com/file/d/${m.fileId}/view`,variants:[],added:0,connected:true,cloud:true}))});}
 async function saveCatalog(db,req){let v=await input(req);const list=Array.isArray(v)?v:v.movies;if(!Array.isArray(list)||list.length>1000)return fail('Se admite un máximo de 1000 películas.',400);const objs=list.map(validateMovie);if(objs.some(x=>!x))return fail('Hay archivos o enlaces de Drive inválidos.',400);const seen=new Set();const distinct=objs.filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true;});const stmts=[db.prepare('DELETE FROM catalog')];for(const m of distinct)stmts.push(db.prepare('INSERT INTO catalog(id,title,genre,year,description,poster,file_id,series_name,path,height,size,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').bind(m.id,m.title,m.genre,m.year,m.description,m.poster,m.fileId,m.seriesName,m.path,m.height,m.size,now()));await db.batch(stmts);return json({ok:true,count:distinct.length});}
+// TMDB metadata lookup: admin-only, token stays in Worker secrets.
+const TMDB_IMAGE='https://image.tmdb.org/t/p/w500';
+const TMDB_GENRES={'Action':'Acción','Adventure':'Acción','Animation':'Animación','Comedy':'Comedia','Crime':'Suspenso','Documentary':'Documental','Drama':'Drama','Family':'Animación','Fantasy':'Ciencia ficción','History':'Drama','Horror':'Terror','Music':'Otros','Mystery':'Suspenso','Romance':'Drama','Science Fiction':'Ciencia ficción','Sci-Fi & Fantasy':'Ciencia ficción','Thriller':'Suspenso','War':'Acción','Western':'Acción','Kids':'Animación'};
+const safeTmdbImage=p=>typeof p==='string'&&/^\/[A-Za-z0-9_.-]{4,250}$/.test(p)?TMDB_IMAGE+p:'';
+async function tmdbGet(env,endpoint,params={}){
+  const apiToken=env.TMDB_READ_ACCESS_TOKEN;
+  if(!apiToken)return fail('Configura TMDB_READ_ACCESS_TOKEN como secreto del Worker para usar la búsqueda automática.',503);
+  const url=new URL('https://api.themoviedb.org/3/'+endpoint);
+  url.searchParams.set('language','es-ES');
+  for(const [k,v] of Object.entries(params))url.searchParams.set(k,String(v));
+  let response;try{response=await fetch(url.toString(),{headers:{Authorization:'Bearer '+apiToken,Accept:'application/json'},signal:AbortSignal.timeout(9000)});}catch{return fail('No se pudo conectar con TMDB.',502);}
+  if(!response.ok)return fail('TMDB no respondió correctamente ('+response.status+').',502);
+  return response.json();
+}
+async function searchMetadata(req,env){
+  const url=new URL(req.url),query=(url.searchParams.get('q')||'').trim(),type=url.searchParams.get('type')==='tv'?'tv':'movie';
+  if(query.length<2||query.length>120)return fail('Escribe un título de entre 2 y 120 caracteres.',400);
+  const r=await tmdbGet(env,'search/'+type,{query,include_adult:'false',page:1});
+  if(r instanceof Response)return r;
+  return json({results:(r.results||[]).filter(x=>!x.adult).slice(0,12).map(x=>({
+     id:x.id,title:(type==='tv'?x.name:x.title)||'',
+     year:((type==='tv'?x.first_air_date:x.release_date)||'').slice(0,4),
+     description:x.overview||'',poster:safeTmdbImage(x.poster_path),
+     rating:Math.round(Number(x.vote_average||0)*10)/10,type
+  }))});
+}
+async function metadataDetails(req,env){
+  const url=new URL(req.url),type=url.searchParams.get('type')==='tv'?'tv':'movie';
+  const id=Number(url.searchParams.get('id'));
+  if(!Number.isSafeInteger(id)||id<=0)return fail('ID de TMDB inválido.',400);
+  const r=await tmdbGet(env,type+'/'+id);
+  if(r instanceof Response)return r;
+  return json({metadata:{
+    title:(type==='tv'?r.name:r.title)||'',year:((type==='tv'?r.first_air_date:r.release_date)||'').slice(0,4),
+    description:String(r.overview||'').slice(0,750),poster:safeTmdbImage(r.poster_path),
+    genre:TMDB_GENRES[r.genres?.[0]?.name]||'Otros',
+    duration:Number(type==='tv'?r.episode_run_time?.[0]:r.runtime)||0,
+    rating:Math.round(Number(r.vote_average||0)*10)/10,
+    tmdbId:r.id,type
+  }});
+}
 async function hmac(env,s){const k=await crypto.subtle.importKey('raw',enc.encode(env.STREAM_SIGNING_KEY),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);return b64url(new Uint8Array(await crypto.subtle.sign('HMAC',k,enc.encode(s))));}
 async function signStream(db,env,id,url){if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_REFRESH_TOKEN||!env.STREAM_SIGNING_KEY)return fail('El administrador aún no ha configurado la reproducción privada.',503);const m=await db.prepare('SELECT id FROM catalog WHERE id=?').bind(id).first();if(!m)return fail('Película no encontrada',404);const expires=now()+4*3600;const signature=await hmac(env,`${id}:${expires}`);return json({url:`${url.origin}/api/media/${encodeURIComponent(id)}?expires=${expires}&signature=${signature}`,expiresAt:expires});}
 async function playMedia(req,env,db,id,url){if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_REFRESH_TOKEN||!env.STREAM_SIGNING_KEY)return fail('Servidor de reproducción no configurado.',503);const exp=Number(url.searchParams.get('expires'));const sig=url.searchParams.get('signature')||'';if(!Number.isInteger(exp)||exp<now()||exp>now()+4*3600||sig.length<40)return fail('Enlace de reproducción no válido o caducado.',403);const expected=await hmac(env,`${id}:${exp}`);let diff=expected.length^sig.length;for(let i=0;i<Math.max(expected.length,sig.length);i++)diff|=(expected.charCodeAt(i)||0)^(sig.charCodeAt(i)||0);if(diff)return fail('Firma inválida.',403);const m=await db.prepare('SELECT file_id FROM catalog WHERE id=?').bind(id).first();if(!m)return fail('Película inexistente.',404);const body=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,refresh_token:env.GOOGLE_REFRESH_TOKEN,grant_type:'refresh_token'});const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});if(!r.ok)return fail('No se pudo renovar el acceso privado a Google Drive.',502);const t=await r.json();if(!t.access_token)return fail('Google no autorizó el acceso.',502);const mediaUrl=`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(m.file_id)}?alt=media`;const gh=new Headers({Authorization:'Bearer '+t.access_token});const range=req.headers.get('Range');if(range)gh.set('Range',range);const upstream=await fetch(mediaUrl,{headers:gh,method:req.method});if(!upstream.ok && upstream.status!==206)return fail(`Google Drive no pudo enviar este archivo (${upstream.status}).`,upstream.status===403?403:502);const outgoing=new Headers({'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Access-Control-Allow-Origin':env.PAGES_ORIGIN});for(const h of ['content-length','content-range','content-type','accept-ranges','etag']){const v=upstream.headers.get(h);if(v)outgoing.set(h,v);}outgoing.set('Content-Disposition','inline');return new Response(req.method==='HEAD'?null:upstream.body,{status:upstream.status,headers:outgoing});}
@@ -65,6 +106,8 @@ export default {async fetch(request,env){
       else if(path==='/api/catalog' && request.method==='GET')response=await getCatalog(env.DB);
       else if(path.startsWith('/api/play/') && request.method==='POST')response=await signStream(env.DB,env,decodeURIComponent(path.slice('/api/play/'.length)),url);
       else if(me.role!=='admin')response=fail('Solo para el administrador.',403);
+      else if(path==='/api/admin/metadata/search' && request.method==='GET')response=await searchMetadata(request,env);
+      else if(path==='/api/admin/metadata/details' && request.method==='GET')response=await metadataDetails(request,env);
       else if(path==='/api/admin/users' && request.method==='GET')response=await users(env.DB);
       else if(path==='/api/admin/users' && request.method==='POST')response=await createUser(env.DB,request);
       else if(/^\/api\/admin\/users\/\d+$/.test(path)&&request.method==='PATCH')response=await updateUser(env.DB,request,me,Number(path.split('/').pop()));
