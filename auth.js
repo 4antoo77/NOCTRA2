@@ -36,7 +36,7 @@
   const cloudApi={
     get user(){return me},get movies(){return cloud},get token(){return token},
     request,
-    async reloadCatalog(){const d=await request('/api/catalog');let fav;try{fav=new Set(JSON.parse(localStorage.getItem('noctra2.favorites')||'[]'));}catch{fav=new Set();}cloud=(d.movies||[]).map(m=>({...m,saved:fav.has(m.fileId)}));if(typeof showLibrary==='function')showLibrary();else {window.serverMovies=[...cloud];if(typeof render==='function')render();}return cloud;},
+    async reloadCatalog(){const d=await request('/api/catalog');let fav;try{fav=new Set(JSON.parse(localStorage.getItem('noctra2.favorites')||'[]'));}catch{fav=new Set();}cloud=(d.movies||[]).map(m=>({...m,saved:fav.has(m.fileId)}));if(typeof window.noctraShowLibrary==='function')window.noctraShowLibrary();else {window.serverMovies=[...cloud];if(typeof render==='function')render();}return cloud;},
     async play(m){
       const fileId=m.fileId||(typeof driveId==='function'?driveId(m.drive):null)||
         (typeof m.id==='string'&&m.id.startsWith('gdrive-')?m.id.slice(7):null);
