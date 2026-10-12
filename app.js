@@ -41,8 +41,8 @@ const noctraSpotlight=(()=>{
  const backdrop=$('#hero-feature-backdrop');
  const play=$('#hero-feature-play'),info=$('#hero-feature-info');
  const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches||false;
- let chosen=[],activeIndex=0,visualIndex=0,interval=null,dayKey='',signature='',paused=false;
- const timerDelay=5400;
+ let chosen=[],activeIndex=0,visualIndex=0,interval=null,dayKey='',signature='';
+ const timerDelay=6000;
  const hash=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
  const seededShuffle=(arr,seed)=>{
    const a=[...arr];let state=(seed>>>0)||123456789;
@@ -63,8 +63,11 @@ const noctraSpotlight=(()=>{
  function stop(){if(interval){clearInterval(interval);interval=null;}}
  function start(){
    stop();
-   if(reduced||paused||chosen.length<2||document.hidden)return;
+   if(chosen.length<2||document.hidden)return;
+   // Always move to the next movie after six seconds, even while the pointer
+   // is over a poster or the user requests reduced-motion accessibility.
    interval=setInterval(()=>{
+     if(document.hidden)return;
      const now=today();
      if(now.key!==dayKey){update();return;}
      show((activeIndex+1)%chosen.length,true);
@@ -72,8 +75,10 @@ const noctraSpotlight=(()=>{
  }
  function applyVisual(animate){
    if(!track)return;
-   track.style.transition=animate?'':'none';
-   track.style.transform='translate3d(0, calc(var(--hero-rowstep) * -'+(visualIndex-1)+'), 0)';
+   track.style.transition=animate&&!reduced?'':'none';
+   // Pixel translation avoids unsupported calc(length * number) on some browsers.
+   const step=parseFloat(getComputedStyle(carousel).getPropertyValue('--hero-rowstep'))||174;
+   track.style.transform='translate3d(0, '+(-(visualIndex-1)*step)+'px, 0)';
    if(!animate)requestAnimationFrame(()=>{if(track)track.style.transition='';});
    track.querySelectorAll('.abyss-hero-slide').forEach(btn=>{
      const match=Number(btn.dataset.featureIndex)===activeIndex;
@@ -117,8 +122,7 @@ const noctraSpotlight=(()=>{
    }
    visualIndex=chosen.length;
    track.style.transition='none';
-   track.style.transform='translate3d(0, calc(var(--hero-rowstep) * -'+(visualIndex-1)+'), 0)';
-   requestAnimationFrame(()=>{track.style.transition='';});
+   applyVisual(false);
  }
  track?.addEventListener('transitionend',e=>{
    if(e.propertyName!=='transform'||visualIndex<chosen.length*2)return;
@@ -128,11 +132,8 @@ const noctraSpotlight=(()=>{
  backdrop?.addEventListener('error',()=>{
    backdrop.removeAttribute('src');backdrop.hidden=true;
  });
- carousel?.addEventListener('mouseenter',()=>{paused=true;stop();});
- carousel?.addEventListener('mouseleave',()=>{paused=false;start();});
- carousel?.addEventListener('focusin',()=>{paused=true;stop();});
- carousel?.addEventListener('focusout',e=>{if(!carousel.contains(e.relatedTarget)){paused=false;start();}});
- document.addEventListener('visibilitychange',start);
+ // No mousehover/focus pause: the carousel is meant to change every 6 s.
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)start();else stop();});
  play.onclick=()=>{
    const m=chosen[activeIndex];
    if(m)window.noctraCloud?.play(m);
