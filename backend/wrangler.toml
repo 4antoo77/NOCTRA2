@@ -1,0 +1,15 @@
+name = "noctra2-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# CAMBIA ESTE ORIGEN al URL real de GitHub Pages, SIN barra final.
+# Ejemplo: https://tuusuario.github.io
+[vars]
+PAGES_ORIGIN = "https://CAMBIA-TU-USUARIO.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "noctra2-db"
+# Pega aquí el UUID devuelto por `npx wrangler d1 create noctra2-db`.
+database_id = "REEMPLAZAR_UUID_D1"
