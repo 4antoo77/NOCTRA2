@@ -59,6 +59,7 @@
    const shown=window.serverMovies.filter(m=>
      m.seriesName &&
      (page!=='list'||m.saved) &&
+     (genre==='Todas'||m.genre===genre) &&
      (m.title.toLocaleLowerCase('es').includes(term)||m.seriesName.toLocaleLowerCase('es').includes(term))
    );
    const groups=new Map();
