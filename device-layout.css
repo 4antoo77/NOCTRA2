@@ -379,7 +379,7 @@ body.abyss-noctra.noctra-tv .hero-actions button{
 }
 body.abyss-noctra.noctra-tv .hero-note{font-size:14px}
 body.abyss-noctra.noctra-tv .abyss-hero-carousel{
-  --hero-rowstep:clamp(137px,13vh,202px);
+  --hero-rowstep:170px;
   right:3vw;width:clamp(225px,24vw,410px);
 }
 body.abyss-noctra.noctra-tv .abyss-hero-slide{padding:10px;gap:14px}
