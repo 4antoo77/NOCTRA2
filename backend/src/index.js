@@ -12,7 +12,7 @@ function passValid(p){return typeof p==='string' && p.length>=12 && p.length<=12
 function userValid(u){return typeof u==='string' && /^[a-zA-Z][a-zA-Z0-9_-]{2,31}$/.test(u);}
 async function hashPassword(password, salt){
   const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);
-  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(salt),iterations:160000,hash:'SHA-256'},key,256);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(salt),iterations:100000,hash:'SHA-256'},key,256);
   return hex(bits);
 }
 async function createPassword(p){const salt=makeToken();return {salt,hash:await hashPassword(p,salt)};}
@@ -73,5 +73,5 @@ export default {async fetch(request,env){
     }
     const headers=new Headers(response.headers);for(const [k,v] of Object.entries(cors(request,env)))headers.set(k,v);
     return new Response(response.body,{status:response.status,headers});
-  } catch(e) { return json({error:'No se pudo completar la solicitud.'},500,cors(request,env)); }
+  } catch(e) { console.error('NOCTRA2 request error at '+path+':',e); return json({error:'No se pudo completar la solicitud.'},500,cors(request,env)); }
 }};
