@@ -31,6 +31,15 @@ $('#search').addEventListener('keydown',e=>{
   }
 });
 $('#sort').onchange=render;
+$('#filters [data-genre]').forEach(b=>b.addEventListener('click',()=>{
+ genre=b.dataset.genre;
+ $(' #filters [data-genre]'.trim()).forEach(c=>{
+  const selected=c===b;
+  c.classList.toggle('selected',selected);
+  c.setAttribute('aria-pressed',String(selected));
+ });
+ render();
+}));
 function render(){
  noctraSpotlight.update();
  const local=window.noctraCloud?.user?.role==='admin'?movies:[];
@@ -39,7 +48,7 @@ function render(){
  const term=$('#search').value.trim().toLocaleLowerCase('es');
  const viewingSeries=window.noctraMediaCategory==='series'&&!term;
  let list=[...(viewingSeries?[]:local.filter(m=>!m.seriesName)),...(window.serverMovies||[]).filter(m=>!m.seriesName)]
-   .filter(m=>(page!=='list'||m.saved)&&m.title.toLocaleLowerCase('es').includes(term));
+   .filter(m=>(page!=='list'||m.saved)&&(genre==='Todas'||m.genre===genre)&&m.title.toLocaleLowerCase('es').includes(term));
  const unique=new Set();
  list=list.filter(m=>{const key=m.fileId||m.id;if(unique.has(key))return false;unique.add(key);return true;});
  if($('#sort').value==='az')list.sort((a,b)=>a.title.localeCompare(b.title,'es'));else list.sort((a,b)=>(b.added||0)-(a.added||0));
