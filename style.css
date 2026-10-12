@@ -18,3 +18,7 @@
 .noctra-buffer-track{height:7px;border-radius:50px;background:#ffffff32;overflow:hidden}
 .noctra-buffer-fill{height:100%;width:0;background:#bca1ff;transition:width .25s ease;border-radius:inherit}
 .noctra-buffer-description{font-size:10px;color:#bdafce}
+
+/* El búfer completo no significa video listo: indicarlo sin falso 100%. */
+.noctra-buffer-meter[data-phase="decoding"] .noctra-buffer-value{font-size:16px;line-height:1.35}
+.noctra-buffer-meter[data-phase="decoding"] .noctra-buffer-fill{background:#a48ce4}
