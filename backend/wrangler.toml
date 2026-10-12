@@ -12,4 +12,4 @@ PAGES_ORIGIN = "https://4antoo77.github.io"
 binding = "DB"
 database_name = "noctra2-db"
 # Pega aquí el UUID devuelto por `npx wrangler d1 create noctra2-db`.
-database_id = "REEMPLAZAR_UUID_D1"
+database_id = "7fdfdbe1-0a22-423d-9b1d-5b1093ed6471"
