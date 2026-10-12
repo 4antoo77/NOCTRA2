@@ -43,20 +43,17 @@
  const originalDetail=openDetail;openDetail=function(m){originalDetail(m);if(m.cloud){$('#play-movie').onclick=()=>{$('#details').close();window.noctraCloud.play(m);};$('#save-movie').onclick=()=>{window.noctraCloud.saveFavorite(m);$('#save-movie').textContent=m.saved?'✓ En mi lista':'＋ Mi lista';};$('#detail-content .detail-bottom').innerHTML='<span class="hint">Película de tu catálogo compartido</span>';return;}if(!m.connected)return;$('#play-movie').onclick=()=>{$('#details').close();playDirect(m);};$('#save-movie').onclick=()=>{m.saved=!m.saved;storeSet('noctra.drive.favorites',JSON.stringify(library.filter(x=>x.saved).map(x=>x.fileId)));$('#save-movie').textContent=m.saved?'✓ En mi lista':'＋ Mi lista';showLibrary();};$('#detail-content .notice').textContent=m.height?`Archivo original: ${m.height}p. No se generan versiones adicionales.`:'Se reproducirá el archivo original. El reproductor comprobará sus pistas y resolución.';$('#detail-content .detail-bottom').innerHTML=`<span class="hint">${esc(m.path)} · ${(m.size/1e9).toFixed(2)} GB</span>`;};
  const iframePlay=playMovie;playMovie=function(m){playDirect(m);};
   function fallbackToDrive(m,reason){
-    const id=m.fileId||driveId(m.drive);
-    if(!id){$('#frame-container').textContent='No se encontró un enlace de Google Drive válido.';return;}
-    const frame=document.createElement('iframe');
-    frame.title='Vista previa de '+m.title;
-    frame.src='https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview';
-    frame.allow='autoplay; fullscreen; encrypted-media';
-    frame.setAttribute('allowfullscreen','');
-    frame.referrerPolicy='no-referrer';
-    $('#frame-container').replaceChildren(frame);
-    $('#quality').innerHTML='<option>Vista previa de Drive</option>';
+    $('#frame-container').textContent=reason||'No se pudo reproducir este archivo. Comprueba el formato y la conexión.';
+    $('#quality').innerHTML='<option>Reproducción no disponible</option>';
     $('#quality').disabled=true;
-    $('#player .hint').textContent=(reason?reason+' ':'')+'Se abrió la vista previa de Drive. Debes tener permiso para ver el archivo.';
+    $('#player .hint').textContent='NOCTRA2 utiliza Movi Player, sin vista previa de Google Drive.';
   }
- async function playDirect(m){if(!authorized()){toast('Conecta Google Drive para reproducir el archivo original.');if(!config.clientId)openSetup();else $('#connect-drive').focus();return;}active=m;const serial=++playSerial;$('#player-title').textContent=m.title;$('#drive-open').href=m.drive;$('#quality').innerHTML='<option>Archivo original</option>';$('#quality').disabled=true;$('#quality').onchange=null;$('#player .hint').textContent='Leyendo el archivo original de Drive. La reproducción depende de los códecs y del dispositivo.';$('#frame-container').innerHTML='<div class="loading-player">Preparando tu película…</div>';if(!$('#player').open)$('#player').showModal();$('#retry').onclick=()=>playDirect(m);
+ async function playDirect(m){
+ const fileId=m.fileId||(typeof driveId==='function'?driveId(m.drive):null);
+ const cloudMovie=window.noctraCloud?.movies.find(x=>x.fileId===fileId);
+ if(cloudMovie){return window.noctraCloud.play(cloudMovie);}
+ if(fileId && window.noctraCloud){toast('Primero publica este archivo en Administrar → Publicar catálogo actual para reproducirlo con Movi Player.');return;}
+ if(!authorized()){toast('Conecta Google Drive para reproducir el archivo original.');if(!config.clientId)openSetup();else $('#connect-drive').focus();return;}active=m;const serial=++playSerial;$('#player-title').textContent=m.title;$('#drive-open').href=m.drive;$('#quality').innerHTML='<option>Archivo original</option>';$('#quality').disabled=true;$('#quality').onchange=null;$('#player .hint').textContent='Leyendo el archivo original de Drive. La reproducción depende de los códecs y del dispositivo.';$('#frame-container').innerHTML='<div class="loading-player">Preparando tu película…</div>';if(!$('#player').open)$('#player').showModal();$('#retry').onclick=()=>playDirect(m);
  try{await import('https://cdn.jsdelivr.net/npm/movi-player/dist/element.js');if(serial!==playSerial)return;const fileId=m.fileId||driveId(m.drive);const sources=[{id:fileId,label:'Original'},...m.variants.map(v=>({id:driveId(v.url),label:v.label}))];const verified=[];for(const source of sources){const meta=await api('files/'+source.id,{fields:'id,name,mimeType,videoMediaMetadata,capabilities(canDownload)',supportsAllDrives:'true'});if(meta.capabilities?.canDownload===false)throw Error('El propietario no permite leer el archivo original.');verified.push({...source,height:meta.videoMediaMetadata?.height||0,mime:meta.mimeType});}if(serial!==playSerial)return;
  const el=document.createElement('movi-player');player=el;['controls','resume','playsinline','fastseek','subtitlepicker'].forEach(a=>el.setAttribute(a,''));el.setAttribute('resumekey','noctra-'+fileId);el.setAttribute('sw','auto');el.setAttribute('theme','dark');el.setAttribute('title',m.title);el.headers={Authorization:'Bearer '+token};el.style.cssText='display:block;width:100%;height:100%;';
  for(const source of verified){const s=document.createElement('source');s.src=`https://www.googleapis.com/drive/v3/files/${source.id}?alt=media`;if(source.mime)s.type=source.mime;if(source.height)s.dataset.height=source.height;s.dataset.label=source.height?source.height+'p':source.label;el.append(s);}if(verified.length===1)el.src=`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
