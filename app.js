@@ -12,7 +12,7 @@ function toast(s){$('#toast').textContent=s;$('#toast').classList.add('show');cl
 function dialog(s){$(s).showModal();}
 $$('dialog').forEach(d=>{d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});});
 $$('.close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
-function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='home');$$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#section-title').textContent=p==='list'?'Tu lista, tu próximo plan':p==='library'?'Todas tus películas':'Tu próxima gran noche';render();window.scrollTo(0,0);}
+function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='home');$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#section-title').textContent=p==='list'?'Mi lista':$('#search').value.trim()?'Resultados de búsqueda':window.noctraMediaCategory==='series'?'Series':'Películas';render();window.scrollTo(0,0);}
 $$('.nav').forEach(b=>b.onclick=()=>setPage(b.dataset.page));
 $$('.brand').forEach(a=>a.onclick=e=>{e.preventDefault();setPage('home');});
 $('#explore').onclick=()=>$('#catalog').scrollIntoView({behavior:'smooth'});
@@ -37,7 +37,8 @@ function render(){
  const totalMovies=new Map([...(window.noctraCloud?.movies||[]),...local].filter(m=>!m.seriesName).map(m=>[m.fileId||m.id,m]));
  $('#count').textContent=totalMovies.size;
  const term=$('#search').value.trim().toLocaleLowerCase('es');
- let list=[...local.filter(m=>!m.seriesName),...(window.serverMovies||[]).filter(m=>!m.seriesName)]
+ const viewingSeries=window.noctraMediaCategory==='series'&&!term;
+ let list=[...(viewingSeries?[]:local.filter(m=>!m.seriesName)),...(window.serverMovies||[]).filter(m=>!m.seriesName)]
    .filter(m=>(page!=='list'||m.saved)&&m.title.toLocaleLowerCase('es').includes(term));
  const unique=new Set();
  list=list.filter(m=>{const key=m.fileId||m.id;if(unique.has(key))return false;unique.add(key);return true;});
