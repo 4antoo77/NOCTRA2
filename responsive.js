@@ -14,9 +14,7 @@
   function goto(page){
     if(page==='search'){
       mark('search');
-      if(document.body.classList.contains('library-mode')===false){
-        catalog?.scrollIntoView({behavior:'smooth',block:'start'});
-      }
+      catalog?.scrollIntoView({behavior:'smooth',block:'start'});
       search?.focus({preventScroll:true});
       return;
     }
@@ -28,7 +26,7 @@
   buttons.forEach(b=>b.addEventListener('click',()=>goto(b.dataset.mobilePage)));
   desktop.forEach(b=>b.addEventListener('click',()=>mark(b.dataset.page)));
   document.querySelector('.search-trigger')?.addEventListener('click',()=>mark('search'));
-  // Saved example posters are optional artwork. The Drive JS renders the real catalog.
+  // Responsive navigation keeps the published catalog accessible.
   document.addEventListener('error',e=>{
     const image=e.target;
     if(image?.tagName==='IMG' && image.getAttribute('src')?.includes('/assets/')){
