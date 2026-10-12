@@ -1,5 +1,4 @@
-/* Admin-only metadata editor. Manual save works with existing catalog API;
-   TMDB lookup uses optional admin-only Worker endpoints. */
+/* Automatic TMDB metadata engine; administrator reviews unmatched titles and overrides wrong matches. */
 (()=>{
 'use strict';
 const TYPES=['Acción','Ciencia ficción','Drama','Suspenso','Documental','Animación','Comedia','Terror','Otros'];
@@ -10,7 +9,10 @@ const clean=s=>String(s||'').replace(/\.(mkv|mp4|avi|webm)$/i,'').replace(/[._]/
 function mount(target,api,request){
  if(!target||api?.user?.role!=='admin')return;
  if(target.firstChild){target.noctraRefresh?.();return;}
- const box=el('div','noctra-meta-editor'),msg=el('p','admin-note','Edita una ficha manualmente o busca el título en TMDB.');
+ const box=el('div','noctra-meta-editor'),msg=el('p','admin-note','NOCTRA2 busca los metadatos automáticamente. Aquí solo corriges coincidencias incorrectas o títulos pendientes.');
+ const progress=el('div','noctra-meta-progress','Comprobando metadatos automáticos…');
+ const retryBtn=el('button','secondary','Volver a buscar este título');retryBtn.type='button';
+ const syncBtn=el('button','secondary','Comprobar ahora');syncBtn.type='button';
  const label=(text,child)=>{const node=el('label','',text);node.append(child);return node;};
  const picker=el('select');picker.id='metadata-item';
  const query=el('input');query.type='search';query.placeholder='Título para buscar en TMDB';query.maxLength=120;
@@ -18,7 +20,7 @@ function mount(target,api,request){
  const searchBtn=el('button','secondary','Buscar y elegir');
  const autoBtn=el('button','secondary','Autocompletar');
  for(const b of [searchBtn,autoBtn])b.type='button';
- tools.append(searchBtn,autoBtn);
+ tools.append(searchBtn,autoBtn,retryBtn,syncBtn);
  const results=el('div','noctra-meta-results');results.hidden=true;
  const form=el('form','noctra-meta-form');
  const title=el('input');title.maxLength=150;title.required=true;
@@ -36,37 +38,40 @@ function mount(target,api,request){
  const tmdb=document.createElement('a');tmdb.href='https://www.themoviedb.org';tmdb.target='_blank';tmdb.rel='noopener';tmdb.textContent='The Movie Database';
  const logo=document.createElement('img');logo.alt='TMDB';logo.width=44;logo.style.cssText='width:44px;height:auto;vertical-align:middle;margin-right:8px';logo.src='https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_1-5bdc75aaebeb75dc7ae79426ddd9be3b2be1e342510f8202baf6bffa71d7f5c4.svg';
  credit.prepend(logo,tmdb,document.createTextNode(' — '));
- box.append(msg,label('Selecciona una película o serie',picker),label('Buscar título',query),tools,results,form,credit);
+ box.append(msg,progress,label('Selecciona una película o serie',picker),label('Buscar título',query),tools,results,form,credit);
  target.append(box);
- let items=[],current=null;
+ let items=[],current=null,lastTmdb=null;
  function status(s){msg.textContent=s;}
  function refresh(){
    const previous=picker.value;items=[];let seen=new Set();
    for(const m of api.movies||[]){
      if(!m.fileId)continue;
      const group=String(m.seriesName||'').trim();
-     const key=group?'tv|'+group:'movie|'+m.fileId;
+     const key=group?'tv:'+group.toLocaleLowerCase('es').trim():'movie:'+m.fileId;
      if(seen.has(key))continue;seen.add(key);
      items.push({key,name:group||m.title,type:group?'tv':'movie',movie:m});
    }
    items.sort((a,b)=>a.name.localeCompare(b.name,'es'));
    picker.replaceChildren();
    if(!items.length){picker.add(new Option('Publica primero tus películas',''));form.hidden=true;status('El catálogo está vacío.');return;}
-   for(const x of items)picker.add(new Option((x.type==='tv'?'Serie: ':'Película: ')+x.name,x.key));
-   picker.value=items.some(x=>x.key===previous)?previous:items[0].key;
+   for(const x of items){
+     const flag=x.movie.metadataStatus==='auto'?'✓ ':x.movie.metadataStatus==='manual'?'✎ ':x.movie.metadataStatus==='review'?'⚠ ':'○ ';
+     picker.add(new Option(flag+(x.type==='tv'?'Serie: ':'Película: ')+x.name,x.key));
+   }
+   picker.value=items.some(x=>x.key===previous)?previous:(items.find(x=>x.movie.metadataStatus==='review')||items[0]).key;
    changed();
  }
  function changed(){
    current=items.find(x=>x.key===picker.value);
    if(!current)return;
-   const m=current.movie;
+   const m=current.movie;lastTmdb={tmdbId:m.tmdbId||null,rating:m.rating||0,duration:m.duration||0};
    title.value=current.name;title.readOnly=current.type==='tv';
    genre.value=TYPES.includes(m.genre)?m.genre:'Otros';
    year.value=m.year||'';description.value=m.description||'';poster.value=m.poster||'';
    poster.dispatchEvent(new Event('input'));
    query.value=clean(current.name);
    results.hidden=true;results.replaceChildren();form.hidden=false;
-   status('Puedes guardar campos manualmente o buscar datos en TMDB.');
+   status(m.metadataStatus==='review'?'No se encontró una coincidencia segura: busca y selecciona la ficha correcta.':m.metadataStatus==='auto'?'Metadatos automáticos: puedes corregirlos si no coinciden.':m.metadataStatus==='manual'?'Esta ficha se editó manualmente y no será reemplazada automáticamente.':'NOCTRA2 procesará este título automáticamente.');
  }
  picker.onchange=changed;target.noctraRefresh=refresh;
  async function lookup(){
@@ -79,7 +84,7 @@ function mount(target,api,request){
    try{
      const data=await request('/api/admin/metadata/details?type='+current.type+'&id='+match.id);
      if(current.key!==key)return;
-     const m=data.metadata;
+     const m=data.metadata;lastTmdb={tmdbId:m.tmdbId||null,rating:m.rating||0,duration:m.duration||0};
      if(m.title&&current.type==='movie')title.value=m.title;
      if(m.genre)genre.value=TYPES.includes(m.genre)?m.genre:'Otros';
      if(m.year)year.value=m.year;
@@ -116,6 +121,16 @@ function mount(target,api,request){
    }finally{button.disabled=false;}
  }
  searchBtn.onclick=()=>lookupClick(false);autoBtn.onclick=()=>lookupClick(true);
+ retryBtn.onclick=async()=>{
+   if(!current||!confirm('¿Volver a intentar los metadatos automáticos de '+current.name+'?'))return;
+   retryBtn.disabled=true;
+   try{
+     await request('/api/admin/metadata/retry',{method:'POST',body:{key:current.key}});
+     status('El título se volverá a comprobar automáticamente.');
+     window.noctraMetadataAdmin?.autoStart?.(api,request,true);
+   }catch(e){status(e.message);}finally{retryBtn.disabled=false;}
+ };
+ syncBtn.onclick=()=>window.noctraMetadataAdmin?.autoStart?.(api,request,true);
  form.onsubmit=async event=>{
    event.preventDefault();if(!current)return;
    const name=title.value.trim(),image=https(poster.value.trim());
@@ -124,19 +139,67 @@ function mount(target,api,request){
    if(year.value.trim()&&!/^\d{4}$/.test(year.value.trim())){status('Introduce un año de cuatro cifras.');return;}
    const data={genre:genre.value,year:year.value.trim(),description:description.value.trim(),poster:image};
    if(current.type==='movie')data.title=name;
-   const list=api.movies||[];
-   const belongs=m=>current.type==='tv'?m.seriesName===current.name:m.fileId===current.movie.fileId;
-   const count=list.filter(belongs).length;
-   if(!count){status('Esta película ya no está en el catálogo.');return;}
-   const update=list.map(m=>belongs(m)?{...m,...data}:m);
-   save.disabled=true;status('Guardando…');
+   data.key=current.key;
+   if(current.type==='tv')data.seriesName=current.name;
+   if(lastTmdb)Object.assign(data,lastTmdb);
+   save.disabled=true;status('Guardando corrección…');
    try{
-     const result=await request('/api/admin/catalog',{method:'PUT',body:{movies:update}});
+     await request('/api/admin/metadata/item',{method:'PATCH',body:data});
      await api.reloadCatalog();refresh();
-     status('Ficha guardada para '+count+' archivo(s). Catálogo actualizado ('+result.count+').');
+     status('Corrección guardada. Se conservará aunque vuelvas a sincronizar Google Drive.');
+     window.noctraMetadataAdmin?.refreshProgress?.(request);
    }catch(e){status('No se pudo guardar: '+e.message);}finally{save.disabled=false;}
  };
+ target.noctraProgress=progress;
  refresh();
+ window.noctraMetadataAdmin?.refreshProgress?.(request);
 }
-window.noctraMetadataAdmin={mount};
+let running=false;
+let lastPromise=null;
+async function refreshProgress(request){
+ const p=document.querySelector('#admin-metadata-slot .noctra-meta-progress');
+ try{
+   const result=await request('/api/admin/metadata/status');
+   if(p){
+     p.textContent=!result.configured?'TMDB todavía no está configurado en Cloudflare.':
+       'Metadatos: '+(result.completed+result.manual)+' de '+result.total+' completados · '+result.pending+' pendientes · '+result.review+' por revisar'+(result.working?' · '+result.working+' en proceso':'')+'.';
+   }
+   return result;
+ }catch(e){
+   if(p)p.textContent='La actualización automática requiere desplegar el Worker. '+e.message;
+   return null;
+ }
+}
+function autoStart(api,request,force=false){
+ if(api?.user?.role!=='admin')return Promise.resolve();
+ if(running)return lastPromise||Promise.resolve();
+ running=true;
+ lastPromise=(async()=>{
+   let status=await refreshProgress(request);
+   if(!status?.configured)return;
+   // Each request is capped at five TMDB entries; an offline cron continues
+   // remaining work automatically even when no browser is open.
+   let changed=false;
+   for(let pass=0;pass<220;pass++){
+     if(status.pending===0)break;
+     try{
+       const step=await request('/api/admin/metadata/sync',{method:'POST'});
+       changed ||=step.processed>0;
+       status=step;
+       const p=document.querySelector('#admin-metadata-slot .noctra-meta-progress');
+       if(p)p.textContent='Metadatos: '+(step.completed+step.manual)+' de '+step.total+' completados · '+step.pending+' pendientes · '+step.review+' por revisar.';
+       if(!step.processed)break;
+     }catch{break;}
+     // Yield between batches to reduce TMDB rate pressure and keep UI responsive.
+     await new Promise(resolve=>setTimeout(resolve,1100));
+   }
+   if(changed){
+     try{await api.reloadCatalog();}catch{}
+     document.querySelector('#admin-metadata-slot')?.noctraRefresh?.();
+   }
+   await refreshProgress(request);
+ })().finally(()=>{running=false;lastPromise=null;});
+ return lastPromise;
+}
+window.noctraMetadataAdmin={mount,autoStart,refreshProgress};
 })();
