@@ -62,9 +62,7 @@
         el.setAttribute('fastseek','');
         el.setAttribute('subtitlepicker','');
         el.setAttribute('fallback','native');
-        // Prioriza el decodificador de audio del navegador para obtener
-        // la salida nativa cuando el contenedor y los códecs sean compatibles.
-        // MKV y formatos no admitidos vuelven al motor WASM de Movi.
+        // Navegador para formatos compatibles, WASM para MKV y E-AC3.
         el.setAttribute('engine','native wasm');
         el.setAttribute('theme','dark');
         // Conserva ajustes útiles sin restaurar compresión de volumen ni una pista distinta.
@@ -73,66 +71,75 @@
         el.setAttribute('resumekey','noctra2-'+fileId);
         el.setAttribute('title',m.title||'NOCTRA2');
         el.style.cssText='display:block;width:100%;height:100%;min-height:230px;background:#000';
-        // Selector visible fuera del lienzo 16:9: conserva los controles
-        // originales de Movi Player y todas las pistas de audio del MKV.
+        // El elemento <movi-player> publica getAudioLangs/selectAudioLang.
+        // No consultar el atributo interno .player: puede no existir.
         const audioSelect=$('quality');
-        let preferredAudioChecked=false;
-        function getLanguage(track,index){
-          const lang=String(track.language||track.lang||'').toLowerCase();
-          const label=String(track.title||track.label||track.description||'');
-          if(/^(es|spa|esp|es[-_])/.test(lang)||/espa[nñ]ol|latino|castellano/i.test(label))return /latino/i.test(label)?'Español latino':'Español';
-          if(/^(en|eng|en[-_])/.test(lang)||/ingl[eé]s|english/i.test(label))return 'Inglés';
-          return label||lang.toUpperCase()||'Pista '+(index+1);
+        let preferredAudioApplied=false, chosenByUser=false;
+        const audioPreferenceKey='noctra2.audio.language';
+        const spanish=/^(es|spa|esp)(?:[-_]|$)/i;
+        function spanishTrack(t){
+          return spanish.test(String(t.lang||'')) ||
+            /espa[nñ]ol|spanish|latino|castellano/i.test(String(t.label||''));
+        }
+        function audioName(t){
+          const name=String(t.label||'').trim(),language=String(t.lang||'').trim();
+          if(spanishTrack(t))return /latino/i.test(name)?'Español latino':name||'Español';
+          if(/^(en|eng)([-_]|$)/i.test(language))return name||'Inglés';
+          return name||language.toUpperCase()||'Idioma sin identificar';
         }
         function refreshAudioTracks(){
           if(playId!==playRequest)return;
-          const player=el.player;
-          if(!player||typeof player.getAudioTracks!=='function')return;
-          const tracks=player.getAudioTracks();
+          if(typeof el.getAudioLangs!=='function'){
+            audioSelect.replaceChildren(new Option('Este reproductor no expone idiomas',''));
+            audioSelect.disabled=true;
+            hint.textContent='No se encontró la API de idiomas. Actualiza la página y vuelve a intentar.';
+            return;
+          }
+          let tracks;
+          try{tracks=el.getAudioLangs()}catch{return;}
           if(!Array.isArray(tracks)||!tracks.length)return;
-          let active=player.trackManager?.getActiveAudioTrack?.()||tracks[0];
-          if(!preferredAudioChecked){
-            preferredAudioChecked=true;
-            // No cambiar automáticamente a inglés por ser estéreo.
-            // Conservar español cuando la película lo tenga.
-            const spanish=tracks.find((t,i)=>/^(es|spa|esp|es[-_])/.test(String(t.language||t.lang||'').toLowerCase())||
-              /espa[nñ]ol|latino|castellano/i.test(String(t.title||t.label||t.description||'')));
-            if(spanish && spanish.id!==active.id && typeof player.selectAudioTrack==='function'){
-              if(player.selectAudioTrack(spanish.id)!==false)active=spanish;
+          if(!preferredAudioApplied){
+            preferredAudioApplied=true;
+            const preferred=localStorage.getItem(audioPreferenceKey);
+            const stored=preferred&&tracks.find(t=>t.lang===preferred);
+            const esp=tracks.find(spanishTrack);
+            const want=stored||esp;
+            if(want && !want.active && typeof el.selectAudioLang==='function'){
+              el.selectAudioLang(want.lang);
+              tracks=el.getAudioLangs()||tracks;
             }
           }
-          const previous=audioSelect.value;
-          audioSelect.replaceChildren();
-          tracks.forEach((t,i)=>{
-            const option=new Option(
-              getLanguage(t,i)+' · '+String(t.codec||'Audio').toUpperCase()+
-              ' · '+(t.channels===2?'Estéreo':t.channels===6?'5.1':t.channels===8?'7.1':t.channels?String(t.channels)+' canales':'Audio'),
-              String(t.id)
-            );
-            audioSelect.add(option);
-          });
+          const priorOptions=Array.from(audioSelect.options).map(o=>o.value+'|'+o.textContent).join(';');
+          const incomingOptions=tracks.map(t=>String(t.lang)+'|'+audioName(t)).join(';');
+          if(priorOptions!==incomingOptions){
+            audioSelect.replaceChildren(...tracks.map(t=>new Option(audioName(t),String(t.lang))));
+          }
           audioSelect.disabled=tracks.length<2;
-          audioSelect.value=String(active?.id??tracks[0].id);
-          if(audioSelect.selectedIndex<0)audioSelect.selectedIndex=0;
+          const current=tracks.find(t=>t.active);
+          if(current)audioSelect.value=String(current.lang);
+          if(audioSelect.selectedIndex===-1)audioSelect.selectedIndex=0;
           audioSelect.onchange=()=>{
-            const id=Number(audioSelect.value);
-            const chosen=tracks.find(t=>t.id===id);
-            if(chosen&&typeof player.selectAudioTrack==='function'){
-              const changed=player.selectAudioTrack(chosen.id);
-              if(changed===false){hint.textContent='No se pudo cambiar la pista de audio.';return;}
-              hint.textContent='Audio seleccionado: '+getLanguage(chosen,tracks.indexOf(chosen))+
-                '. Puedes cambiar de idioma aquí sin volver a cargar la película.';
+            const lang=audioSelect.value;
+            const t=tracks.find(t=>String(t.lang)===lang);
+            if(!t || typeof el.selectAudioLang!=='function')return;
+            chosenByUser=true;
+            if(el.selectAudioLang(lang)===false){
+              hint.textContent='No se pudo seleccionar '+audioName(t)+'.';
+              refreshAudioTracks();
+              return;
             }
+            localStorage.setItem(audioPreferenceKey,lang);
+            hint.textContent='Idioma de audio: '+audioName(t)+'. Puedes volver a cambiarlo aquí o en los controles de Movi Player.';
           };
-          if(tracks.length===1){
-            hint.textContent='Este MKV solo ofrece una pista: '+getLanguage(tracks[0],0)+
-              ' ('+String(tracks[0].codec||'audio').toUpperCase()+').';
-          } else if(!previous){
-            hint.textContent='Selecciona el idioma en el menú Audio. Se muestran todas las pistas del MKV.';
+          if(!chosenByUser){
+            hint.textContent=tracks.length>1
+              ? 'Pistas disponibles: '+tracks.map(audioName).join(', ')+'. Elige el idioma en el menú Audio.'
+              : 'Este archivo tiene una sola pista identificada: '+audioName(tracks[0])+'.';
           }
         }
         el.addEventListener('loadedmetadata',refreshAudioTracks);
         el.addEventListener('loadeddata',refreshAudioTracks);
+        el.addEventListener('canplay',refreshAudioTracks);
         el.addEventListener('trackschange',refreshAudioTracks);
         el.addEventListener('audiotrackchange',refreshAudioTracks);
         el.addEventListener('loadedmetadata',()=>{
