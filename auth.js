@@ -60,9 +60,16 @@
         el.setAttribute('subtitlepicker','');
         el.setAttribute('fallback','native');
         el.setAttribute('theme','dark');
+        // Conserva ajustes útiles sin restaurar compresión de volumen ni una pista distinta.
+        el.setAttribute('persist','volume speed subtitlelang');
+        el.setAttribute('persistkey','noctra2-cine');
         el.setAttribute('resumekey','noctra2-'+fileId);
         el.setAttribute('title',m.title||'NOCTRA2');
         el.style.cssText='display:block;width:100%;height:100%;min-height:230px;background:#000';
+        el.addEventListener('loadedmetadata',()=>{
+          // Audio original: sin compresor de volumen estable aplicado automáticamente.
+          try{el.player?.setStableAudio?.(false);}catch{}
+        });
         el.addEventListener('error',()=>{
           if(playId===playRequest)hint.textContent='Movi Player no pudo cargar este video. Comprueba que Cloudflare devuelve rangos de bytes (206) y que el formato sea compatible.';
         });
