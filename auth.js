@@ -87,54 +87,71 @@
           if(/^(en|eng)([-_]|$)/i.test(language))return name||'Inglés';
           return name||language.toUpperCase()||'Idioma sin identificar';
         }
+        let audioCheck=0, audioTimer=null;
         function refreshAudioTracks(){
           if(playId!==playRequest)return;
-          if(typeof el.getAudioLangs!=='function'){
-            audioSelect.replaceChildren(new Option('Este reproductor no expone idiomas',''));
-            audioSelect.disabled=true;
-            hint.textContent='No se encontró la API de idiomas. Actualiza la página y vuelve a intentar.';
+          const player=el.player;
+          let tracks=[];
+          try{
+            if(typeof el.getAudioLangs==='function')tracks=el.getAudioLangs()||[];
+            if(!tracks.length && player?.getAudioTracks){
+              tracks=(player.getAudioTracks()||[]).map(t=>({
+                lang:String(t.language||t.lang||''),label:String(t.title||t.label||''),
+                id:t.id,active:t.id===player.trackManager?.getActiveAudioTrack?.()?.id,
+                channels:t.channels,codec:t.codec
+              }));
+            }
+          }catch(e){console.warn('NOCTRA2: error leyendo audio',e);}
+          if(!tracks.length){
+            audioCheck++;
+            if(audioCheck<13){
+              if(!audioTimer)audioTimer=setTimeout(()=>{audioTimer=null;refreshAudioTracks()},1000);
+              if(audioCheck>=3)audioSelect.replaceChildren(new Option('Buscando pistas…',''));
+            }else{
+              audioSelect.replaceChildren(new Option('No se detectaron idiomas',''));
+              audioSelect.disabled=true;
+              hint.textContent='No se pudieron identificar las pistas del MKV. La película sigue reproduciéndose, pero este archivo o esta versión del reproductor no informó sus idiomas.';
+            }
             return;
           }
-          let tracks;
-          try{tracks=el.getAudioLangs()}catch{return;}
-          if(!Array.isArray(tracks)||!tracks.length)return;
+          const original=tracks.map((t,i)=>({
+            ...t,lang:String(t.lang||t.language||''),
+            label:String(t.label||t.title||'Pista '+(i+1))
+          }));
           if(!preferredAudioApplied){
             preferredAudioApplied=true;
-            const preferred=localStorage.getItem(audioPreferenceKey);
-            const stored=preferred&&tracks.find(t=>t.lang===preferred);
-            const esp=tracks.find(spanishTrack);
-            const want=stored||esp;
-            if(want && !want.active && typeof el.selectAudioLang==='function'){
-              el.selectAudioLang(want.lang);
-              tracks=el.getAudioLangs()||tracks;
+            let preferred=null;
+            try{preferred=localStorage.getItem(audioPreferenceKey)}catch{}
+            const chosen=original.find(t=>t.lang===preferred) || original.find(spanishTrack);
+            if(chosen && !chosen.active){
+              if(chosen.id!==undefined&&typeof player?.selectAudioTrack==='function')player.selectAudioTrack(Number(chosen.id));
+              else if(chosen.lang&&typeof el.selectAudioLang==='function')el.selectAudioLang(chosen.lang);
             }
           }
-          const priorOptions=Array.from(audioSelect.options).map(o=>o.value+'|'+o.textContent).join(';');
-          const incomingOptions=tracks.map(t=>String(t.lang)+'|'+audioName(t)).join(';');
-          if(priorOptions!==incomingOptions){
-            audioSelect.replaceChildren(...tracks.map(t=>new Option(audioName(t),String(t.lang))));
-          }
-          audioSelect.disabled=tracks.length<2;
-          const current=tracks.find(t=>t.active);
-          if(current)audioSelect.value=String(current.lang);
-          if(audioSelect.selectedIndex===-1)audioSelect.selectedIndex=0;
+          audioSelect.replaceChildren(...original.map((t,i)=>new Option(
+            audioName(t)+(t.channels?' · '+(t.channels===2?'Estéreo':t.channels===6?'5.1':t.channels+' canales'):''),
+            String(i)
+          )));
+          audioSelect.disabled=original.length<2;
+          const activeIndex=original.findIndex(t=>t.active);
+          if(activeIndex>=0)audioSelect.value=String(activeIndex);
+          else if(audioSelect.selectedIndex<0)audioSelect.selectedIndex=0;
           audioSelect.onchange=()=>{
-            const lang=audioSelect.value;
-            const t=tracks.find(t=>String(t.lang)===lang);
-            if(!t || typeof el.selectAudioLang!=='function')return;
-            chosenByUser=true;
-            if(el.selectAudioLang(lang)===false){
-              hint.textContent='No se pudo seleccionar '+audioName(t)+'.';
-              refreshAudioTracks();
-              return;
-            }
-            localStorage.setItem(audioPreferenceKey,lang);
-            hint.textContent='Idioma de audio: '+audioName(t)+'. Puedes volver a cambiarlo aquí o en los controles de Movi Player.';
+            const t=original[Number(audioSelect.value)];
+            if(!t)return;
+            let ok=false;
+            if(t.id!==undefined&&typeof player?.selectAudioTrack==='function')ok=player.selectAudioTrack(Number(t.id))!==false;
+            else if(t.lang&&typeof el.selectAudioLang==='function')ok=el.selectAudioLang(t.lang)!==false;
+            if(ok){
+              chosenByUser=true;
+              try{if(t.lang)localStorage.setItem(audioPreferenceKey,t.lang)}catch{}
+              hint.textContent='Pista seleccionada: '+audioName(t)+'.';
+            }else hint.textContent='Movi Player no permitió seleccionar esa pista.';
           };
           if(!chosenByUser){
-            hint.textContent=tracks.length>1
-              ? 'Pistas disponibles: '+tracks.map(audioName).join(', ')+'. Elige el idioma en el menú Audio.'
-              : 'Este archivo tiene una sola pista identificada: '+audioName(tracks[0])+'.';
+            hint.textContent=original.length>1
+              ?'Pistas detectadas: '+original.map(audioName).join(', ')+'. Elige la que prefieras en Audio.'
+              :'Solo se detectó una pista: '+audioName(original[0])+'.';
           }
         }
         el.addEventListener('loadedmetadata',refreshAudioTracks);
@@ -154,6 +171,7 @@
         el.src=signed.url;
         hint.textContent='Movi Player · Detectando idiomas disponibles…';
         if(typeof el.play==='function')Promise.resolve(el.play()).catch(()=>{});
+        refreshAudioTracks();
       } catch(e){
         if(playId!==playRequest)return;
         const message=/Película no encontrada/i.test(e.message)
