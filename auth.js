@@ -70,6 +70,54 @@
         el.setAttribute('resumekey','noctra2-'+fileId);
         el.setAttribute('title',m.title||'NOCTRA2');
         el.style.cssText='display:block;width:100%;height:100%;min-height:230px;background:#000';
+        // Permite elegir una pista estéreo existente sin convertir el archivo.
+        const audioPicker=document.createElement('select');
+        audioPicker.setAttribute('aria-label','Pista de audio');
+        audioPicker.style.cssText='max-width:100%;background:#191821;color:#fff;border:1px solid #62566f;border-radius:8px;padding:8px';
+        audioPicker.innerHTML='<option>Detectando pistas de audio…</option>';
+        const audioBar=document.createElement('div');
+        audioBar.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0';
+        const audioLabel=document.createElement('span');
+        audioLabel.textContent='Audio:';
+        const scanButton=document.createElement('button');
+        scanButton.type='button';
+        scanButton.textContent='Actualizar pistas';
+        scanButton.style.cssText='padding:8px;border-radius:7px';
+        audioBar.append(audioLabel,audioPicker,scanButton);
+        let selectedAutomatically=false;
+        function refreshAudioTracks(){
+          if(playId!==playRequest)return;
+          const player=el.player;
+          if(!player || typeof player.getAudioTracks!=='function')return;
+          const tracks=player.getAudioTracks()||[];
+          if(!tracks.length){audioPicker.innerHTML='<option>Esperando información del archivo…</option>';return;}
+          const active=player.trackManager?.getActiveAudioTrack?.();
+          audioPicker.replaceChildren();
+          tracks.forEach((t,i)=>{
+            const o=document.createElement('option');
+            o.value=String(t.id);
+            o.textContent=`${t.language||t.lang||'Sin idioma'} · ${t.channels||'?'} canales · ${t.codec||'audio'}`;
+            audioPicker.append(o);
+          });
+          if(active)audioPicker.value=String(active.id);
+          audioPicker.onchange=()=>{selectedAutomatically=true;player.selectAudioTrack(Number(audioPicker.value));};
+          if(!selectedAutomatically && active){
+            const lang=(active.language||active.lang||'').toLowerCase();
+            const stereo=tracks.find(t=>t.channels===2 && (t.language||t.lang||'').toLowerCase()===lang);
+            selectedAutomatically=true;
+            if(stereo && stereo.id!==active.id){
+              audioPicker.value=String(stereo.id);
+              player.selectAudioTrack(stereo.id);
+              hint.textContent='Se seleccionó la pista estéreo del mismo idioma. Compara el sonido con Google Drive.';
+            }else if(active.channels>2){
+              hint.textContent='Este archivo utiliza audio '+active.channels+' canales ('+(active.codec||'códec sin identificar')+'). Movi Player lo mezcla a estéreo; prueba otra pista aquí si existe.';
+            }
+          }
+        }
+        scanButton.onclick=refreshAudioTracks;
+        el.addEventListener('loadedmetadata',refreshAudioTracks);
+        el.addEventListener('loadeddata',refreshAudioTracks);
+        el.addEventListener('canplay',refreshAudioTracks);
         el.addEventListener('loadedmetadata',()=>{
           // Audio original: sin compresor de volumen estable aplicado automáticamente.
           try{el.player?.setStableAudio?.(false);}catch{}
@@ -78,9 +126,9 @@
           if(playId===playRequest)hint.textContent='Movi Player no pudo cargar este video. Comprueba que Cloudflare devuelve rangos de bytes (206) y que el formato sea compatible.';
         });
         activePlayer=el;
-        $('frame-container').replaceChildren(el);
+        $('frame-container').replaceChildren(el,audioBar);
         el.src=signed.url;
-        hint.textContent='Reproductor Movi · Audio nativo cuando sea compatible; motor Movi para MKV y otros formatos. Audio y subtítulos en los controles.';
+        hint.textContent='Movi Player · Selecciona una pista estéreo si está disponible. Las pistas 5.1 se mezclan para equipos estéreo.';
         if(typeof el.play==='function')Promise.resolve(el.play()).catch(()=>{});
       } catch(e){
         if(playId!==playRequest)return;
