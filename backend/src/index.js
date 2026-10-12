@@ -295,7 +295,7 @@ async function metadataRetry(db,req){
 async function hmac(env,s){const k=await crypto.subtle.importKey('raw',enc.encode(env.STREAM_SIGNING_KEY),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);return b64url(new Uint8Array(await crypto.subtle.sign('HMAC',k,enc.encode(s))));}
 async function signStream(db,env,id,url){if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_REFRESH_TOKEN||!env.STREAM_SIGNING_KEY)return fail('El administrador aún no ha configurado la reproducción privada.',503);const m=await db.prepare('SELECT id FROM catalog WHERE id=?').bind(id).first();if(!m)return fail('Película no encontrada',404);const expires=now()+4*3600;const signature=await hmac(env,`${id}:${expires}`);return json({url:`${url.origin}/api/media/${encodeURIComponent(id)}?expires=${expires}&signature=${signature}`,expiresAt:expires});}
 async function playMedia(req,env,db,id,url){if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_REFRESH_TOKEN||!env.STREAM_SIGNING_KEY)return fail('Servidor de reproducción no configurado.',503);const exp=Number(url.searchParams.get('expires'));const sig=url.searchParams.get('signature')||'';if(!Number.isInteger(exp)||exp<now()||exp>now()+4*3600||sig.length<40)return fail('Enlace de reproducción no válido o caducado.',403);const expected=await hmac(env,`${id}:${exp}`);let diff=expected.length^sig.length;for(let i=0;i<Math.max(expected.length,sig.length);i++)diff|=(expected.charCodeAt(i)||0)^(sig.charCodeAt(i)||0);if(diff)return fail('Firma inválida.',403);const m=await db.prepare('SELECT file_id FROM catalog WHERE id=?').bind(id).first();if(!m)return fail('Película inexistente.',404);const body=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,refresh_token:env.GOOGLE_REFRESH_TOKEN,grant_type:'refresh_token'});const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});if(!r.ok)return fail('No se pudo renovar el acceso privado a Google Drive.',502);const t=await r.json();if(!t.access_token)return fail('Google no autorizó el acceso.',502);const mediaUrl=`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(m.file_id)}?alt=media`;const gh=new Headers({Authorization:'Bearer '+t.access_token});const range=req.headers.get('Range');if(range)gh.set('Range',range);const upstream=await fetch(mediaUrl,{headers:gh,method:req.method});if(!upstream.ok && upstream.status!==206)return fail(`Google Drive no pudo enviar este archivo (${upstream.status}).`,upstream.status===403?403:502);const outgoing=new Headers({'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Access-Control-Allow-Origin':env.PAGES_ORIGIN});for(const h of ['content-length','content-range','content-type','accept-ranges','etag']){const v=upstream.headers.get(h);if(v)outgoing.set(h,v);}outgoing.set('Content-Disposition','inline');return new Response(req.method==='HEAD'?null:upstream.body,{status:upstream.status,headers:outgoing});}
-export default {async fetch(request,env){
+export default {async fetch(request,env,ctx){
   const url=new URL(request.url), path=url.pathname;
   if(request.method==='OPTIONS'){if(!checkOrigin(request,env))return fail('Origen no autorizado',403);return new Response(null,{status:204,headers:cors(request,env)});}
   if(!checkOrigin(request,env))return fail('Origen no autorizado',403);
@@ -319,10 +319,21 @@ export default {async fetch(request,env){
       else if(path==='/api/admin/users' && request.method==='GET')response=await users(env.DB);
       else if(path==='/api/admin/users' && request.method==='POST')response=await createUser(env.DB,request);
       else if(/^\/api\/admin\/users\/\d+$/.test(path)&&request.method==='PATCH')response=await updateUser(env.DB,request,me,Number(path.split('/').pop()));
-      else if(path==='/api/admin/catalog' && request.method==='PUT')response=await saveCatalog(env.DB,request);
+      else if(path==='/api/admin/metadata/status' && request.method==='GET')response=json(await metadataStatus(env.DB,env));
+      else if(path==='/api/admin/metadata/sync' && request.method==='POST')response=json(await metadataSweep(env.DB,env,5));
+      else if(path==='/api/admin/metadata/item' && request.method==='PATCH')response=await metadataSaveManual(env.DB,request);
+      else if(path==='/api/admin/metadata/retry' && request.method==='POST')response=await metadataRetry(env.DB,request);
+      else if(path==='/api/admin/catalog' && request.method==='PUT'){
+        response=await saveCatalog(env.DB,request);
+        if(response.ok&&env.TMDB_READ_ACCESS_TOKEN)ctx.waitUntil(metadataSweep(env.DB,env,4).catch(e=>console.error('TMDB sweep:',e)));
+      }
       else response=fail('Ruta no encontrada',404);
     }
     const headers=new Headers(response.headers);for(const [k,v] of Object.entries(cors(request,env)))headers.set(k,v);
     return new Response(response.body,{status:response.status,headers});
   } catch(e) { console.error('NOCTRA2 request error at '+path+':',e); return json({error:'No se pudo completar la solicitud.'},500,cors(request,env)); }
+},
+async scheduled(event,env,ctx){
+  if(!env.DB||!env.TMDB_READ_ACCESS_TOKEN)return;
+  ctx.waitUntil(metadataSweep(env.DB,env,5).catch(e=>console.error('Metadata scheduled sweep:',e)));
 }};
