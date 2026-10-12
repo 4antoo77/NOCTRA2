@@ -1,0 +1,40 @@
+/* Administration: metadata matching and manual editing. Desktop, mobile and TV. */
+.noctra-metadata-admin,.noctra-meta-editor{display:grid;gap:13px;min-width:0}
+.noctra-meta-editor>label,.noctra-meta-form>label{display:grid;gap:5px;font-size:13px;font-weight:650}
+.noctra-meta-editor input,.noctra-meta-editor select,.noctra-meta-editor textarea{
+ width:100%;min-width:0;min-height:43px;background:#ffffff0f;border:1px solid #ffffff2d;
+ border-radius:11px;color:#f9f9ff;padding:10px 12px;font:inherit
+}
+.noctra-meta-editor textarea{resize:vertical;min-height:90px}
+.noctra-meta-editor .button-row{display:flex;gap:9px;flex-wrap:wrap}
+.noctra-meta-editor .button-row button{min-height:45px}
+.noctra-meta-editor .noctra-meta-form{display:grid;gap:11px;border-top:1px solid #ffffff22;padding-top:15px}
+.noctra-meta-editor .noctra-meta-status{background:#ffffff0a;padding:12px;border:1px solid #ffffff1b;border-radius:12px;margin:0}
+.noctra-meta-editor .noctra-meta-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:340px;overflow-y:auto}
+.noctra-meta-editor .noctra-meta-results[hidden]{display:none!important}
+.noctra-meta-editor .noctra-meta-result{
+ display:flex;align-items:center;gap:12px;text-align:left;min-width:0;
+ background:#ffffff12;color:#fff;border:1px solid #ffffff29;
+ border-radius:13px;padding:10px;cursor:pointer
+}
+.noctra-meta-editor .noctra-meta-result:hover,.noctra-meta-editor .noctra-meta-result:focus-visible{
+ background:#ffffff23;border-color:#ffffff98
+}
+.noctra-meta-result>img{width:44px;height:64px;border-radius:6px;object-fit:cover;flex-shrink:0}
+.noctra-meta-result>span{display:grid;gap:5px;min-width:0}
+.noctra-meta-result strong{font-size:12px;overflow-wrap:anywhere}
+.noctra-meta-result small{font-size:11px;color:#bdbbc8}
+.noctra-meta-art{width:95px;max-height:150px;object-fit:cover;border-radius:9px}
+.noctra-meta-art[hidden]{display:none!important}
+#admin-metadata-slot .admin-note{overflow-wrap:anywhere}
+.tmdb-credit{border-top:1px solid #ffffff20;margin-top:20px;padding-top:17px;color:#aaaab5;font-size:11px;line-height:1.6}
+.tmdb-credit img{width:58px;height:auto;vertical-align:middle;margin-right:10px}
+.tmdb-credit a{text-decoration:underline}
+@media(max-width:650px){
+ .noctra-meta-editor .noctra-meta-results{grid-template-columns:1fr}
+ .noctra-meta-editor .button-row button{flex:1 1 100%}
+ .noctra-meta-editor .noctra-meta-result{min-height:72px}
+}
+body.noctra-tv .noctra-meta-editor{font-size:17px}
+body.noctra-tv .noctra-meta-result strong{font-size:18px}
+body.noctra-tv .noctra-meta-editor .noctra-meta-results{max-height:45vh}
