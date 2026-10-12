@@ -14,8 +14,9 @@
   function goto(page){
     if(page==='search'){
       mark('search');
-      catalog?.scrollIntoView({behavior:'smooth',block:'start'});
+      window.noctraRevealHeader?.();
       search?.focus({preventScroll:true});
+      if(search?.value.trim())catalog?.scrollIntoView({behavior:'smooth',block:'start'});
       return;
     }
     const target=desktop.find(d=>d.dataset.page===page);
@@ -25,7 +26,6 @@
   }
   buttons.forEach(b=>b.addEventListener('click',()=>goto(b.dataset.mobilePage)));
   desktop.forEach(b=>b.addEventListener('click',()=>mark(b.dataset.page)));
-  document.querySelector('.search-trigger')?.addEventListener('click',()=>mark('search'));
   // Responsive navigation keeps the published catalog accessible.
   document.addEventListener('error',e=>{
     const image=e.target;
