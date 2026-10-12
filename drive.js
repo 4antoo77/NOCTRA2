@@ -46,6 +46,7 @@
    render();
    if(category==='series')groupSeries();
  }
+ window.noctraShowLibrary=showLibrary;
  const oldRender=render;
  render=function(){oldRender();if(category==='series')groupSeries();};
  function groupSeries(){
