@@ -7,7 +7,23 @@
   const error=document.getElementById('login-error');
   const $=id=>document.getElementById(id);
   let token=sessionStorage.getItem('noctra2.token')||'',me=null,loaded=false,cloud=[];
-  let moviLoader=null,activePlayer=null,playRequest=0;
+  let moviLoader=null,activePlayer=null,activeVidstack=null,playRequest=0;
+  let vidstackLoader=null;
+  async function loadVidstack(){
+    if(!vidstackLoader)vidstackLoader=import('https://cdn.vidstack.io/player').catch(e=>{vidstackLoader=null;throw e;});
+    return vidstackLoader;
+  }
+  function prepareVidstackStyles(){
+    for(const name of ['theme.css','video.css']){
+      const href='https://cdn.vidstack.io/player/'+name;
+      if(!document.querySelector('link[data-noctra-vidstack="'+name+'"]')){
+        const link=document.createElement('link');
+        link.rel='stylesheet';link.href=href;
+        link.dataset.noctraVidstack=name;
+        document.head.appendChild(link);
+      }
+    }
+  }
   async function loadMovi(){
     if(customElements.get('movi-player'))return;
     if(!moviLoader)moviLoader=import('https://cdn.jsdelivr.net/npm/movi-player/dist/element.js').catch(e=>{moviLoader=null;throw e;});
@@ -18,8 +34,20 @@
     playRequest++;
     const qualityRow=$('quality')?.closest('label');
     if(qualityRow)qualityRow.hidden=false;
-    if(activePlayer){try{activePlayer.pause();activePlayer.src=null;}catch{}activePlayer.remove();activePlayer=null;}
-    document.getElementById('frame-container').replaceChildren();
+    const testTools=$('player-mode-tools');
+    if(testTools)testTools.hidden=true;
+    const testButton=$('player-vidstack');
+    if(testButton)testButton.onclick=null;
+    if(activeVidstack){
+      try{activeVidstack.pause?.();activeVidstack.destroy?.();}catch{}
+      activeVidstack=null;
+    }
+    const frame=$('frame-container');
+    for(const media of frame.querySelectorAll('movi-player,video,media-player')){
+      try{media.pause?.();media.removeAttribute('src');}catch{}
+    }
+    activePlayer=null;
+    frame.replaceChildren();
   });
   function msg(s){error.textContent=s;}
   async function request(path,opts={}){
@@ -54,8 +82,12 @@
         const signed=await request('/api/play/'+encodeURIComponent('gdrive-'+fileId),{method:'POST'});
         await loadMovi();
         if(playId!==playRequest)return;
+        if(activeVidstack){
+          try{activeVidstack.pause?.();activeVidstack.destroy?.();}catch{}
+          activeVidstack=null;
+        }
         if(activePlayer){
-          try{activePlayer.pause();activePlayer.removeAttribute('src');}catch{}
+          try{activePlayer.pause?.();activePlayer.removeAttribute('src');}catch{}
           activePlayer.remove();activePlayer=null;
         }
         const el=document.createElement('movi-player');
@@ -91,6 +123,98 @@
         activePlayer=el;
         $('frame-container').replaceChildren(el);
         el.src=signed.url;
+
+        // Comparación opcional con el Vidstack auténtico, no <video> sin controles.
+        // Vidstack NO convierte MKV ni E-AC3: utiliza decodificación del navegador.
+        const modeTools=$('player-mode-tools'),modeButton=$('player-vidstack');
+        const modeStatus=$('player-mode-status');
+        modeTools.hidden=false;
+        modeButton.disabled=false;
+        modeButton.textContent='Probar Vidstack';
+        modeStatus.textContent='Reproductor actual: Movi Player';
+        let vidstackHost=null,moviTime=0,vidstackVisible=false;
+        const safeTime=obj=>{
+          try{const v=Number(obj?.currentTime);return Number.isFinite(v)&&v>=0?v:0;}catch{return 0;}
+        };
+        function backToMovi(){
+          if(playId!==playRequest)return;
+          const t=activeVidstack?safeTime(activeVidstack):moviTime;
+          if(activeVidstack){
+            try{activeVidstack.pause?.();activeVidstack.destroy?.();}catch{}
+            activeVidstack=null;
+          }
+          if(vidstackHost){vidstackHost.remove();vidstackHost=null;}
+          el.style.display='block';
+          activePlayer=el;
+          vidstackVisible=false;
+          modeButton.disabled=false;
+          modeButton.textContent='Probar Vidstack';
+          modeStatus.textContent='Reproductor actual: Movi Player';
+          if(t>0){try{el.currentTime=t;}catch{}}
+          if(typeof el.play==='function')Promise.resolve(el.play()).catch(()=>{});
+          hint.textContent='Movi Player restaurado. Idiomas y subtítulos en sus controles.';
+        }
+        modeButton.onclick=async()=>{
+          if(playId!==playRequest)return;
+          if(vidstackVisible){backToMovi();return;}
+          modeButton.disabled=true;
+          modeStatus.textContent='Cargando Vidstack…';
+          try{
+            const {VidstackPlayer,VidstackPlayerLayout}=await loadVidstack();
+            if(playId!==playRequest)return;
+            if(typeof VidstackPlayer?.create!=='function'||typeof VidstackPlayerLayout!=='function'){
+              throw Error('El módulo oficial no ofrece el reproductor esperado.');
+            }
+            prepareVidstackStyles();
+            moviTime=safeTime(el);
+            try{el.pause();}catch{}
+            el.style.display='none';
+            vidstackHost=document.createElement('div');
+            vidstackHost.className='noctra-vidstack-host';
+            $('frame-container').appendChild(vidstackHost);
+            vidstackVisible=true;
+            modeButton.textContent='Volver a Movi Player';
+            // La URL privada no tiene extensión. Esta pista de tipo selecciona
+            // el proveedor de video de Vidstack; no convierte los bytes MKV.
+            const player=await VidstackPlayer.create({
+              target:vidstackHost,
+              title:m.title||'NOCTRA2',
+              src:{src:signed.url,type:'video/mp4'},
+              layout:new VidstackPlayerLayout(),
+              playsInline:true
+            });
+            if(playId!==playRequest||!vidstackVisible){
+              try{player?.destroy?.();}catch{}
+              return;
+            }
+            activeVidstack=player;
+            activePlayer=player;
+            modeButton.disabled=false;
+            modeStatus.textContent='Vidstack cargado · comprobar compatibilidad MKV';
+            hint.textContent='Vidstack usa los códecs del navegador. Si este MKV o su audio E-AC3 no se reproducen, vuelve a Movi Player.';
+            const started=()=>{
+              if(playId!==playRequest||!vidstackVisible)return;
+              if(moviTime>0){
+                try{player.currentTime=moviTime;}catch{}
+              }
+            };
+            player.addEventListener('loaded-metadata',started,{once:true});
+            player.addEventListener('error',()=>{
+              if(playId!==playRequest||!vidstackVisible)return;
+              modeStatus.textContent='Este navegador podría no admitir MKV/E-AC3';
+              hint.textContent='Vidstack no consiguió reproducir este formato. Pulsa «Volver a Movi Player» para continuar.';
+            });
+            if(typeof player.play==='function')Promise.resolve(player.play()).catch(e=>{
+              if(playId!==playRequest||!vidstackVisible)return;
+              modeStatus.textContent='Vidstack: pulsa ▶ para intentar reproducir';
+            });
+          }catch(e){
+            if(playId!==playRequest)return;
+            backToMovi();
+            modeStatus.textContent='Vidstack no pudo iniciarse';
+            hint.textContent='No se pudo iniciar Vidstack: '+(e?.message||'error desconocido')+'. Movi Player sigue disponible.';
+          }
+        };
         if(typeof el.play==='function')Promise.resolve(el.play()).catch(()=>{});
       }catch(e){
         if(playId!==playRequest)return;
