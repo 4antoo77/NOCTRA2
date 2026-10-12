@@ -16,20 +16,40 @@ function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='ho
 $$('.nav').forEach(b=>b.onclick=()=>setPage(b.dataset.page));
 $$('.brand').forEach(a=>a.onclick=e=>{e.preventDefault();setPage('home');});
 $('#explore').onclick=()=>$('#catalog').scrollIntoView({behavior:'smooth'});
-$('.search-trigger').onclick=()=>{if(page==='home')$('#catalog').scrollIntoView();$('#search').focus();};
-$('#search').oninput=render;$('#sort').onchange=render;
-$$('.chip').forEach(b=>b.onclick=()=>{genre=b.dataset.genre;$$('.chip').forEach(c=>c.classList.toggle('selected',c===b));render();});
+// The one shared search input now lives in the floating top navigation.
+$('#search').addEventListener('input',()=>{
+  if(typeof window.noctraShowLibrary==='function')window.noctraShowLibrary();
+  else render();
+  if($('#search').value.trim())$('#catalog').scrollIntoView({behavior:'smooth',block:'start'});
+});
+$('#search').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();$('#catalog').scrollIntoView({behavior:'smooth',block:'start'});}
+  if(e.key==='Escape'&&$('#search').value){
+    $('#search').value='';
+    if(typeof window.noctraShowLibrary==='function')window.noctraShowLibrary();
+    else render();
+  }
+});
+$('#sort').onchange=render;
 function render(){
  noctraSpotlight.update();
  const local=window.noctraCloud?.user?.role==='admin'?movies:[];
- $('#count').textContent=local.filter(m=>!m.seriesName).length+(window.serverMovies?.length||0);
- let list=[...local.filter(m=>!m.seriesName),...(window.serverMovies||[])].filter(m=>(page!=='list'||m.saved)&&(genre==='Todas'||m.genre===genre)&&m.title.toLocaleLowerCase().includes($('#search').value.toLocaleLowerCase()));
+ const totalMovies=new Map([...(window.noctraCloud?.movies||[]),...local].filter(m=>!m.seriesName).map(m=>[m.fileId||m.id,m]));
+ $('#count').textContent=totalMovies.size;
+ const term=$('#search').value.trim().toLocaleLowerCase('es');
+ let list=[...local.filter(m=>!m.seriesName),...(window.serverMovies||[]).filter(m=>!m.seriesName)]
+   .filter(m=>(page!=='list'||m.saved)&&m.title.toLocaleLowerCase('es').includes(term));
+ const unique=new Set();
+ list=list.filter(m=>{const key=m.fileId||m.id;if(unique.has(key))return false;unique.add(key);return true;});
  if($('#sort').value==='az')list.sort((a,b)=>a.title.localeCompare(b.title,'es'));else list.sort((a,b)=>(b.added||0)-(a.added||0));
  $('#real-grid').innerHTML=list.map(m=>`<button class="movie-card" data-id="${esc(m.id)}"><div class="poster"><img src="${esc(posterURL(m.poster)||'assets/mountain.svg')}" alt="" loading="lazy"><span class="card-tag">${m.local?'REPRODUCTOR NOCTRA':'GOOGLE DRIVE'}</span>${!m.poster?`<div class="poster-text">${esc(m.title)}<small>TU COLECCIÓN</small></div>`:''}</div><div class="card-info"><strong>${esc(m.title)}</strong><span>${m.saved?'✓':'↗'}</span></div><p>${esc(m.genre||'Película')}${m.year?' · '+esc(m.year):''}</p></button>`).join('');
  $('#real-grid').querySelectorAll('img').forEach(i=>i.onerror=()=>{i.onerror=null;i.src='assets/mountain.svg';});
  $('#real-grid').querySelectorAll('button').forEach(b=>b.onclick=()=>openDetail(list.find(m=>m.id===b.dataset.id)));
  $('#empty').hidden=list.length>0;
- if(!list.length){$('#empty h3').textContent=page==='list'?'Aquí van las que no te quieres perder.':movies.length||window.serverMovies?.length?'No encontramos esa película.':'El mejor catálogo es el tuyo.';$('#empty p').textContent=page==='list'?'Abre una película y añádela a tu lista.':movies.length||window.serverMovies?.length?'Prueba con otro título o cambia el filtro.':'Añade el enlace de una película de Drive y empieza tu colección.';}
+ if(!list.length){
+   $('#empty h3').textContent=page==='list'?'Aquí van las que no te quieres perder.':term?'No encontramos títulos con esa búsqueda.':(window.noctraCloud?.movies?.length||movies.length)?'No hay títulos en esta sección.':'El catálogo está vacío.';
+   $('#empty p').textContent=page==='list'?'Abre una película o serie y añádela a tu lista.':term?'Prueba a escribir otro nombre de película o serie.':'El administrador puede publicar más títulos.';
+ }
 }
 // Abyss-inspired vertical spotlight: real published movies, no demo posters.
 // Stable daily selection: a visitor sees the same six within their local day.
