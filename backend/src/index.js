@@ -46,6 +46,16 @@ async function saveCatalog(db,req){let v=await input(req);const list=Array.isArr
 // TMDB metadata lookup: admin-only, token stays in Worker secrets.
 const TMDB_IMAGE='https://image.tmdb.org/t/p/w500';
 const TMDB_GENRES={'Action':'Acción','Adventure':'Acción','Animation':'Animación','Comedy':'Comedia','Crime':'Suspenso','Documentary':'Documental','Drama':'Drama','Family':'Animación','Fantasy':'Ciencia ficción','History':'Drama','Horror':'Terror','Music':'Otros','Mystery':'Suspenso','Romance':'Drama','Science Fiction':'Ciencia ficción','Sci-Fi & Fantasy':'Ciencia ficción','Thriller':'Suspenso','War':'Acción','Western':'Acción','Kids':'Animación'};
+// TMDB returns localized genre labels when language=es-ES.
+Object.assign(TMDB_GENRES,{
+ 'Acción':'Acción','Aventura':'Acción','Animación':'Animación',
+ 'Comedia':'Comedia','Crimen':'Suspenso','Documental':'Documental',
+ 'Drama':'Drama','Familia':'Animación','Fantasía':'Ciencia ficción',
+ 'Historia':'Drama','Terror':'Terror','Música':'Otros',
+ 'Misterio':'Suspenso','Romance':'Drama','Ciencia ficción':'Ciencia ficción',
+ 'Suspense':'Suspenso','Thriller':'Suspenso','Bélica':'Acción',
+ 'Western':'Acción','Kids':'Animación','Sci-Fi & Fantasy':'Ciencia ficción'
+});
 const safeTmdbImage=p=>typeof p==='string'&&/^\/[A-Za-z0-9_.-]{4,250}$/.test(p)?TMDB_IMAGE+p:'';
 async function tmdbGet(env,endpoint,params={}){
   const apiToken=env.TMDB_READ_ACCESS_TOKEN;
