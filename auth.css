@@ -30,3 +30,19 @@ body.auth-locked #noctra-app{display:none!important}
 .noctra-userbar button{background:#ffffff11;border:1px solid #ffffff22;border-radius:7px;padding:8px 10px;font-size:11px}
 .noctra-userbar .auth-user{font-size:11px;color:#c4b2d9}
 @media(max-width:700px){.noctra-userbar{width:100%;justify-content:center}.noctra-userbar .auth-user{display:none}.noctra-userbar button{min-height:40px}.login-frame{box-shadow:none!important}#noctra-admin-dialog .admin-row{align-items:flex-start;flex-direction:column}}
+/* Google Drive is administered only in the authenticated Admin dialog. */
+#noctra-admin-dialog{width:min(900px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:90dvh;overflow-y:auto}
+#noctra-admin-dialog #admin-drive-slot{margin:14px 0 22px}
+#noctra-admin-dialog #admin-drive-slot .drive-panel{
+ display:flex!important;position:static!important;align-items:center;justify-content:space-between;
+ width:100%;margin:0!important;box-sizing:border-box;gap:16px;padding:20px;
+ background:#1b1c24;border:1px solid #ffffff2b;border-radius:16px
+}
+#noctra-admin-dialog #admin-drive-slot .drive-panel[hidden]{display:none!important}
+#noctra-admin-dialog #admin-drive-slot .button-row{display:flex;gap:8px;flex-wrap:wrap}
+#noctra-admin-dialog #admin-drive-slot button{min-height:40px}
+#noctra-admin-dialog #admin-drive-slot #drive-status{overflow-wrap:anywhere}
+@media(max-width:700px){
+ #noctra-admin-dialog #admin-drive-slot .drive-panel{flex-direction:column;align-items:stretch;padding:16px}
+ #noctra-admin-dialog #admin-drive-slot .button-row{justify-content:flex-start}
+}
