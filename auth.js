@@ -110,7 +110,7 @@
         meterTrack.append(meterFill);
         const meterDescription=document.createElement('small');
         meterDescription.className='noctra-buffer-description';
-        meterDescription.textContent='Búfer inicial (primeros 12 segundos)';
+        meterDescription.textContent='Precarga de los primeros 12 segundos';
         meter.append(meterTitle,meterNumber,meterTrack,meterDescription);
         let lastBufferedEnd=0,bufferAnchor=0,meterVisible=true;
         function updateBufferMeter(){
@@ -119,8 +119,20 @@
           const target=Number.isFinite(remain)&&remain>0?Math.min(12,remain):12;
           const ahead=Math.max(0,lastBufferedEnd-bufferAnchor);
           const pct=Math.max(0,Math.min(100,Math.floor(ahead/target*100)));
-          meterNumber.textContent=pct+'%';
           meterFill.style.width=pct+'%';
+          if(pct>=100){
+            // El 100% SOLO significa que la ventana inicial de búfer
+            // se ha llenado: NO implica que el MKV ya pueda reproducirse.
+            meter.dataset.phase='decoding';
+            meterTitle.textContent='Búfer inicial listo';
+            meterNumber.textContent='Preparando video…';
+            meterDescription.textContent='Esperando el primer fotograma; todavía no está reproduciendo';
+            hint.textContent='El búfer inicial está completo, pero Movi Player aún prepara la imagen. Puede tardar en algunos MKV.';
+          }else{
+            meter.dataset.phase='buffering';
+            meterNumber.textContent=pct+'%';
+            meterDescription.textContent='Precarga de los primeros '+Math.round(target)+' segundos';
+          }
         }
         function showBufferMeter(stalled=false){
           if(playId!==playRequest)return;
