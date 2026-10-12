@@ -1,0 +1,303 @@
+/*
+ * NOCTRA2 / Abyss-inspired interface (original adaptation for NOCTRA2).
+ * Inspiration: Abyss for Jellyfin by Om Gupta — MIT License.
+ * https://github.com/AumGupta/abyss-jellyfin
+ *
+ * These styles target NOCTRA2 markup, not Jellyfin selectors. No external
+ * Abyss CSS/installer is loaded. Backend, permissions and Movi Player remain.
+ */
+
+:root {
+  --bg: #0b0c10;
+  --fg: #f5f5f7;
+  --panel: #17181d;
+  --surface: #17181dd9;
+  --muted: #a4a6b0;
+  --line: #ffffff1c;
+  --border: #ffffff21;
+  --accent: #f5f5f7;
+  --purple: #f5f5f7;
+  --abyss-glass: #222329b8;
+  --abyss-edge: #ffffff24;
+  --abyss-ease: cubic-bezier(.16,1,.3,1);
+}
+body.abyss-noctra {
+  background:
+    radial-gradient(ellipse 55vw 40vw at 80% -10%, #4a4c5955, transparent 72%),
+    radial-gradient(ellipse 40vw 33vw at 5% 38%, #2427333b, transparent 74%),
+    #0b0c10;
+  color: var(--fg);
+  font-family: "DM Sans", Inter, ui-sans-serif, system-ui, sans-serif;
+}
+body.abyss-noctra h1,body.abyss-noctra h2,body.abyss-noctra h3,
+body.abyss-noctra .brand {font-family: Manrope, "DM Sans", ui-sans-serif,sans-serif}
+body.abyss-noctra [hidden]{display:none!important}
+body.abyss-noctra button:focus-visible,body.abyss-noctra a:focus-visible,
+body.abyss-noctra select:focus-visible,body.abyss-noctra input:focus-visible{
+  outline:2px solid #f7f8ff;outline-offset:3px
+}
+
+/* Floating glass navigation, Abyss-style pill tabs. */
+body.abyss-noctra #noctra-app > header {
+  position:fixed;
+  top:clamp(10px,2.1vw,22px);
+  left:50%;
+  transform:translateX(-50%);
+  width:min(1480px,calc(100% - 34px));
+  max-width:none;
+  height:74px;
+  z-index:100;
+  display:flex;
+  gap:clamp(13px,3vw,50px);
+  padding:0 clamp(16px,2.4vw,32px);
+  border:1px solid #ffffff2a;
+  border-radius:22px;
+  background:linear-gradient(125deg,#272831dc,#15161cdd);
+  box-shadow:0 20px 65px #0008,inset 0 1px #ffffff20;
+  backdrop-filter:blur(24px) saturate(130%);
+  -webkit-backdrop-filter:blur(24px) saturate(130%);
+}
+body.abyss-noctra .brand {font-size:24px;letter-spacing:.1em;font-weight:800}
+body.abyss-noctra .brand span,body.abyss-noctra .brand i,
+body.abyss-noctra .brand .brand-two {color:#f5f5f7}
+body.abyss-noctra #noctra-app > header nav{
+  display:flex;gap:5px;align-items:center;height:100%
+}
+body.abyss-noctra #noctra-app > header nav .nav {
+  min-height:43px;height:auto;
+  padding:10px 16px;border-radius:999px;
+  color:#afb0bb;font-weight:600;font-size:13px;
+  transition:background .2s,color .2s,transform .2s;
+}
+body.abyss-noctra #noctra-app > header nav .nav:hover{background:#ffffff12;color:#fff}
+body.abyss-noctra #noctra-app > header nav .nav.active{
+  background:#f1f2f5;color:#101116;box-shadow:0 3px 12px #0005
+}
+body.abyss-noctra #noctra-app > header nav .nav.active:after{display:none}
+body.abyss-noctra #count{border:0;border-radius:30px;background:#ffffff24;color:inherit}
+body.abyss-noctra .nav.active #count{background:#0002}
+body.abyss-noctra .header-right{gap:12px}
+body.abyss-noctra .header-right .add-top{
+  border-radius:99px;background:#ffffff18;border:1px solid #ffffff2c;
+  color:#fff;font-weight:650
+}
+body.abyss-noctra .avatar{
+  background:#e9e9ee;color:#191a20;border:1px solid #ffffff66;
+  box-shadow:0 0 0 3px #ffffff12;font-weight:800
+}
+
+/* Cinematic spotlight with opt-in catalog poster; preserve fallback art. */
+body.abyss-noctra .hero {
+  position:relative;isolation:isolate;
+  min-height:650px;height:min(860px,86vh);max-height:none;
+  overflow:hidden;padding:150px max(5%,calc((100vw - 1380px)/2)) 110px;
+  background:#14151b;border-bottom:1px solid #ffffff20
+}
+body.abyss-noctra .hero .abyss-hero-backdrop{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center 35%;
+  opacity:.7;z-index:0;
+  animation:abyssBackdropReveal .9s ease both
+}
+body.abyss-noctra .hero-image{
+  position:absolute;inset:0;z-index:1;
+  background:
+    linear-gradient(90deg,#090a0ff9 0%,#0a0b10ea 26%,#0d0e1499 54%,#0e0f164b 82%,#0b0c1088 100%),
+    linear-gradient(0deg,#0b0c10 0%,transparent 34%,#0b0c1070 100%)!important
+}
+body.abyss-noctra .hero-image:after{display:none}
+body.abyss-noctra .hero-content{position:relative;z-index:2;padding:0;max-width:760px}
+body.abyss-noctra .hero .eyebrow{color:#d9dbe6;font-weight:700;letter-spacing:.16em}
+body.abyss-noctra .hero .eyebrow span{background:#fff;box-shadow:0 0 12px #ffffff77}
+body.abyss-noctra .hero .overline{color:#c3c6d0;letter-spacing:.3em;margin:30px 0 15px}
+body.abyss-noctra .hero h1{
+  font-size:clamp(44px,5.1vw,77px);line-height:1.09;
+  font-weight:750;letter-spacing:-.055em;max-width:800px;
+  margin-bottom:18px;text-wrap:balance;
+  text-shadow:0 5px 40px #0008
+}
+body.abyss-noctra .hero-copy{
+  color:#c7c8d1;font-size:clamp(13px,1.1vw,16px);line-height:1.7;
+  max-width:610px;display:-webkit-box;
+  -webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden
+}
+body.abyss-noctra .hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+body.abyss-noctra .hero-actions .primary,
+body.abyss-noctra .hero-actions .secondary{min-height:48px}
+body.abyss-noctra .hero .primary{background:#f2f2f5;color:#17181c}
+body.abyss-noctra .hero .secondary{background:#ffffff1b;border-color:#ffffff48}
+body.abyss-noctra .hero-note{color:#c0c1c8}
+body.abyss-noctra .hero-caption{
+  position:absolute;z-index:2;right:5%;bottom:80px;
+  padding:14px 19px;border:1px solid #ffffff38;border-radius:16px;
+  background:#11121975;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-left:1px solid #ffffff38;text-align:left
+}
+body.abyss-noctra .hero-bottom{z-index:2;color:#b1b4bf}
+body.abyss-noctra .abyss-feature-play{display:inline-flex}
+body.abyss-noctra .abyss-feature-play[hidden]{display:none!important}
+body.abyss-noctra .hero.is-abyss-feature .hero-caption{display:none}
+
+/* Panels and rows: warm charcoal glass rather than violet blocks. */
+body.abyss-noctra .catalog,body.abyss-noctra .showcase{
+  max-width:1540px;margin-inline:auto;
+  padding-left:clamp(18px,4vw,66px);padding-right:clamp(18px,4vw,66px)
+}
+body.abyss-noctra .section-heading{gap:18px}
+body.abyss-noctra .section-heading h2{
+  font-size:clamp(24px,2.5vw,37px);
+  letter-spacing:-.035em;font-weight:720;
+}
+body.abyss-noctra .eyebrow.purple{color:#b8bbc8}
+body.abyss-noctra .search,body.abyss-noctra .tools select,
+body.abyss-noctra .player-tools select{
+  background:#ffffff0e!important;border:1px solid #ffffff27!important;
+  color:#f5f5f7!important;border-radius:14px
+}
+body.abyss-noctra .search{
+  box-shadow:inset 0 1px #ffffff09;min-height:44px;
+  transition:border-color .25s,background .25s
+}
+body.abyss-noctra .search:focus-within{background:#ffffff18!important;border-color:#ffffff7b!important}
+body.abyss-noctra .search input{color:#fff}
+body.abyss-noctra .tools select{min-height:44px;padding:9px 13px}
+body.abyss-noctra .filters{gap:9px}
+body.abyss-noctra .chip{
+  border:1px solid #ffffff22;background:#ffffff0a;color:#c1c2cb;
+  border-radius:999px;min-height:41px;padding:10px 17px;
+  font-weight:650;font-size:12px;transition:background .2s,color .2s,border-color .2s
+}
+body.abyss-noctra .chip:hover{background:#ffffff20;color:#fff}
+body.abyss-noctra .chip.selected{
+  background:#f0f0f4;color:#18191e;border-color:#ffffff85;
+  box-shadow:0 4px 17px #0005
+}
+body.abyss-noctra .grid,body.abyss-noctra .sample-grid{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:26px 18px
+}
+body.abyss-noctra .movie-card{transition:transform .35s var(--abyss-ease)}
+body.abyss-noctra .movie-card .poster{
+  border:1px solid #ffffff23;border-radius:18px;
+  background:linear-gradient(145deg,#30333d,#1a1b22 67%,#111218);
+  box-shadow:0 14px 34px #0004;
+  transition:transform .4s var(--abyss-ease),box-shadow .4s,border-color .4s
+}
+body.abyss-noctra .movie-card:nth-child(4n + 2) .poster{
+  background:linear-gradient(145deg,#373840,#22232b 65%,#131419)
+}
+body.abyss-noctra .movie-card:nth-child(4n + 3) .poster{
+  background:linear-gradient(145deg,#2f3940,#20262b 65%,#111519)
+}
+body.abyss-noctra .movie-card .poster img{filter:saturate(.9);transition:transform .65s var(--abyss-ease)}
+body.abyss-noctra .movie-card:hover .poster,
+body.abyss-noctra .movie-card:focus-visible .poster{
+  transform:translateY(-7px) scale(1.015);
+  border-color:#ffffff7a;box-shadow:0 24px 52px #0009
+}
+body.abyss-noctra .movie-card:hover .poster img{transform:scale(1.07)}
+body.abyss-noctra .card-tag{border-radius:99px;border:1px solid #ffffff3c;background:#17181ac9;backdrop-filter:blur(10px)}
+body.abyss-noctra .card-info strong{font-size:13px;font-weight:650}
+body.abyss-noctra .card-info span{color:#e6e6ed}
+body.abyss-noctra .poster-text{letter-spacing:.06em;font-weight:700}
+body.abyss-noctra .banner,body.abyss-noctra .empty,
+body.abyss-noctra .drive-panel{
+  background:linear-gradient(140deg,#292a31b5,#17181eeb);
+  border:1px solid #ffffff22;border-radius:22px;
+  box-shadow:inset 0 1px #ffffff1b,0 18px 44px #0003
+}
+body.abyss-noctra .banner{padding:34px clamp(24px,4vw,48px)}
+body.abyss-noctra .banner h2{letter-spacing:-.035em}
+
+/* Controls, login and dialogs share the frosted treatment. */
+body.abyss-noctra .primary{
+  background:#f5f5f7;color:#15161a;border-radius:999px;font-weight:750;
+  box-shadow:0 7px 20px #0004;transition:transform .25s var(--abyss-ease),background .25s
+}
+body.abyss-noctra .primary:hover{background:#fff;transform:translateY(-2px)}
+body.abyss-noctra .secondary,body.abyss-noctra .add-top{
+  border-radius:999px;background:#ffffff11;border:1px solid #ffffff36;color:#f6f6f8
+}
+body.abyss-noctra .secondary:hover{background:#ffffff24}
+body.abyss-noctra .text-button{color:#e7e7eb}
+body.abyss-noctra dialog{
+  color:#f6f6f9;border:1px solid #ffffff35;border-radius:23px;
+  background:linear-gradient(145deg,#25262af2,#131418f7);
+  box-shadow:0 28px 90px #000c,inset 0 1px #ffffff26;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)
+}
+body.abyss-noctra dialog::backdrop{background:#050507da;backdrop-filter:blur(12px)}
+body.abyss-noctra dialog .close{border:1px solid #ffffff27;background:#ffffff15}
+body.abyss-noctra dialog label input,
+body.abyss-noctra dialog label textarea,
+body.abyss-noctra dialog label select{
+  background:#ffffff0e;color:#fff;border:1px solid #ffffff2b;border-radius:12px
+}
+body.abyss-noctra #player{background:#17181cf8}
+body.abyss-noctra #frame-container{
+  border:1px solid #ffffff1d;border-radius:14px;overflow:hidden;background:#000
+}
+body.abyss-noctra #frame-container movi-player{--movi-primary-color:#f3f3f7}
+body.abyss-noctra #noctra-login{
+  background:radial-gradient(ellipse at 70% 0%,#3f414f55,transparent 50%),#0b0c10
+}
+body.abyss-noctra #noctra-login .login-frame{
+  border:1px solid #ffffff32;
+  background:linear-gradient(160deg,#25262edb,#15161bed);
+  border-radius:26px;box-shadow:0 35px 110px #0009,inset 0 1px #ffffff21;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)
+}
+body.abyss-noctra #noctra-login .login-brand span{color:#f5f5f7}
+body.abyss-noctra #noctra-login .login-frame p{color:#bdbfc8}
+body.abyss-noctra #noctra-login input{
+  background:#ffffff0e;border:1px solid #ffffff32;color:#fff;border-radius:12px
+}
+body.abyss-noctra #noctra-login .primary{width:100%}
+body.abyss-noctra .noctra-mobile-nav{
+  border:1px solid #ffffff36;border-radius:22px 22px 0 0;
+  background:#22232cea;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)
+}
+body.abyss-noctra .noctra-mobile-link.active{background:#ffffff1a;color:#fff}
+body.abyss-noctra .noctra-userbar{gap:9px}
+body.abyss-noctra .noctra-userbar button{border-radius:999px}
+
+@keyframes abyssBackdropReveal{from{opacity:0;transform:scale(1.035)}to{opacity:.7;transform:scale(1)}}
+@media(min-width:1650px){
+  body.abyss-noctra .grid,body.abyss-noctra .sample-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+@media(max-width:1100px){
+  body.abyss-noctra #noctra-app > header{gap:14px;padding-inline:17px}
+  body.abyss-noctra #noctra-app > header nav .nav{padding-inline:12px;font-size:12px}
+  body.abyss-noctra .grid,body.abyss-noctra .sample-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:800px){
+  body.abyss-noctra #noctra-app > header{width:calc(100% - 18px);top:8px;height:65px;border-radius:17px}
+  body.abyss-noctra .hero{min-height:610px;height:76vh;padding:110px 6vw 65px}
+  body.abyss-noctra .hero .hero-content{max-width:90%}
+  body.abyss-noctra .hero h1{font-size:clamp(35px,6.8vw,59px)}
+  body.abyss-noctra .hero-caption,body.abyss-noctra .hero-bottom{display:none}
+  body.abyss-noctra .grid,body.abyss-noctra .sample-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  body.abyss-noctra #noctra-app > header{height:58px;gap:6px;padding-inline:13px}
+  body.abyss-noctra #noctra-app > header .brand{font-size:19px}
+  body.abyss-noctra .hero{height:auto;min-height:540px;padding:110px 20px 85px}
+  body.abyss-noctra .hero .hero-content{max-width:100%;padding:0}
+  body.abyss-noctra .hero-image{background:linear-gradient(90deg,#0b0c10f7,#101118c2 80%),linear-gradient(0deg,#0b0c10,transparent 70%)!important}
+  body.abyss-noctra .hero h1{font-size:clamp(35px,9vw,50px);letter-spacing:-.055em}
+  body.abyss-noctra .hero .overline{margin-top:18px}
+  body.abyss-noctra .hero-actions{gap:8px}
+  body.abyss-noctra .hero-actions .primary,body.abyss-noctra .hero-actions .secondary{font-size:12px;padding:11px 15px}
+  body.abyss-noctra .section-heading{gap:18px}
+  body.abyss-noctra .grid,body.abyss-noctra .sample-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 11px}
+  body.abyss-noctra .poster{border-radius:15px}
+  body.abyss-noctra .section-heading h2{font-size:27px}
+  body.abyss-noctra .catalog,body.abyss-noctra .showcase{padding-inline:16px}
+  body.abyss-noctra .banner{margin-inline:16px;padding:24px}
+  body.abyss-noctra dialog{border-radius:18px}
+}
+@media(prefers-reduced-motion:reduce){
+  body.abyss-noctra *,body.abyss-noctra *::before,body.abyss-noctra *::after{
+    animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important
+  }
+}
