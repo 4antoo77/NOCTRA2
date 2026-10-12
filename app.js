@@ -12,7 +12,7 @@ function toast(s){$('#toast').textContent=s;$('#toast').classList.add('show');cl
 function dialog(s){$(s).showModal();}
 $$('dialog').forEach(d=>{d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});});
 $$('.close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
-function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='home');$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#section-title').textContent=p==='list'?'Mi lista':$('#search').value.trim()?'Resultados de búsqueda':window.noctraMediaCategory==='series'?'Series':'Películas';render();window.scrollTo(0,0);}
+function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='home');$$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#section-title').textContent=p==='list'?'Mi lista':$('#search').value.trim()?'Resultados de búsqueda':window.noctraMediaCategory==='series'?'Series':'Películas';render();window.scrollTo(0,0);}
 $$('.nav').forEach(b=>b.onclick=()=>setPage(b.dataset.page));
 $$('.brand').forEach(a=>a.onclick=e=>{e.preventDefault();setPage('home');});
 $('#explore').onclick=()=>$('#catalog').scrollIntoView({behavior:'smooth'});
@@ -31,9 +31,9 @@ $('#search').addEventListener('keydown',e=>{
   }
 });
 $('#sort').onchange=render;
-$('#filters [data-genre]').forEach(b=>b.addEventListener('click',()=>{
+$$('#filters [data-genre]').forEach(b=>b.addEventListener('click',()=>{
  genre=b.dataset.genre;
- $('#filters [data-genre]').forEach(c=>{
+ $$('#filters [data-genre]').forEach(c=>{
   const selected=c===b;
   c.classList.toggle('selected',selected);
   c.setAttribute('aria-pressed',String(selected));
