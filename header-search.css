@@ -1,0 +1,204 @@
+/*
+ * NOCTRA2 floating universal search / two-category navigation.
+ * Applies to PC, mobiles and compatible TV browsers.
+ * Loaded last, leaving the Abyss theme and device-specific layouts intact.
+ */
+body.abyss-noctra #noctra-app > header{
+  gap:clamp(9px,1.35vw,21px);
+  transition:transform .32s cubic-bezier(.22,1,.36,1),opacity .26s ease,visibility .26s ease;
+  will-change:transform,opacity;
+}
+body.abyss-noctra #noctra-app > header nav{
+  flex:0 1 auto;
+  gap:3px;
+}
+body.abyss-noctra #noctra-app > header .noctra-global-search{
+  display:flex;
+  flex:1 1 250px;
+  min-width:120px;
+  max-width:510px;
+  height:46px;
+  align-items:center;
+  gap:11px;
+  padding:0 15px;
+  margin-left:auto;
+  color:#f4f4f9;
+  background:#ffffff13;
+  border:1px solid #ffffff39;
+  border-radius:999px;
+  box-shadow:inset 0 1px #ffffff13;
+  transition:background .2s,border-color .2s,box-shadow .2s;
+}
+body.abyss-noctra #noctra-app > header .noctra-global-search:focus-within{
+  border-color:#fff9;
+  background:#ffffff20;
+  box-shadow:0 0 0 3px #ffffff13,inset 0 1px #ffffff25;
+}
+body.abyss-noctra .noctra-global-search .noctra-search-icon{
+  font-size:26px;
+  line-height:1;
+  color:#e7e7f0;
+  flex:0 0 auto;
+  font-weight:500;
+}
+body.abyss-noctra #noctra-app > header .noctra-global-search input{
+  display:block;
+  min-width:0;
+  flex:1;
+  width:100%;
+  height:100%;
+  padding:0;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  outline:none;
+  color:#fff;
+  background:transparent;
+  font:500 14px/1.3 "DM Sans",system-ui,sans-serif;
+  appearance:auto;
+}
+body.abyss-noctra .noctra-global-search input::placeholder{color:#d5d5ddbb}
+body.abyss-noctra .noctra-global-search input::-webkit-search-cancel-button{cursor:pointer}
+body.abyss-noctra #noctra-app > header .header-right{
+  flex:0 0 auto;
+  margin-left:0;
+  gap:10px;
+}
+/* Both scroll directions hide the bar. Idle and top of page show it again.
+   Focused inputs are handled in JS and remain visible. */
+body.abyss-noctra #noctra-app > header.noctra-header-hidden{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translate(-50%,calc(-100% - 55px))!important;
+}
+body.abyss-noctra #catalog .section-heading .tools{
+  display:flex;
+  width:auto;
+  margin-left:auto;
+  justify-content:flex-end;
+}
+body.abyss-noctra #catalog .section-heading .tools #sort{
+  min-width:155px;
+  height:44px;
+  padding-inline:14px;
+  font-size:12px;
+}
+body.abyss-noctra #catalog .media-tabs{
+  display:flex;
+  align-items:center;
+  flex-wrap:nowrap;
+  width:100%;
+  gap:11px;
+  padding:2px 0 14px;
+  margin:0 0 17px;
+}
+body.abyss-noctra #catalog .media-tabs .chip{
+  min-height:44px;
+  padding:10px clamp(18px,2.2vw,27px);
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.01em;
+  border-radius:999px;
+}
+body.abyss-noctra #catalog .media-tabs .chip[aria-pressed="true"]{
+  background:#f1f1f5;
+  color:#17181c;
+  border-color:#f1f1f5;
+}
+
+/* Medium-width computers keep full navigation and usable search width. */
+@media(min-width:701px) and (max-width:1250px){
+  body.abyss-noctra #noctra-app > header{gap:11px}
+  body.abyss-noctra #noctra-app > header nav .nav{padding-inline:10px;font-size:12px}
+  body.abyss-noctra #noctra-app > header .brand{font-size:21px;letter-spacing:.06em}
+  body.abyss-noctra #noctra-app > header .noctra-global-search{padding:0 11px;gap:7px}
+  body.abyss-noctra #noctra-app > header .noctra-global-search input{font-size:13px}
+  body.abyss-noctra #noctra-app > header .noctra-userbar .auth-user{display:none}
+  body.abyss-noctra #noctra-app > header .noctra-userbar button{padding-inline:8px}
+}
+@media (max-width:700px){
+  body.abyss-noctra #noctra-app > header{
+    gap:7px;padding-inline:11px;
+  }
+  body.abyss-noctra #noctra-app > header.noctra-header-hidden{
+    transform:translateY(calc(-100% - 68px))!important;
+  }
+  body.abyss-noctra #noctra-app > header .brand{
+    flex:0 0 auto;font-size:clamp(15px,4.8vw,19px);letter-spacing:.025em;
+  }
+  body.abyss-noctra #noctra-app > header .noctra-global-search{
+    flex:1 1 110px;
+    min-width:0;
+    max-width:none;
+    height:40px;
+    padding:0 9px;
+    gap:5px;
+    margin-left:0;
+    border-radius:13px;
+  }
+  body.abyss-noctra .noctra-global-search .noctra-search-icon{font-size:21px}
+  body.abyss-noctra #noctra-app > header .noctra-global-search input{
+    font-size:16px;
+    letter-spacing:-.035em;
+  }
+  body.abyss-noctra #noctra-app > header .header-right{
+    gap:3px;
+  }
+  body.abyss-noctra #noctra-app > header .header-right .avatar{
+    width:36px;min-width:36px;height:36px;min-height:36px;
+  }
+  body.abyss-noctra #catalog .section-heading .tools{
+    margin-left:0;
+    width:100%;
+    justify-content:flex-end;
+  }
+  body.abyss-noctra #catalog .section-heading .tools #sort{
+    min-width:150px;height:42px;font-size:12px;
+  }
+  body.abyss-noctra #catalog .media-tabs{
+    overflow-x:visible;
+    gap:9px;
+    padding-bottom:9px;
+    scroll-snap-type:none;
+    margin-bottom:13px;
+  }
+  body.abyss-noctra #catalog .media-tabs .chip{
+    flex:1 1 0;
+    min-height:45px;
+    text-align:center;
+    font-size:13px;
+    padding:10px 10px;
+  }
+}
+/* Extra-narrow phones still retain a visible search input, not just an icon. */
+@media (max-width:365px){
+  body.abyss-noctra #noctra-app > header .brand{font-size:15px}
+  body.abyss-noctra #noctra-app > header .noctra-global-search{padding-inline:7px}
+  body.abyss-noctra #noctra-app > header .noctra-global-search input::placeholder{font-size:12px}
+  body.abyss-noctra #noctra-app > header{gap:5px}
+}
+/* 10-foot UI: keep remote-focus search large but flexible. */
+body.abyss-noctra.noctra-tv #noctra-app > header .noctra-global-search{
+  flex:1 1 285px;
+  min-width:185px;
+  max-width:520px;
+  height:60px;
+  border-radius:30px;
+  padding:0 19px;
+}
+body.abyss-noctra.noctra-tv #noctra-app > header .noctra-global-search input{
+  font-size:clamp(16px,1.2vw,22px);
+}
+body.abyss-noctra.noctra-tv #noctra-app > header.noctra-header-hidden{
+  transform:translateY(calc(-100% - 66px))!important;
+}
+body.abyss-noctra.noctra-tv #catalog .media-tabs .chip{
+  min-height:60px;font-size:19px;padding:13px 30px;
+}
+body.abyss-noctra.noctra-tv #catalog .section-heading .tools #sort{
+  min-height:55px;font-size:17px;
+}
+@media(prefers-reduced-motion:reduce){
+  body.abyss-noctra #noctra-app > header{transition:none!important}
+}
