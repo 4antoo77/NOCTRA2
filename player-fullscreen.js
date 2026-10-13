@@ -13,8 +13,8 @@
    return /iPad|iPhone|iPod/i.test(ua)||
      (/Macintosh/i.test(ua)&&navigator.maxTouchPoints>1);
  };
- let playing=null,hostMode=false,usingNative=false,orientationLocked=false;
- let orientationGeneration=0;
+ let playing=null,hostMode=false,usingNative=false;
+ let orientationState='idle',orientationGeneration=0;
  const nativeElement=()=>document.fullscreenElement||document.webkitFullscreenElement||null;
  const ourNativeFullscreen=()=>{
    const element=nativeElement();
@@ -23,24 +23,29 @@
  };
  function unlockLandscape(){
    ++orientationGeneration;
-   if(!orientationLocked)return;
-   orientationLocked=false;
-   try{screen.orientation?.unlock?.();}catch{}
+   const wasLocked=orientationState==='locked';
+   orientationState='idle';
+   if(wasLocked)try{screen.orientation?.unlock?.();}catch{}
  }
  function lockLandscape(){
-   // Allowed by Android/compatible full-screen browsers. Unsupported on iPhone.
-   if(typeof screen==='undefined'||typeof screen.orientation?.lock!=='function')return;
-   const generation=++orientationGeneration;
+   // Mobile browsers generally require fullscreen before locking orientation.
+   if(orientationState!=='idle'||typeof screen==='undefined'||
+      typeof screen.orientation?.lock!=='function')return;
+   orientationState='pending';
+   const generation=orientationGeneration;
    let result;
    try{result=screen.orientation.lock('landscape');}
-   catch{return;}
+   catch{orientationState='idle';return;}
    Promise.resolve(result).then(()=>{
-     if(generation!==orientationGeneration||!dialog.open){
-       try{screen.orientation?.unlock?.();}catch{}
+     if(generation!==orientationGeneration){
+       // A previous fullscreen has closed. Avoid undoing a newer lock.
+       if(!dialog.open&&!nativeElement())try{screen.orientation?.unlock?.();}catch{}
        return;
      }
-     orientationLocked=true;
-   }).catch(()=>{}); // Browser/OS may forbid orientation lock.
+     orientationState='locked';
+   }).catch(()=>{
+     if(generation===orientationGeneration)orientationState='idle';
+   });
  }
  function clearHost(){
    dialog.classList.remove('noctra-fullscreen-host');
