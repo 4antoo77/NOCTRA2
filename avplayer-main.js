@@ -55,21 +55,50 @@
  function installTouchFullscreen(state){
    const {frame,dialog}=state;
    let lastTouch=0,lastTarget=null,lastVolume=1,mode='none';
+   let resizeFrame=0,resizeLater=0,resizeEnd=0,observer=null;
+   let previousDimensions='';
    const inLandscape=()=>matchMedia('(orientation:landscape)').matches;
+   // Libmedia solo escucha window.resize con un debounce de 500 ms.
+   // Al rotar el diálogo mediante CSS, su ventana NO cambia de dimensiones
+   // como cambia el canvas, de modo que la imagen se quedaba en una esquina.
+   function updatePlayerSize(force=false){
+     const surface=frame.querySelector('.avplayer-ui-player')||frame;
+     const w=Math.round(surface.clientWidth);
+     const h=Math.round(surface.clientHeight);
+     if(!w||!h||!state.player||state.player.getStatus?.()<4)return;
+     const stamp=w+'x'+h;
+     if(!force&&previousDimensions===stamp)return;
+     previousDimensions=stamp;
+     try{Promise.resolve(state.player.resize(w,h)).catch(e=>console.warn('ANTOO PELIS tamaño del video:',e));}
+     catch(e){console.warn('ANTOO PELIS tamaño del video:',e);}
+   }
+   function schedulePlayerSize(){
+     if(resizeFrame)cancelAnimationFrame(resizeFrame);
+     clearTimeout(resizeLater);
+     clearTimeout(resizeEnd);
+     resizeFrame=requestAnimationFrame(()=>{
+       resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;updatePlayerSize(true);});
+     });
+     resizeLater=setTimeout(()=>updatePlayerSize(true),180);
+     resizeEnd=setTimeout(()=>updatePlayerSize(true),630);
+   }
    function setHost(){
      mode='host';
      dialog.classList.add('antoo-avplayer-immersive');
      document.documentElement.classList.add('antoo-avplayer-fullscreen');
      rotate();
+     schedulePlayerSize();
    }
    function rotate(){
      dialog.classList.toggle('antoo-avplayer-rotated',mode==='host'&&!inLandscape());
+     schedulePlayerSize();
    }
    function exitHost(){
      mode='none';
      dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-rotated');
      document.documentElement.classList.remove('antoo-avplayer-fullscreen');
      try{screen.orientation?.unlock?.();}catch{}
+     schedulePlayerSize();
    }
    function toggle(){
      if(document.fullscreenElement||document.webkitFullscreenElement){
@@ -86,7 +115,7 @@
      try{
        // Ejecutar síncronamente con pointerup para conservar la activación.
        Promise.resolve(request.call(frame,{navigationUI:'hide'}))
-         .then(()=>{mode='native';},()=>setHost());
+         .then(()=>{mode='native';schedulePlayerSize();},()=>setHost());
      }catch{setHost();}
    }
    function onTap(e){
@@ -119,28 +148,48 @@
        }catch(err){console.warn('ANTOO PELIS volumen táctil:',err);}
      }
    }
-   const onOrientation=()=>{if(mode==='host')rotate();};
+   const onOrientation=()=>{
+     if(mode==='host')rotate();
+     schedulePlayerSize();
+   };
    const onNative=()=>{
      const active=(document.fullscreenElement||document.webkitFullscreenElement)===frame;
      if(active)mode='native';
      else if(mode==='native')mode='none';
+     schedulePlayerSize();
    };
    frame.addEventListener('pointerup',onTap,true);
    frame.addEventListener('touchend',onTap,{capture:true,passive:false});
    frame.addEventListener('click',onTap,true);
    window.addEventListener('orientationchange',onOrientation);
    window.addEventListener('resize',onOrientation);
+   window.visualViewport?.addEventListener('resize',onOrientation);
    document.addEventListener('fullscreenchange',onNative);
    document.addEventListener('webkitfullscreenchange',onNative);
+   if(typeof ResizeObserver==='function'){
+     observer=new ResizeObserver(schedulePlayerSize);
+     observer.observe(frame);
+     const display=frame.querySelector('.avplayer-ui-player');
+     if(display)observer.observe(display);
+   }
+   schedulePlayerSize();
+   state.requestResize=schedulePlayerSize;
    return ()=>{
-     exitHost();
+     state.requestResize=null;
+     if(resizeFrame)cancelAnimationFrame(resizeFrame);
+     clearTimeout(resizeLater);clearTimeout(resizeEnd);
+     observer?.disconnect();
      frame.removeEventListener('pointerup',onTap,true);
      frame.removeEventListener('touchend',onTap,true);
      frame.removeEventListener('click',onTap,true);
      window.removeEventListener('orientationchange',onOrientation);
      window.removeEventListener('resize',onOrientation);
+     window.visualViewport?.removeEventListener('resize',onOrientation);
      document.removeEventListener('fullscreenchange',onNative);
      document.removeEventListener('webkitfullscreenchange',onNative);
+     dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-rotated');
+     document.documentElement.classList.remove('antoo-avplayer-fullscreen');
+     try{screen.orientation?.unlock?.();}catch{}
    };
  }
  async function start({url,frame,dialog,hint,title}){
@@ -177,7 +226,7 @@
        try{screen.orientation?.unlock?.();}catch{}
      }
    };
-   const state={player,options:null,touchCleanup:null,frame,dialog,fullscreenListener};
+   const state={player,options:null,touchCleanup:null,requestResize:null,frame,dialog,fullscreenListener};
    session=state;
    state.touchCleanup=installTouchFullscreen(state);
    document.addEventListener('fullscreenchange',fullscreenListener);
@@ -189,8 +238,10 @@
      await player.load(url);
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
      state.options?.refresh?.();
+     state.requestResize?.();
      await player.play();
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
+     state.requestResize?.();
      if(hint)hint.textContent='Reproduciendo MKV original con AVPlayer. Idiomas y subtítulos: ⚙ Configuración.';
      return true;
    }catch(err){
