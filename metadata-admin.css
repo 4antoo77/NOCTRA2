@@ -620,3 +620,9 @@ body.noctra-tv #episodes-dialog .noctra-episode-edit:focus-visible{
 @media(prefers-reduced-motion:reduce){
  #episodes-dialog .noctra-season-tab{transition:none}
 }
+
+/* The episode targeted by a shared URL is visible within its season. */
+#episodes-dialog .antoo-episode-linked{
+ outline:2px solid #bda0f5;outline-offset:-2px;
+ border-radius:12px;background:#b795f81d;
+}
