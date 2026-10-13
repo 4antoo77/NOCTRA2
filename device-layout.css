@@ -468,3 +468,16 @@ body.abyss-noctra.noctra-tv #noctra-admin-dialog{width:min(1100px,92vw)}
 @media(prefers-reduced-motion:reduce){
   body.abyss-noctra.noctra-tv *{scroll-behavior:auto!important}
 }
+
+/* Five accessible bottom-navigation actions on phones, including Refresh. */
+@media(max-width:700px){
+ body.abyss-noctra #noctra-app .noctra-mobile-nav{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+ }
+ body.abyss-noctra #noctra-app .antoo-mobile-refresh{
+  min-width:0;touch-action:manipulation;
+ }
+ body.abyss-noctra #noctra-app .antoo-mobile-refresh .noctra-mobile-icon{
+  font-size:24px;line-height:1;
+ }
+}
