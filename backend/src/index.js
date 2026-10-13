@@ -354,11 +354,11 @@ async function metadataStatus(db,env){
     if(!payload.backdrop&&!payload.backdropChecked)backgroundsPending++;
   }
   const episodeRows=(await db.prepare("SELECT file_id AS fileId,series_name AS seriesName,title,path FROM catalog WHERE series_name!=''").all()).results||[];
-  const savedEps=new Set((await episodeMetadataRows(db)).map(x=>x.fileId));
+  const savedEps=new Map((await episodeMetadataRows(db)).map(x=>[x.fileId,x]));
   let episodesPending=0;
   for(const m of episodeRows){
-    const match=metadataMap.get(metadataKey(m));
-    if(match?.tmdb_id&&episodeNumbers(m)&&!savedEps.has(m.fileId))episodesPending++;
+    const match=metadataMap.get(metadataKey(m)),saved=savedEps.get(m.fileId);
+    if(match?.tmdb_id&&episodeNumbers(m)&&(!saved||!saved.episodeTitle))episodesPending++;
   }
   return {configured:!!env.TMDB_READ_ACCESS_TOKEN,...counts,backgroundsPending,episodesPending};
 }
@@ -507,7 +507,8 @@ async function syncEpisodeMetadata(db,env,limit=2){
     const tvId=ids.get(metadataKey(m));if(!tvId)continue;
     const parts=episodeNumbers(m);
     if(!parts||parts.episode<1||parts.episode>500||parts.season<0||parts.season>80)continue;
-    if(saved.has(m.fileId))continue;
+    const previous=saved.get(m.fileId);
+    if(previous?.manual||previous?.episodeTitle)continue;
     const key=tvId+':'+parts.season;
     if(!batches.has(key))batches.set(key,{tvId,season:parts.season,files:[]});
     batches.get(key).files.push({...m,...parts});
@@ -519,18 +520,19 @@ async function syncEpisodeMetadata(db,env,limit=2){
     // TMDB sometimes has no Spanish translation for a specific episode.
     // Fall back to original/English metadata rather than inventing a synopsis.
     let international=null;
-    if((data.episodes||[]).some(x=>!x.overview||!x.name)){
+    if(!(data.episodes||[]).length||(data.episodes||[]).some(x=>!x.overview||!x.name)){
       const alternate=await tmdbGet(env,'tv/'+batch.tvId+'/season/'+batch.season,{language:'en-US'});
       if(!(alternate instanceof Response))international=new Map((alternate.episodes||[]).map(x=>[Number(x.episode_number),x]));
     }
     const episodes=new Map((data.episodes||[]).map(x=>[Number(x.episode_number),x]));
     const stmts=[];
     for(const file of batch.files){
-      const ep=episodes.get(file.episode);
-      if(!ep)continue; // No TMDB entry: retain original filename and retry later.
+      const localized=episodes.get(file.episode);
       const other=international?.get(file.episode);
+      const ep=localized||other;
+      if(!ep)continue; // No TMDB entry: retain original filename and retry later.
       stmts.push(db.prepare(
-        "INSERT INTO episode_metadata(file_id,series_id,season_no,episode_no,title,description,still,manual,updated_at) VALUES(?,?,?,?,?,?,?,0,?) ON CONFLICT(file_id) DO NOTHING"
+        "INSERT INTO episode_metadata(file_id,series_id,season_no,episode_no,title,description,still,manual,updated_at) VALUES(?,?,?,?,?,?,?,0,?) ON CONFLICT(file_id) DO UPDATE SET series_id=excluded.series_id,season_no=excluded.season_no,episode_no=excluded.episode_no,title=excluded.title,description=excluded.description,still=excluded.still,updated_at=excluded.updated_at WHERE episode_metadata.manual=0 AND episode_metadata.title=''"
       ).bind(file.fileId,batch.tvId,file.season,file.episode,
         String(ep.name||other?.name||'').slice(0,150),
         String(ep.overview||other?.overview||'').slice(0,1200),
