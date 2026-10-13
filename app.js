@@ -89,6 +89,13 @@ const noctraSpotlight=(()=>{
            number:Math.floor(Date.UTC(y,m,n)/86400000)};
  };
  const poster=m=>posterURL(m.poster);
+ // TMDB w500 posters are appropriate for thumbnails, not full-screen backdrops.
+ const sharpPoster=m=>{
+   const url=poster(m);
+   return url&&url.startsWith('https://image.tmdb.org/t/p/w500/')?
+     url.replace('/t/p/w500/','/t/p/w780/'):url;
+ };
+ const cinematicBackdrop=m=>posterURL(m.backdrop);
  const movieKey=m=>String(m.fileId||m.id||m.title);
  function stop(){if(interval){clearInterval(interval);interval=null;}}
  function start(){
@@ -122,7 +129,7 @@ const noctraSpotlight=(()=>{
    activeIndex=i;
    visualIndex=chosen.length+i;
    if(autoplay&&before===chosen.length-1&&i===0)visualIndex=chosen.length*2;
-   const m=chosen[i],art=poster(m);
+   const m=chosen[i],art=cinematicBackdrop(m);
    eyebrow.textContent=[m.year,m.genre].filter(Boolean).join(' · ').toUpperCase()||'PELÍCULA DESTACADA';
    title.textContent=m.title;
    description.textContent=m.description?.trim()||'Disponible en tu catálogo. Selecciona Reproducir para disfrutarla.';
@@ -141,7 +148,7 @@ const noctraSpotlight=(()=>{
      btn.setAttribute('aria-label','Destacar '+m.title);
      btn.tabIndex=copy===1?0:-1;
      const art=document.createElement('img');art.alt='';art.loading=copy===1?'eager':'lazy';
-     art.src=poster(m)||'assets/mountain.svg';
+     art.src=sharpPoster(m)||'assets/mountain.svg';
      art.onerror=()=>{art.onerror=null;art.src='assets/mountain.svg';};
      const detail=document.createElement('span');detail.className='abyss-hero-slide-detail';
      const number=document.createElement('small');number.textContent=String(i+1).padStart(2,'0');
@@ -183,7 +190,7 @@ const noctraSpotlight=(()=>{
    // Prefer actual poster art when there are enough posters for a full row.
    const withArt=distinct.filter(poster);
    const eligible=withArt.length>=6?withArt:distinct;
-   const current=day.key+'|'+eligible.map(movieKey).join('|');
+   const current=day.key+'|'+eligible.map(m=>[movieKey(m),m.title,m.poster,m.backdrop,m.description].join('~')).join('|');
    if(signature===current)return;
    signature=current;dayKey=day.key;stop();
    if(!eligible.length){
