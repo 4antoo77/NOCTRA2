@@ -227,7 +227,7 @@
     modal.append(close,head,heading,list);modal.showModal();
   }
   function userbar(){const box=document.createElement('div');box.className='noctra-userbar';const name=document.createElement('button');name.type='button';name.className='antoo-profile-trigger';name.append(avatarNode(me.username),document.createTextNode(me.username));name.onclick=openProfile;box.append(name);if(me.role==='admin'){const b=document.createElement('button');b.textContent='Administrar';b.onclick=()=>openAdmin();box.append(b);}const exit=document.createElement('button');exit.textContent='Salir';exit.onclick=cloudApi.logout;box.append(exit);document.querySelector('.header-right').append(box);}
-  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-carousel-fix33');await script('drive.js?v=20261013-routes29');await script('responsive.js?v=20261012-global-search2');loaded=true;userbar();
+  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-carousel-fix33');await script('drive.js?v=20261013-routes29');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
     document.body.classList.toggle('noctra-admin',me.role==='admin');
     if(me.role!=='admin'){
       document.querySelectorAll('[data-add], #editor, #import, #export, #import-file').forEach(el=>{el.hidden=true;el.disabled=true;});
