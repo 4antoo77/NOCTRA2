@@ -91,3 +91,72 @@ body.noctra-tv.abyss-noctra #frame-container movi-player:fullscreen{
   height:100vh!important;max-height:100vh!important
  }
 }
+
+
+/* Full-viewport takeover: overrides the mobile bottom-sheet rules, including
+   rules that use !important. Movi's ORIGINAL controls stay inside the video. */
+html.noctra-fullscreen-lock,
+html.noctra-fullscreen-lock body{overflow:hidden!important;overscroll-behavior:none!important}
+body.abyss-noctra dialog#player.noctra-fullscreen-host{
+ position:fixed!important;inset:0!important;top:0!important;left:0!important;
+ right:0!important;bottom:0!important;transform:none!important;
+ display:flex!important;flex-direction:column!important;
+ box-sizing:border-box!important;width:100vw!important;max-width:none!important;
+ height:100dvh!important;min-height:100dvh!important;max-height:none!important;
+ padding:0!important;margin:0!important;border:0!important;border-radius:0!important;
+ background:#000!important;overflow:hidden!important;overscroll-behavior:none!important;
+}
+body.abyss-noctra dialog#player.noctra-fullscreen-host .dialog-top,
+body.abyss-noctra dialog#player.noctra-fullscreen-host .player-tools,
+body.abyss-noctra dialog#player.noctra-fullscreen-host > .hint,
+body.abyss-noctra dialog#player.noctra-fullscreen-host > #retry{
+ display:none!important
+}
+body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container{
+ position:relative!important;inset:auto!important;
+ box-sizing:border-box!important;display:block!important;
+ flex:1 1 auto!important;width:100%!important;min-width:0!important;max-width:none!important;
+ height:100%!important;min-height:0!important;max-height:none!important;
+ margin:0!important;padding:0!important;aspect-ratio:auto!important;
+ border:0!important;border-radius:0!important;overflow:hidden!important;background:#000!important;
+}
+body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container movi-player,
+body.abyss-noctra #frame-container:fullscreen movi-player,
+body.abyss-noctra #frame-container:-webkit-full-screen movi-player{
+ display:block!important;box-sizing:border-box!important;
+ width:100%!important;height:100%!important;
+ min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
+ margin:0!important;padding:0!important;object-fit:contain!important;
+}
+body.abyss-noctra #frame-container:fullscreen,
+body.abyss-noctra #frame-container:-webkit-full-screen{
+ box-sizing:border-box!important;position:relative!important;
+ width:100vw!important;height:100dvh!important;
+ max-width:none!important;max-height:none!important;min-height:0!important;
+ margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
+ aspect-ratio:auto!important;background:#000!important;overflow:hidden!important;
+}
+/* When the browser forbids orientation locking while physically portrait,
+   the existing player and its controls rotate together. No new buttons. */
+@media(orientation:portrait){
+ body.abyss-noctra dialog#player.noctra-fullscreen-host.noctra-fullscreen-rotated{
+  position:fixed!important;inset:auto!important;top:50%!important;left:50%!important;
+  right:auto!important;bottom:auto!important;
+  width:100dvh!important;min-width:100dvh!important;max-width:none!important;
+  height:100vw!important;min-height:100vw!important;max-height:none!important;
+  transform:translate(-50%,-50%) rotate(90deg)!important;
+  transform-origin:center center!important;
+  margin:0!important;padding:0!important;overflow:hidden!important;
+ }
+ body.abyss-noctra #frame-container:fullscreen.noctra-native-rotated,
+ body.abyss-noctra #frame-container:-webkit-full-screen.noctra-native-rotated{
+  width:100vw!important;height:100dvh!important;overflow:hidden!important;
+ }
+ body.abyss-noctra #frame-container:fullscreen.noctra-native-rotated movi-player,
+ body.abyss-noctra #frame-container:-webkit-full-screen.noctra-native-rotated movi-player{
+  position:absolute!important;top:50%!important;left:50%!important;
+  width:100dvh!important;height:100vw!important;
+  transform:translate(-50%,-50%) rotate(90deg)!important;
+  transform-origin:center center!important;
+ }
+}
