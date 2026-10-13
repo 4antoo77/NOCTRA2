@@ -30,6 +30,7 @@
    if(!sessionToStop)return;
    sessionToStop.options?.destroy?.();
    sessionToStop.seekControls?.destroy?.();
+   sessionToStop.captions?.destroy?.();
    sessionToStop.controls?.destroy?.();
    sessionToStop.touchCleanup?.();
    document.removeEventListener('fullscreenchange',sessionToStop.fullscreenListener);
@@ -229,7 +230,7 @@
      // Nunca bloquear 'landscape': la pantalla completa sigue al teléfono.
      state.requestResize?.();
    };
-   const state={player,options:null,seekControls:null,controls:null,touchCleanup:null,requestResize:null,frame,dialog,fullscreenListener};
+   const state={player,options:null,seekControls:null,captions:null,controls:null,touchCleanup:null,requestResize:null,frame,dialog,fullscreenListener};
    session=state;
    state.touchCleanup=installTouchFullscreen(state);
    document.addEventListener('fullscreenchange',fullscreenListener);
@@ -252,6 +253,9 @@
      // Reactivar la pista elegida después del inicio para que libmedia
      // dibuje los subtítulos SRT/SSA ya detectados en el MKV.
      state.options?.syncSubtitleAfterStart?.();
+     // Conectarse al renderizador ya creado para mostrar los diálogos como
+     // texto normal si el renderizado ASS de libmedia falla en Safari.
+     state.captions=window.antooAVCaptions?.create?.(player,frame,dialog)||null;
      state.requestResize?.();
      state.controls?.show?.();
      if(hint)hint.textContent='Reproduciendo MKV original con AVPlayer. Idiomas y subtítulos: ⚙ Configuración.';
