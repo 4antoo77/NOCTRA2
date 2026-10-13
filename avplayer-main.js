@@ -54,7 +54,7 @@
  // el navegador no permite requestFullscreen sobre un canvas o div.
  function installTouchFullscreen(state){
    const {frame,dialog}=state;
-   let lastTouch=0,mode='none';
+   let lastTouch=0,lastVolume=1,mode='none';
    const inLandscape=()=>matchMedia('(orientation:landscape)').matches;
    function setHost(){
      mode='host';
@@ -92,7 +92,7 @@
    function onTap(e){
      const target=e.target;
      if(!(target instanceof Element))return;
-     const control=target.closest('.avplayer-ui-control-fullscreen');
+     const control=target.closest('.avplayer-ui-control-fullscreen, .avplayer-ui-control-play, .avplayer-ui-volume-icon');
      if(!control||!frame.contains(control))return;
      if(e.type==='pointerup'&&e.pointerType!=='touch')return;
      if(e.type==='touchend'&&typeof PointerEvent==='function')return;
@@ -102,7 +102,21 @@
      if(e.type==='click')return;
      if(Date.now()-lastTouch<650)return;
      lastTouch=Date.now();
-     toggle();
+     if(control.matches('.avplayer-ui-control-fullscreen')){toggle();return;}
+     if(control.matches('.avplayer-ui-control-play')){
+       try{
+         const status=state.player.getStatus?.();
+         if(status===6)state.player.pause?.();else Promise.resolve(state.player.play?.()).catch(()=>{});
+       }catch(err){console.warn('ANTOO PELIS pausa táctil:',err);}
+       return;
+     }
+     if(control.matches('.avplayer-ui-volume-icon')){
+       try{
+         const volume=Number(state.player.getVolume?.()??1);
+         if(volume>0){lastVolume=volume;state.player.setVolume?.(0);}
+         else state.player.setVolume?.(lastVolume||1);
+       }catch(err){console.warn('ANTOO PELIS volumen táctil:',err);}
+     }
    }
    const onOrientation=()=>{if(mode==='host')rotate();};
    const onNative=()=>{
