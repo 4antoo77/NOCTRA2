@@ -182,7 +182,7 @@
   window.noctraCloud=cloudApi;
   function script(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('No se pudo cargar '+src));document.body.append(s);});}
   function userbar(){const box=document.createElement('div');box.className='noctra-userbar';const name=document.createElement('span');name.className='auth-user';name.textContent=me.username;box.append(name);if(me.role==='admin'){const b=document.createElement('button');b.textContent='Administrar';b.onclick=()=>openAdmin();box.append(b);}const exit=document.createElement('button');exit.textContent='Salir';exit.onclick=cloudApi.logout;box.append(exit);document.querySelector('.header-right').append(box);}
-  async function activate(user){me=user;form.reset();$('noctra-login').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261012-catalog-restore13');await script('drive.js?v=20261012-native-fullscreen16');await script('responsive.js?v=20261012-global-search2');loaded=true;userbar();
+  async function activate(user){me=user;form.reset();$('noctra-login').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261012-catalog-restore13');await script('drive.js?v=20261012-landscape-back17');await script('responsive.js?v=20261012-global-search2');loaded=true;userbar();
     document.body.classList.toggle('noctra-admin',me.role==='admin');
     if(me.role!=='admin'){
       document.querySelectorAll('[data-add], #editor, #import, #export, #import-file').forEach(el=>{el.hidden=true;el.disabled=true;});
