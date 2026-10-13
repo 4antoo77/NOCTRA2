@@ -53,6 +53,7 @@
   }
   document.getElementById('player').addEventListener('close',()=>{
     playRequest++;
+    window.antooAVPlayerMain?.stop?.();
     const qualityRow=$('quality')?.closest('label');
     if(qualityRow)qualityRow.hidden=false;
     if(activePlayer){
@@ -96,6 +97,7 @@
         (typeof m.id==='string'&&m.id.startsWith('gdrive-')?m.id.slice(7):null);
       if(!fileId){if(typeof toast==='function')toast('No se encontró el archivo de Google Drive.');return;}
       const playId=++playRequest;
+      window.antooAVPlayerMain?.stop?.();
       const dialog=$('player'),hint=dialog.querySelector('.hint');
       $('player-title').textContent=m.title;
       $('drive-open').href=m.drive||'https://drive.google.com/file/d/'+encodeURIComponent(fileId)+'/view';
@@ -109,6 +111,28 @@
       $('retry').onclick=()=>cloudApi.play(m);
       try{
         const signed=await request('/api/play/'+encodeURIComponent('gdrive-'+fileId),{method:'POST'});
+        if(playId!==playRequest||!dialog.open)return;
+        // AVPlayer fue verificado con MKV, audio y subtítulos en la prueba.
+        // Si falla al iniciar este título concreto, recuperar Movi Player.
+        if(window.antooAVPlayerMain?.start){
+          if(activePlayer){
+            try{activePlayer.pause?.();activePlayer.removeAttribute('src');activePlayer.remove();}catch{}
+            activePlayer=null;
+          }
+          try{
+            const ready=await window.antooAVPlayerMain.start({
+              url:signed.url,frame:$('frame-container'),dialog,hint,title:m.title
+            });
+            if(playId!==playRequest||!dialog.open)return;
+            if(ready)return;
+            return;
+          }catch(newPlayerError){
+            if(playId!==playRequest||!dialog.open)return;
+            console.warn('ANTOO PELIS: AVPlayer no pudo iniciar, usando reproductor de respaldo.',newPlayerError);
+            hint.textContent='Este archivo no inició con AVPlayer. Probando el reproductor alternativo…';
+            $('frame-container').textContent='Cargando reproductor de respaldo…';
+          }
+        }
         await loadMovi();
         if(playId!==playRequest)return;
         if(activePlayer){
