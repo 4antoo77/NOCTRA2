@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><base href="/"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0911"><meta name="robots" content="noindex"><title>ANTOO PELIS · Prueba AVPlayer</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0b0911;color:#f6f1ff;font:15px/1.5 system-ui,sans-serif}
+main{max-width:1080px;margin:auto;padding:clamp(16px,3vw,30px)}
+h1{font-size:clamp(21px,4vw,30px);margin:12px 0}p{color:#c8bed4}
+a{color:#cdb4ff}label{display:block;margin:18px 0 8px}
+select,button{font:inherit;border-radius:10px;padding:12px;min-height:44px}
+select{display:block;background:#231b32;color:#fff;border:1px solid #786895;width:100%;max-width:800px}
+button{background:#a384ed;color:#100b18;border:0;cursor:pointer;font-weight:700}
+button:disabled{opacity:.6;cursor:progress}
+#screen{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;border:1px solid #57476e;border-radius:12px;margin-top:15px}
+#screen>*{width:100%;height:100%}
+#screen:fullscreen{width:100vw;height:100dvh;aspect-ratio:auto;border:0;border-radius:0}
+#status{color:#d2c1ff;white-space:pre-wrap;overflow-wrap:anywhere}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+@media(max-width:700px){main{padding:14px}#screen{border-radius:0;margin-inline:-14px;width:calc(100% + 28px)}}
+</style></head><body><main>
+<a href="/">← Volver a ANTOO PELIS</a><h1>Prueba de reproductor MKV: libmedia AVPlayer</h1>
+<p>Versión de evaluación. No convierte ni copia archivos de Google Drive. Si no reproduce correctamente, vuelve a ANTOO PELIS; Movi Player sigue intacto. Requiere haber iniciado sesión antes.</p>
+<label for="movie">Película o episodio publicado</label><select id="movie"><option value="">Cargando catálogo…</option></select>
+<div class="controls"><button type="button" id="start">Probar reproducción MKV</button><button type="button" id="full">Pantalla completa</button><button type="button" id="back">Salir del reproductor</button></div>
+<div id="screen" aria-label="Reproductor de prueba"></div><p role="status" id="status">Comprobando sesión…</p>
+<p>Este motor admite archivos Matroska y dispone de una ruta MSE para códecs compatibles. El modo de pantalla completa del sistema depende del navegador y del códec de cada MKV.</p>
+</main><script src="config.js"></script><script type="module">
+const $=id=>document.getElementById(id);
+const root=String(window.NOCTRA2_CONFIG?.API_BASE||'').replace(/\/+$/,'');
+const token=sessionStorage.getItem('noctra2.token')||localStorage.getItem('noctra2.remembered-token')||'';
+const status=message=>{$('status').textContent=message;};
+let catalog=[],player=null;
+async function req(path,options={}){
+ if(!token||!/^https:\/\//.test(root))throw Error('Inicia sesión en la página principal de ANTOO PELIS primero.');
+ const response=await fetch(root+path,{
+   method:options.method||'GET',cache:'no-store',
+   headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}
+ });
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'El servidor devolvió '+response.status);
+ return data;
+}
+async function init(){
+ try{
+   const data=await req('/api/catalog');
+   catalog=Array.isArray(data.movies)?data.movies.filter(x=>x&&x.fileId):[];
+   const select=$('movie');select.replaceChildren();
+   for(const m of catalog){
+     const option=document.createElement('option');
+     option.value=m.fileId;option.textContent=m.seriesName?(m.seriesTitle||m.seriesName)+' · '+(m.episodeTitle||m.title):m.title;
+     select.append(option);
+   }
+   status(catalog.length?'Selecciona un archivo MKV de tu catálogo para probarlo.':'No hay títulos publicados para probar.');
+ }catch(e){status('No se puede cargar el catálogo: '+e.message);}
+}
+$('start').addEventListener('click',async()=>{
+ const id=$('movie').value,button=$('start');
+ if(!id)return status('Selecciona primero una película.');
+ button.disabled=true;status('Preparando el nuevo motor de reproducción…');
+ try{
+   if(player){await Promise.resolve(player.stop?.()).catch(()=>{});player=null;}
+   $('screen').replaceChildren();
+   const signed=await req('/api/play/'+encodeURIComponent('gdrive-'+id),{method:'POST'});
+   if(!signed.url||!/^https:\/\//.test(signed.url))throw Error('El servidor no entregó un enlace de reproducción válido.');
+   const mod=await import('https://cdn.jsdelivr.net/npm/@libmedia/avplayer-ui@1.3.1/+esm');
+   const Constructor=mod.default||mod.AVPlayerUI||mod.AVPlayer;
+   if(typeof Constructor!=='function')throw Error('Esta versión de libmedia no expone el constructor esperado.');
+   const options={
+     container:$('screen'),
+     getWasm:(type,codecId)=>{
+       const wasm='https://cdn.jsdelivr.net/gh/zhaohappy/libmedia@1.3.1/dist/';
+       if(type==='resampler')return wasm+'resample/resample-simd.wasm';
+       if(type==='stretchpitcher')return wasm+'stretchpitch/stretchpitch-simd.wasm';
+       if(type!=='decoder')return;
+       const codecs={86018:'aac',86017:'mp3',86028:'flac',27:'h264',173:'hevc'};
+       const name=codecs[codecId];
+       return name?wasm+'decode/'+name+'-simd.wasm':undefined;
+     }
+   };
+   player=new Constructor(options);
+   await player.load(signed.url);
+   await player.play();
+   status('Prueba iniciada. Comprueba la imagen, audio, subtítulos y pantalla completa.');
+ }catch(e){
+   status('Esta prueba todavía no es compatible con tu dispositivo o con el módulo cargado: '+(e?.message||e)+'.\nEl reproductor habitual de ANTOO PELIS no se modificó.');
+ }finally{button.disabled=false;}
+});
+$('full').addEventListener('click',async()=>{
+ try{
+   const box=$('screen');
+   if(document.fullscreenElement){await document.exitFullscreen();return;}
+   if(box.requestFullscreen){await box.requestFullscreen({navigationUI:'hide'});try{await screen.orientation?.lock?.('landscape');}catch{}return;}
+   const video=box.querySelector('video');
+   if(video?.webkitEnterFullscreen){video.webkitEnterFullscreen();return;}
+   status('El navegador no permite pantalla completa nativa con este contenido.');
+ }catch(e){status('Pantalla completa no disponible: '+e.message);}
+});
+$('back').addEventListener('click',async()=>{
+ try{if(document.fullscreenElement)await document.exitFullscreen();screen.orientation?.unlock?.();}catch{}
+ try{await player?.stop?.();}catch{}
+ player=null;$('screen').replaceChildren();status('Reproductor detenido.');
+});
+init();
+</script></body></html>
