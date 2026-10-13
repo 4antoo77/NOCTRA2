@@ -134,8 +134,16 @@ const noctraSpotlight=(()=>{
    title.textContent=m.title;
    description.textContent=m.description?.trim()||'Disponible en tu catálogo. Selecciona Reproducir para disfrutarla.';
    counter.textContent=String(i+1).padStart(2,'0')+' / '+String(chosen.length).padStart(2,'0');
-   if(art){backdrop.hidden=false;if(backdrop.src!==art)backdrop.src=art;}
-   else{backdrop.removeAttribute('src');backdrop.hidden=true;}
+   if(art){
+     if(art.startsWith('https://image.tmdb.org/t/p/original/')){
+       const root=art.replace('/t/p/original/','/t/p/');
+       backdrop.srcset=root+'w780/ 780w, '+root+'w1280/ 1280w, '+art+' 1920w';
+       backdrop.sizes='100vw';
+     }else{backdrop.removeAttribute('srcset');backdrop.removeAttribute('sizes');}
+     backdrop.hidden=false;if(backdrop.src!==art)backdrop.src=art;
+   }else{
+     backdrop.removeAttribute('src');backdrop.removeAttribute('srcset');backdrop.hidden=true;
+   }
    applyVisual(autoplay||before!==i);
  }
  function buildTrack(){
