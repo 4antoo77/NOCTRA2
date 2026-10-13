@@ -1,28 +1,45 @@
-# Metadatos TMDB en NOCTRA2
+# Metadatos automáticos para todas las películas y series — NOCTRA2
 
-La edición **manual** de portadas, títulos, sinopsis, géneros y año funciona desde **Administrar → Metadatos** con la API de catálogo existente. No requiere migrar D1 ni editar archivos de Google Drive.
+## Funcionamiento
 
-La búsqueda **automática** utiliza los endpoints `/api/admin/metadata/search` y `/api/admin/metadata/details` del Worker; solo las cuentas con rol administrador pueden consultarlos.
+**No es necesario buscar película por película.** Al configurar TMDB, NOCTRA2 recorrerá el catálogo publicado e intentará completar automáticamente, de forma progresiva:
 
-## Activar la búsqueda automática
+- Portada, sinopsis, género, año y título de película.
+- Título visible, portada, sinopsis, género y año de series (sin modificar carpetas ni nombres de episodios).
+- Puntuación y duración cuando TMDB disponga de esos datos.
 
-1. Crea o abre tu cuenta de [TMDB](https://www.themoviedb.org/settings/api) y obtén el **API Read Access Token** (Bearer Token), no una contraseña de usuario.
-2. Abre una terminal en la carpeta `backend` del repositorio y ejecuta:
+El proceso se inicia al abrir NOCTRA2 como administrador y después de **Publicar catálogo**. El Worker también continúa procesando hasta **5 títulos únicos cada 5 minutos** mediante un cron, incluso con el navegador cerrado. Si hay muchos archivos, completarlos todos puede llevar tiempo.
 
-   ```bash
-   npm install
-   npx wrangler login
-   npx wrangler secret put TMDB_READ_ACCESS_TOKEN
-   npx wrangler deploy
-   ```
+**Seguridad y coincidencias:** Se usan títulos limpiados de los nombres de archivo, el año (si está presente), los títulos originales y las coincidencias exactas. Si hay varias versiones posibles o no se encuentra una coincidencia segura, la ficha queda marcada como **Por revisar**. Nunca se asignan metadatos arbitrarios para completar el 100 %.
 
-   El comando `secret put` pide el token de manera interactiva. **No pegues el token en GitHub, en código ni en mensajes.**
+## Única configuración necesaria
 
-3. Inicia sesión como administrador en NOCTRA2, abre **Administrar → Metadatos**, selecciona una película o serie y pulsa **Autocompletar** (coincidencia exacta) o **Buscar y elegir** (resultados disponibles).
-4. Revisa y pulsa **Guardar ficha**. Los cambios se publican para todos, sin mover ni modificar los videos de Drive.
+1. Obtén el **API Read Access Token** de [TMDB](https://www.themoviedb.org/settings/api).
+2. Ve al panel Cloudflare → Workers & Pages → **noctra2-api** → Settings → Variables and Secrets.
+3. Crea un secreto, no una variable de texto ordinaria, con nombre exacto `TMDB_READ_ACCESS_TOKEN` y valor igual al token. No publiques ni compartas este valor.
+4. **Despliega una vez el Worker actualizado del repositorio**, para que se activen los endpoints automáticos y el cron. Desde la carpeta `backend`:
 
-**Importante:** Si no has desplegado el Worker actualizado o falta el secreto de TMDB, la búsqueda automática indicará que no está disponible. La edición manual continuará funcionando.
+```powershell
+npm install
+npx wrangler login
+npx wrangler deploy
+```
 
-En NOCTRA2 se usan los siguientes datos persistentes del catálogo: título de película, sinopsis, portada, año y género. En series se conserva el título de cada episodio y se aplica portada/sinopsis/género/año a sus entradas.
+*Si ya habías desplegado el código actualizado, no necesitas repetir el despliegue al cambiar únicamente el secreto.*
 
-Los datos e imágenes provienen de [The Movie Database (TMDB)](https://www.themoviedb.org). This product uses the TMDB API but is not endorsed or certified by TMDB. Consulta sus [normas de atribución](https://www.themoviedb.org/about/logos-attribution).
+No hay que ejecutar migraciones D1 separadas: el Worker crea automáticamente la tabla de seguimiento `metadata_match` al iniciar el proceso.
+
+## Cómo revisar un resultado incorrecto o ausente
+
+1. Entra en NOCTRA2 con la cuenta administradora.
+2. Abre **Administrar → Metadatos de películas y series**. Verás un resumen: completados, pendientes y por revisar.
+3. Puedes marcar **Mostrar solo títulos que necesitan revisión** o buscar un título concreto en la lista.
+4. Si hay una coincidencia incorrecta, pulsa **Buscar y elegir** para seleccionar la ficha correcta de TMDB, o edita manualmente.
+5. Pulsa **Guardar ficha**. La elección se marca como manual y el procesamiento automático no la sobrescribe.
+6. Si lo deseas, **Volver a buscar este título** libera la elección para reintentar el proceso.
+
+Al sincronizar Google Drive o republicar el catálogo, se mantienen los metadatos ya aplicados y las elecciones manuales. Las películas siguen reproduciéndose mediante Movi Player, sin alterar el contenido de Drive.
+
+## TMDB
+
+Metadatos de [The Movie Database](https://www.themoviedb.org). This product uses the TMDB API but is not endorsed or certified by TMDB. Respeta las condiciones y requisitos de atribución de TMDB.
