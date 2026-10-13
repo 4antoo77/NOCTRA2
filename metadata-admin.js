@@ -111,7 +111,7 @@ function mount(target,api,request){
  const save=el('button','primary','Guardar corrección manual');save.type='submit';
  const pic=el('img','noctra-meta-art');pic.alt='Vista previa';pic.hidden=true;
  pic.onerror=()=>pic.hidden=true;
- poster.addEventListener('input',()=>{const v=https(poster.value.trim());pic.hidden=!v;if(v)pic.src=v;});
+ poster.addEventListener('input',()=>{const v=https(poster.value.trim());pic.hidden=!v;if(v)pic.src=window.antooPosterHD?.(v)||v;});
  const seriesNote=el('small','admin-note','Para una serie, la ficha se comparte entre episodios sin cambiar sus títulos.');
  form.append(label('Título',title),label('Género',genre),label('Año',year),label('Sinopsis',description),label('Portada (URL HTTPS)',poster),pic,seriesNote,save);
  const credit=el('p','admin-note','Metadatos de TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.');
@@ -198,7 +198,7 @@ function mount(target,api,request){
    results.replaceChildren();results.hidden=!matches.length;
    for(const m of matches){
      const button=el('button','noctra-meta-result');button.type='button';
-     if(m.poster){const image=el('img');image.alt='';image.loading='lazy';image.src=m.poster;button.append(image);}
+     if(m.poster){const image=el('img');image.alt='';image.loading='lazy';image.src=window.antooPosterHD?.(m.poster)||m.poster;button.append(image);}
      const detail=el('span');
      detail.append(el('strong','',m.title),el('small','',(m.year||'Sin año')+' · Elegir esta ficha'));
      button.append(detail);button.onclick=()=>pick(m);results.append(button);
