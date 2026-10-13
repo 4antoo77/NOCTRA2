@@ -263,3 +263,114 @@ body.abyss-noctra .hero img.abyss-hero-backdrop.noctra-poster-fallback{
   right:-10%;width:min(88vw,440px);opacity:.27
  }
 }
+
+/* Bigger immersive TV-series browser, split into clear season tabs. */
+body.abyss-noctra dialog#episodes-dialog.noctra-seasons-dialog{
+ box-sizing:border-box;
+ width:min(1080px,calc(100vw - 38px))!important;
+ max-width:calc(100vw - 38px)!important;
+ height:min(86dvh,900px);
+ max-height:calc(100dvh - 28px)!important;
+ border:1px solid #ffffff36;border-radius:22px;
+ padding:clamp(18px,2.4vw,30px);
+ background:linear-gradient(150deg,#22232d,#15161e 70%);
+ box-shadow:0 28px 90px #000c;
+ overflow:hidden;
+}
+body.abyss-noctra dialog#episodes-dialog.noctra-seasons-dialog[open]{
+ display:flex;flex-direction:column;gap:0;
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-series-dialog-head{
+ margin:0 0 18px;flex:0 0 auto
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-series-dialog-head h2{
+ font-size:clamp(23px,2.5vw,36px);line-height:1.2;margin:5px 0
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-series-overview{
+ flex:0 0 auto;padding-bottom:15px;margin-bottom:13px;
+ max-height:min(210px,26vh);overflow-y:auto
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-series-overview img{
+ width:112px;max-width:22%;max-height:170px;flex-shrink:0
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-series-overview p{
+ font-size:clamp(12px,1.2vw,14px);line-height:1.55
+}
+#episodes-dialog .noctra-season-heading{
+ display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:8px;margin-bottom:11px;flex:0 0 auto
+}
+#episodes-dialog .noctra-season-heading h3{
+ font-size:clamp(16px,1.7vw,21px);font-weight:750;margin:0
+}
+#episodes-dialog .noctra-season-heading>span{
+ color:#b8b6c9;font-size:12px;font-weight:600
+}
+#episodes-dialog .noctra-season-tabs{
+ display:flex;flex:0 0 auto;gap:9px;
+ max-width:100%;overflow-x:auto;scrollbar-width:thin;
+ padding:2px 2px 12px;scroll-snap-type:x proximity
+}
+#episodes-dialog .noctra-season-tab{
+ scroll-snap-align:start;flex:0 0 auto;
+ min-height:43px;padding:10px 16px;border-radius:11px;
+ color:#dddbe8;background:#ffffff0c;
+ border:1px solid #ffffff30;
+ font-weight:700;font-size:13px;font-family:inherit;
+ cursor:pointer;transition:background .15s,border-color .15s
+}
+#episodes-dialog .noctra-season-tab:hover{background:#ffffff24}
+#episodes-dialog .noctra-season-tab.is-current{
+ color:#171821;background:#eeeaf7;border-color:#eeeaf7
+}
+#episodes-dialog .noctra-season-tab:focus-visible{
+ outline:2px solid #cbb9ff;outline-offset:2px
+}
+#episodes-dialog .noctra-season-current{
+ flex:0 0 auto;font-size:13px;font-weight:700;
+ color:#b6afc8;margin:5px 0 12px;
+ border-bottom:1px solid #ffffff22;padding-bottom:12px
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-episode-catalog{
+ flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+ padding:2px 9px 10px 2px;
+ scrollbar-color:#74717e #22232d;align-content:start
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-episode-entry{
+ min-height:107px
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-episode-still{
+ width:164px;height:94px
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-episode-text strong{
+ font-size:clamp(14px,1.3vw,16px)
+}
+#episodes-dialog.noctra-seasons-dialog .noctra-episode-text p{
+ font-size:13px;-webkit-line-clamp:4
+}
+@media(max-width:700px){
+ body.abyss-noctra dialog#episodes-dialog.noctra-seasons-dialog{
+  width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;
+  height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)!important;
+  padding:17px 14px;border-radius:16px
+ }
+ #episodes-dialog.noctra-seasons-dialog .noctra-series-dialog-head{margin-bottom:10px}
+ #episodes-dialog.noctra-seasons-dialog .noctra-series-overview{
+  max-height:150px;padding-bottom:10px;margin-bottom:10px
+ }
+ #episodes-dialog.noctra-seasons-dialog .noctra-series-overview img{width:70px;max-height:110px}
+ #episodes-dialog .noctra-season-tab{min-height:44px;padding:10px 12px;font-size:12px}
+ #episodes-dialog.noctra-seasons-dialog .noctra-episode-entry{min-height:84px}
+ #episodes-dialog.noctra-seasons-dialog .noctra-episode-still{width:103px;height:64px}
+ #episodes-dialog.noctra-seasons-dialog .noctra-episode-text p{
+  font-size:12px;-webkit-line-clamp:2
+ }
+}
+@media(min-width:1400px){
+ body.abyss-noctra dialog#episodes-dialog.noctra-seasons-dialog{width:min(1160px,calc(100vw - 60px))!important}
+}
+/* Sharp carousel art: avoid inadvertent blur from parent styling. */
+body.abyss-noctra .abyss-hero-slide img,
+body.abyss-noctra .hero .abyss-hero-backdrop{
+ filter:none!important;image-rendering:auto
+}
