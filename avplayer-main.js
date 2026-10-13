@@ -231,7 +231,7 @@
    };
    return true;
  }
- async function start({url,frame,dialog,hint,title,resumeAt=0,media=null}){
+ async function start({url,frame,dialog,hint,title,resumeAt=0,media=null,startupRetry=0}){
    if(!/^https:\/\//.test(String(url)))throw Error('El enlace de reproducción no es válido.');
    if(!frame||!dialog)throw Error('No existe el contenedor del reproductor.');
    await stop();
@@ -299,10 +299,41 @@
      // Conectar el respaldo ANTES de play para no perder el primer diálogo.
      // El módulo espera a que libmedia cree subtitleRender durante play.
      state.captions=window.antooAVCaptions?.create?.(player,frame,dialog)||null;
-     // Pedir de forma explícita la inicialización del renderizador
-     // integrado de subtítulos del MKV, además del audio y el video.
+     // Registrar el primer cuadro antes de play. En móviles el progreso se
+     // aplica solo después de que el video haya dibujado, para no dejar el canvas negro.
+     const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+       ||(navigator.maxTouchPoints>1&&matchMedia('(pointer:coarse)').matches);
+     let firstFramePromise=null;
+     if(isPhone&&typeof player.one==='function'){
+       firstFramePromise=new Promise(resolve=>player.one('firstVideoRendered',resolve));
+     }
+     // Pedir explícitamente audio, video y subtítulos del MKV.
      await player.play({audio:true,video:true,subtitle:true});
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
+     if(isPhone&&player.isSuspended?.()){
+       try{await player.resume?.();}catch(err){console.warn('ANTOO PELIS: el navegador no reactivó el audio:',err);}
+       if(player.isSuspended?.()&&hint)hint.textContent='El teléfono pausó el audio. Toca reproducir para activarlo.';
+     }
+     // Si el primer intento no dibuja ningún cuadro, reiniciar AVPlayer una vez
+     // automáticamente. Es el mismo reinicio manual que antes necesitaba el usuario.
+     if(firstFramePromise){
+       let timeoutId=0;
+       const rendered=await Promise.race([
+         firstFramePromise.then(()=>true),
+         new Promise(resolve=>{timeoutId=setTimeout(()=>resolve(false),7000);})
+       ]);
+       clearTimeout(timeoutId);
+       if(request!==serial||!dialog.open){if(session===state)stop();return false;}
+       if(!rendered){
+         if(startupRetry<1){
+           if(hint)hint.textContent='El video tardó en iniciar. Reiniciando AVPlayer…';
+           await stop();
+           if(!dialog.open)return false;
+           return start({url,frame,dialog,hint,title,resumeAt,media,startupRetry:startupRetry+1});
+         }
+         throw Error('AVPlayer no pudo mostrar el video después de dos intentos.');
+       }
+     }
      // El renderizador interno se crea durante play, no en load.
      const resumeMilliseconds=Math.max(0,Number(resumeAt)||0)*1000;
      if(Number.isFinite(resumeMilliseconds)&&resumeMilliseconds>0){
