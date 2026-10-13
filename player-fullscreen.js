@@ -14,7 +14,7 @@
      (/Macintosh/i.test(ua)&&navigator.maxTouchPoints>1);
  };
  let playing=null,hostMode=false,usingNative=false;
- let fullscreenAttempt=0;
+ let fullscreenAttempt=0,autoLandscape=false;
  let returnToInfo=null,returnAfterClose=null;
  // Set by the movie/series selection before playback begins.
  function setReturnInfo(callback){returnToInfo=typeof callback==='function'?callback:null;}
@@ -95,6 +95,26 @@
      }).catch(()=>{if(attempt===fullscreenAttempt)fallback();});
    }else fallback();
  }
+ function isLandscape(){return window.matchMedia?.('(orientation: landscape)')?.matches || window.innerWidth>window.innerHeight;}
+ function syncRotation(){
+   if(!playing||!dialog.open)return;
+   if(isLandscape()){
+     // Orientation events have no user activation: native requestFullscreen()
+     // would be rejected. Use a fullscreen-sized modal player instead.
+     if(!hostMode&&!ourNativeFullscreen()){
+       autoLandscape=true;
+       fallback();
+     }
+   }else if(autoLandscape){
+     autoLandscape=false;
+     if(hostMode&&!usingNative){
+       clearHost();unlockLandscape();
+       try{playing?.setHostFullscreen?.(false);}catch{}
+     }
+   }
+ }
+ window.addEventListener('orientationchange',syncRotation);
+ window.addEventListener('resize',syncRotation);
  function goBack(event,player){
    if(playing!==player)return;
    event?.preventDefault?.();
@@ -110,7 +130,9 @@
  function attach(player){
    if(!player||player.tagName!=='MOVI-PLAYER')return;
    playing=player;
+   autoLandscape=false;
    clearHost();unlockLandscape();
+   syncRotation();
    player.setAttribute('showtitle','');
    player.setAttribute('titlemode','both back');
    player.addEventListener('back',event=>goBack(event,player));
@@ -131,7 +153,7 @@
    // landscape orientation lock during the user-initiated fullscreen action.
    // If the browser refuses, fill the available viewport without rotating UI.
    player.addEventListener('movi-fullscreen-request',event=>{
-     if(!isIOS()&&!/Android|Mobile/i.test(navigator.userAgent))return;
+     if(!isIOS())return;
      if(playing!==player||!event.cancelable)return;
      event.preventDefault();requestHostFullscreen();
    });
@@ -149,6 +171,7 @@
  dialog.addEventListener('close',()=>{
    const current=playing;
    playing=null;
+   autoLandscape=false;
    endFullscreen();
    try{current?.setHostFullscreen?.(false);}catch{}
    const back=returnAfterClose||returnToInfo;
