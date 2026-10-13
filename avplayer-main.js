@@ -33,7 +33,7 @@
    document.removeEventListener('fullscreenchange',sessionToStop.fullscreenListener);
    document.removeEventListener('webkitfullscreenchange',sessionToStop.fullscreenListener);
    document.documentElement.classList.remove('antoo-avplayer-fullscreen');
-   sessionToStop.dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-rotated');
+   sessionToStop.dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-landscape','antoo-avplayer-portrait');
    try{
      if((document.fullscreenElement||document.webkitFullscreenElement)===sessionToStop.frame)
        Promise.resolve(document.exitFullscreen?.()||document.webkitExitFullscreen?.()).catch(()=>{});
@@ -58,9 +58,10 @@
    let resizeFrame=0,resizeLater=0,resizeEnd=0,observer=null;
    let previousDimensions='';
    const inLandscape=()=>matchMedia('(orientation:landscape)').matches;
-   // Libmedia solo escucha window.resize con un debounce de 500 ms.
-   // Al rotar el diálogo mediante CSS, su ventana NO cambia de dimensiones
-   // como cambia el canvas, de modo que la imagen se quedaba en una esquina.
+   // El video no se gira con CSS. Solo se adapta al espacio real disponible
+   // según el sensor/orientación comunicada por el navegador.
+   // Libmedia escucha resize con retraso; actualizamos su canvas al cambiar
+   // el tamaño efectivo del contenedor.
    function updatePlayerSize(force=false){
      const surface=frame.querySelector('.avplayer-ui-player')||frame;
      const w=Math.round(surface.clientWidth);
@@ -77,28 +78,29 @@
      clearTimeout(resizeLater);
      clearTimeout(resizeEnd);
      resizeFrame=requestAnimationFrame(()=>{
-       resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;updatePlayerSize(true);});
+       resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;updatePlayerSize();});
      });
-     resizeLater=setTimeout(()=>updatePlayerSize(true),180);
-     resizeEnd=setTimeout(()=>updatePlayerSize(true),630);
+     resizeLater=setTimeout(()=>updatePlayerSize(),180);
+     resizeEnd=setTimeout(()=>updatePlayerSize(),630);
+   }
+   function syncOrientation(){
+     const fullscreen=mode==='host'||mode==='native';
+     const landscape=inLandscape();
+     dialog.classList.toggle('antoo-avplayer-landscape',fullscreen&&landscape);
+     dialog.classList.toggle('antoo-avplayer-portrait',fullscreen&&!landscape);
+     schedulePlayerSize();
    }
    function setHost(){
      mode='host';
      dialog.classList.add('antoo-avplayer-immersive');
      document.documentElement.classList.add('antoo-avplayer-fullscreen');
-     rotate();
-     schedulePlayerSize();
-   }
-   function rotate(){
-     dialog.classList.toggle('antoo-avplayer-rotated',mode==='host'&&!inLandscape());
-     schedulePlayerSize();
+     syncOrientation();
    }
    function exitHost(){
      mode='none';
-     dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-rotated');
+     dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-landscape','antoo-avplayer-portrait');
      document.documentElement.classList.remove('antoo-avplayer-fullscreen');
-     try{screen.orientation?.unlock?.();}catch{}
-     schedulePlayerSize();
+     syncOrientation();
    }
    function toggle(){
      if(document.fullscreenElement||document.webkitFullscreenElement){
@@ -115,7 +117,7 @@
      try{
        // Ejecutar síncronamente con pointerup para conservar la activación.
        Promise.resolve(request.call(frame,{navigationUI:'hide'}))
-         .then(()=>{mode='native';schedulePlayerSize();},()=>setHost());
+         .then(()=>{mode='native';syncOrientation();},()=>setHost());
      }catch{setHost();}
    }
    function onTap(e){
@@ -148,15 +150,12 @@
        }catch(err){console.warn('ANTOO PELIS volumen táctil:',err);}
      }
    }
-   const onOrientation=()=>{
-     if(mode==='host')rotate();
-     schedulePlayerSize();
-   };
+   const onOrientation=()=>syncOrientation();
    const onNative=()=>{
      const active=(document.fullscreenElement||document.webkitFullscreenElement)===frame;
      if(active)mode='native';
      else if(mode==='native')mode='none';
-     schedulePlayerSize();
+     syncOrientation();
    };
    frame.addEventListener('pointerup',onTap,true);
    frame.addEventListener('touchend',onTap,{capture:true,passive:false});
@@ -187,9 +186,8 @@
      window.visualViewport?.removeEventListener('resize',onOrientation);
      document.removeEventListener('fullscreenchange',onNative);
      document.removeEventListener('webkitfullscreenchange',onNative);
-     dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-rotated');
+     dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-landscape','antoo-avplayer-portrait');
      document.documentElement.classList.remove('antoo-avplayer-fullscreen');
-     try{screen.orientation?.unlock?.();}catch{}
    };
  }
  async function start({url,frame,dialog,hint,title}){
@@ -217,14 +215,9 @@
    }
    const fullscreenListener=()=>{
      const active=(document.fullscreenElement||document.webkitFullscreenElement)===frame;
-     if(active){
-       document.documentElement.classList.add('antoo-avplayer-fullscreen');
-       if(typeof screen.orientation?.lock==='function')
-         Promise.resolve(screen.orientation.lock('landscape')).catch(()=>{});
-     }else{
-       document.documentElement.classList.remove('antoo-avplayer-fullscreen');
-       try{screen.orientation?.unlock?.();}catch{}
-     }
+     document.documentElement.classList.toggle('antoo-avplayer-fullscreen',active);
+     // Nunca bloquear 'landscape': la pantalla completa sigue al teléfono.
+     state.requestResize?.();
    };
    const state={player,options:null,touchCleanup:null,requestResize:null,frame,dialog,fullscreenListener};
    session=state;
