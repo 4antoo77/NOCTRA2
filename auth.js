@@ -150,7 +150,7 @@
         el.setAttribute('persist','volume speed audiolang subtitlelang');
         el.setAttribute('persistkey','noctra2-cine');
         el.setAttribute('resumekey','noctra2-'+fileId);
-        el.setAttribute('title',m.title||'NOCTRA2');
+        el.setAttribute('title',m.title||'ANTOO PELIS');
         el.setAttribute('showtitle','');el.setAttribute('titlemode','both back');
         el.style.cssText='display:block;width:100%;height:100%;min-height:230px;background:#000';
         el.addEventListener('loadedmetadata',()=>{
@@ -256,7 +256,7 @@
     modal.append(close,head,heading,list);modal.showModal();
   }
   function userbar(){const box=document.createElement('div');box.className='noctra-userbar';const name=document.createElement('button');name.type='button';name.className='antoo-profile-trigger';name.append(avatarNode(me.username),document.createTextNode(me.username));name.onclick=openProfile;box.append(name);if(me.role==='admin'){const b=document.createElement('button');b.textContent='Administrar';b.onclick=()=>openAdmin();box.append(b);}const exit=document.createElement('button');exit.textContent='Salir';exit.onclick=cloudApi.logout;box.append(exit);document.querySelector('.header-right').append(box);}
-  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-watch-progress1');await script('drive.js?v=20261013-watch-progress1');await script('watch-state.js?v=20261013-continue-watch1');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
+  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-antoo-brand1');await script('drive.js?v=20261013-antoo-brand1');await script('watch-state.js?v=20261013-continue-watch1');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
     document.body.classList.toggle('noctra-admin',me.role==='admin');
     if(me.role!=='admin'){
       document.querySelectorAll('[data-add], #editor, #import, #export, #import-file').forEach(el=>{el.hidden=true;el.disabled=true;});
@@ -268,7 +268,7 @@
       const panel=document.querySelector('.drive-panel');if(panel)panel.hidden=true;
     }
     try{await cloudApi.reloadCatalog();}
-    catch(e){console.warn('NOCTRA2 catalog read failed:',e);}
+    catch(e){console.warn('ANTOO PELIS catalog read failed:',e);}
     await window.noctraWatchState?.syncFromServer?.();
     // Automatic TMDB processing starts on admin login; no per-title clicks.
     if(me.role==='admin')void window.noctraMetadataAdmin?.autoStart?.(cloudApi,request);
@@ -280,7 +280,7 @@
     if(me?.role!=='admin')return;
     let d=$('noctra-admin-dialog');if(!d){d=document.createElement('dialog');d.id='noctra-admin-dialog';d.innerHTML=`
       <div class="admin-shell-head">
-        <div><p class="eyebrow purple">NOCTRA2 · CENTRO DE CONTROL</p><h2>Administración</h2><p class="admin-shell-subtitle">Gestiona usuarios, catálogo y actividad desde un solo lugar.</p></div>
+        <div><p class="eyebrow purple">ANTOO PELIS · CENTRO DE CONTROL</p><h2>Administración</h2><p class="admin-shell-subtitle">Gestiona usuarios, catálogo y actividad desde un solo lugar.</p></div>
         <button class="close" type="button" aria-label="Cerrar">×</button>
       </div>
       <nav class="admin-nav" aria-label="Secciones de administración">
@@ -309,7 +309,7 @@
       <section class="admin-panel" data-admin-panel="settings" hidden>
         <div class="admin-panel-heading"><div><h3>Ajustes de la página</h3><p>Herramientas generales disponibles para la cuenta administradora.</p></div></div>
         <div id="admin-settings-slot"></div>
-      </section>`;document.body.append(d);setupAdminNav(d);d.querySelector('.close').onclick=()=>d.close();d.querySelector('#new-user-form').onsubmit=async e=>{e.preventDefault();const er=$('admin-error');er.textContent='';try{await request('/api/admin/users',{method:'POST',body:{username:$('new-username').value.trim(),password:$('new-password').value}});e.target.reset();er.textContent='Usuario creado.';await listUsers();}catch(ex){er.textContent=ex.message;}};d.querySelector('#publish-scan').onclick=async()=>{const er=$('admin-catalog-error');er.textContent='';const local=typeof movies!=='undefined'?movies:[];const scanned=window.noctraScanLibrary||[];const all=[...cloud,...local,...scanned];if(!all.length){er.textContent='Primero conecta Drive o importa un catálogo.';return;}if(!confirm('¿Publicar '+all.length+' entradas de catálogo compartido? Las cuentas podrán ver sus títulos.'))return;try{const r=await request('/api/admin/catalog',{method:'PUT',body:{movies:all}});await cloudApi.reloadCatalog();void window.noctraMetadataAdmin?.autoStart?.(cloudApi,request);er.textContent=r.count+' archivos publicados. NOCTRA2 completará sus metadatos automáticamente.';}catch(ex){er.textContent=ex.message;}};d.querySelector('#refresh-cloud').onclick=()=>cloudApi.reloadCatalog().catch(e=>$('admin-catalog-error').textContent=e.message);d.querySelector('#cloud-json').onchange=async e=>{const er=$('admin-catalog-error');try{const f=e.target.files[0];if(!f)return;if(f.size>1000000)throw Error('El catálogo es demasiado grande.');const j=JSON.parse(await f.text());const a=Array.isArray(j)?j:j.movies;if(!Array.isArray(a))throw Error('JSON incorrecto.');if(!confirm('¿Sustituir el catálogo compartido por '+a.length+' películas?'))return;const r=await request('/api/admin/catalog',{method:'PUT',body:{movies:a}});await cloudApi.reloadCatalog();void window.noctraMetadataAdmin?.autoStart?.(cloudApi,request);er.textContent=r.count+' películas importadas. Se buscarán sus metadatos automáticamente.';}catch(ex){er.textContent=ex.message;}finally{e.target.value='';}};}
+      </section>`;document.body.append(d);setupAdminNav(d);d.querySelector('.close').onclick=()=>d.close();d.querySelector('#new-user-form').onsubmit=async e=>{e.preventDefault();const er=$('admin-error');er.textContent='';try{await request('/api/admin/users',{method:'POST',body:{username:$('new-username').value.trim(),password:$('new-password').value}});e.target.reset();er.textContent='Usuario creado.';await listUsers();}catch(ex){er.textContent=ex.message;}};d.querySelector('#publish-scan').onclick=async()=>{const er=$('admin-catalog-error');er.textContent='';const local=typeof movies!=='undefined'?movies:[];const scanned=window.noctraScanLibrary||[];const all=[...cloud,...local,...scanned];if(!all.length){er.textContent='Primero conecta Drive o importa un catálogo.';return;}if(!confirm('¿Publicar '+all.length+' entradas de catálogo compartido? Las cuentas podrán ver sus títulos.'))return;try{const r=await request('/api/admin/catalog',{method:'PUT',body:{movies:all}});await cloudApi.reloadCatalog();void window.noctraMetadataAdmin?.autoStart?.(cloudApi,request);er.textContent=r.count+' archivos publicados. ANTOO PELIS completará sus metadatos automáticamente.';}catch(ex){er.textContent=ex.message;}};d.querySelector('#refresh-cloud').onclick=()=>cloudApi.reloadCatalog().catch(e=>$('admin-catalog-error').textContent=e.message);d.querySelector('#cloud-json').onchange=async e=>{const er=$('admin-catalog-error');try{const f=e.target.files[0];if(!f)return;if(f.size>1000000)throw Error('El catálogo es demasiado grande.');const j=JSON.parse(await f.text());const a=Array.isArray(j)?j:j.movies;if(!Array.isArray(a))throw Error('JSON incorrecto.');if(!confirm('¿Sustituir el catálogo compartido por '+a.length+' películas?'))return;const r=await request('/api/admin/catalog',{method:'PUT',body:{movies:a}});await cloudApi.reloadCatalog();void window.noctraMetadataAdmin?.autoStart?.(cloudApi,request);er.textContent=r.count+' películas importadas. Se buscarán sus metadatos automáticamente.';}catch(ex){er.textContent=ex.message;}finally{e.target.value='';}};}
     window.noctraDriveAdmin?.mount(d.querySelector('#admin-drive-slot'));
     window.noctraMetadataAdmin?.mount(d.querySelector('#admin-metadata-slot'),cloudApi,request);
     const localSettings=$('settings-dialog')?.querySelector('.settings-section:first-of-type');

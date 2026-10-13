@@ -1,9 +1,9 @@
-# NOCTRA2 — GitHub Pages + cuentas privadas
+# ANTOO PELIS — GitHub Pages + cuentas privadas
 
-Proyecto listo para configurar y publicar (NO publicado todavía).
+Sitio de películas y series ANTOO PELIS, publicado con GitHub Pages y conectado a Cloudflare.
 
 **¿Qué hace?**
-- GitHub Pages aloja el diseño de NOCTRA2 para teléfono, tableta y PC.
+- GitHub Pages aloja el diseño de ANTOO PELIS para teléfono, tableta y PC.
 - Cloudflare Worker valida el usuario y la contraseña, sin correos para tus amigos.
 - D1 guarda usuarios y catálogo compartido. Las contraseñas se derivan con PBKDF2 con sal, y las sesiones se comprueban del lado del servidor.
 - El administrador puede crear usuarios, desactivarlos, cambiar contraseñas y publicar un catálogo compartido.
@@ -13,10 +13,10 @@ Proyecto listo para configurar y publicar (NO publicado todavía).
 
 ## 1 — Crear GitHub Pages (gratis)
 
-1. Crea un repositorio **público** llamado `NOCTRA2` en https://github.com/new .
-2. Abre la carpeta `site` del ZIP y sube **el contenido** (no la carpeta externa `NOCTRA2_GitHub`) a la raíz del repositorio. Asegúrate de que `index.html`, `app.js`, `drive.js`, `auth.js`, `style.css`, `responsive.css`, `auth.css`, `config.js` y `assets/` queden en la raíz.
+1. Crea un repositorio **público** llamado `antoo-pelis` en https://github.com/new .
+2. Abre la carpeta `site` del ZIP y sube **el contenido** (no la carpeta externa del ZIP) a la raíz del repositorio. Asegúrate de que `index.html`, `app.js`, `drive.js`, `auth.js`, `style.css`, `responsive.css`, `auth.css`, `config.js` y `assets/` queden en la raíz.
 3. En GitHub → `Settings` → `Pages` → `Build and deployment` → `Deploy from a branch` → rama `main`, carpeta `/ (root)` → `Save`.
-4. Tu dirección será `https://TUUSUARIO.github.io/NOCTRA2/`. **Al principio mostrará un aviso de configuración**; es normal.
+4. Tu dirección será `https://TUUSUARIO.github.io/antoo-pelis/`. **Al principio mostrará un aviso de configuración**; es normal.
 
 ## 2 — Configurar el Worker de autenticación y D1 (Cloudflare gratis con límites)
 
@@ -32,7 +32,7 @@ npx wrangler d1 create noctra2-db
 
 El último comando mostrará un `database_id` UUID. Abre `backend/wrangler.toml` y sustituye:
 - `REEMPLAZAR_UUID_D1` por el UUID que te dio Cloudflare.
-- `https://CAMBIA-TU-USUARIO.github.io` por el **origen real** de GitHub Pages, por ejemplo `https://ana.github.io` **sin** `/NOCTRA2` y sin barra final.
+- `https://CAMBIA-TU-USUARIO.github.io` por el **origen real** de GitHub Pages, por ejemplo `https://ana.github.io` sin la ruta del repositorio y sin barra final.
 
 Luego en PowerShell:
 
@@ -51,11 +51,11 @@ Para `BOOTSTRAP_SECRET`, escribe o pega una clave aleatoria larga (mínimo 24 ca
 
 Abre el archivo `site/config.js` y reemplaza el URL de prueba `https://TU-WORKER.workers.dev` por la URL **exacta** de tu Worker, sin barra final. Sube el cambio al repositorio de GitHub; GitHub Pages lo publicará.
 
-Abre NOCTRA2. Si es la primera vez, aparece el formulario **Crear administrador**: escribe el código de inicialización que guardaste en Cloudflare, el usuario administrador (ej. `administrador`) y una contraseña de al menos 12 caracteres. A partir de ahí, inicia sesión.
+Abre ANTOO PELIS. Si es la primera vez, aparece el formulario **Crear administrador**: escribe el código de inicialización que guardaste en Cloudflare, el usuario administrador (ej. `administrador`) y una contraseña de al menos 12 caracteres. A partir de ahí, inicia sesión.
 
 ## 4 — Crear las cuentas de tus amigos
 
-Desde NOCTRA2, entra con el administrador y presiona **Administrar**.
+Desde ANTOO PELIS, entra con el administrador y presiona **Administrar**.
 - En «Crear cuenta» introduce `amigo1`, una contraseña segura y pulsa `Crear usuario`.
 - Repite con tus otros amigos.
 - Puedes desactivar o cambiar las contraseñas sin añadir correos.
@@ -98,7 +98,7 @@ Google Drive puede imponer límites de uso y solicitudes. La reproducción de ar
 - GitHub advierte que Pages no está diseñado para realizar transacciones sensibles. Para un lanzamiento más robusto, aloja la **pantalla de inicio de sesión** bajo el mismo dominio que tu API en Cloudflare, de forma que las contraseñas no se introduzcan en una página estática pública. La API de este proyecto sí procesa las credenciales en Cloudflare y nunca en GitHub.
 
 Archivos importantes:
-- `site/`: interfaz NOCTRA2 para GitHub Pages.
+- `site/`: interfaz ANTOO PELIS para GitHub Pages.
 - `backend/src/index.js`: API de usuarios, catálogo y streaming.
 - `backend/migrations/0001_init.sql`: tablas D1.
 - `backend/wrangler.toml`: variables públicas y configuración de D1 (los secretos se gestionan con `wrangler secret put`).

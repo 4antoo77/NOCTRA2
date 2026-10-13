@@ -1,4 +1,4 @@
-/* NOCTRA: Google OAuth runs in the visitor browser; no credentials in source. */
+/* ANTOO PELIS: Google OAuth runs in the visitor browser; no credentials in source. */
 (() => {
  'use strict';
  const ROOT='', FOLDER='application/vnd.google-apps.folder';
@@ -97,7 +97,7 @@
  }
  const episodeEditDialog=document.createElement('dialog');
  episodeEditDialog.id='noctra-episode-edit';
- episodeEditDialog.innerHTML='<div class="dialog-top"><div><p class="eyebrow purple">NOCTRA2 · EPISODIO</p><h2>Editar nombre y sinopsis</h2></div><button class="close" type="button" aria-label="Cerrar">×</button></div>'+
+ episodeEditDialog.innerHTML='<div class="dialog-top"><div><p class="eyebrow purple">ANTOO PELIS · EPISODIO</p><h2>Editar nombre y sinopsis</h2></div><button class="close" type="button" aria-label="Cerrar">×</button></div>'+
  '<form class="noctra-episode-edit-form"><label>Nombre del episodio<input name="title" maxlength="150" required></label><label>Sinopsis<textarea name="description" maxlength="1200" rows="5"></textarea></label><p class="hint">Esta corrección se conservará al actualizar Google Drive.</p><p id="noctra-episode-edit-error" role="alert"></p><div class="button-row"><button class="primary" type="submit">Guardar episodio</button><button type="button" class="secondary" id="noctra-episode-cancel">Cancelar</button></div></form>';
  document.body.append(episodeEditDialog);
  episodeEditDialog.querySelector('.close').onclick=()=>episodeEditDialog.close();
@@ -178,7 +178,7 @@
    const labelFor=key=>key==='unknown'?'Sin temporada':Number(key)===0?'Especiales':'Temporada '+Number(key);
    episodeDialog.classList.add('noctra-seasons-dialog');
    episodeDialog.innerHTML='<div class="dialog-top noctra-series-dialog-head"><div>'+
-     '<p class="eyebrow purple">NOCTRA2 · SERIES</p><h2>'+esc(displayName)+'</h2></div>'+
+     '<p class="eyebrow purple">ANTOO PELIS · SERIES</p><h2>'+esc(displayName)+'</h2></div>'+
      '<button class="close" type="button" aria-label="Cerrar">×</button></div>'+
      '<div class="noctra-series-overview">'+(poster?'<img src="'+esc(poster)+'" alt="" loading="lazy">':'')+
      '<div>'+(meta?'<p class="noctra-series-meta">'+meta+'</p>':'')+
@@ -291,7 +291,7 @@
     $('#frame-container').textContent=reason||'No se pudo reproducir este archivo. Comprueba el formato y la conexión.';
     $('#quality').innerHTML='<option>Reproducción no disponible</option>';
     $('#quality').disabled=true;
-    $('#player .hint').textContent='NOCTRA2 utiliza Movi Player, sin vista previa de Google Drive.';
+    $('#player .hint').textContent='ANTOO PELIS utiliza Movi Player, sin vista previa de Google Drive.';
   }
  async function playDirect(m){
  const fileId=m.fileId||(typeof driveId==='function'?driveId(m.drive):null);
