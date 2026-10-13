@@ -57,7 +57,8 @@
  }
  function create(player,frame,dialog){
    if(!player||!frame||!dialog)return {destroy(){},status(){return 'Motor no disponible'}};
-   let disposed=false,hook=null,rendered=0,lastEnd=0,mode='native',external=null;
+   let disposed=false,hook=null,decoderHook=null,rendered=0,decoded=0,lastEnd=0,mode='native',external=null;
+   let nativeCues=[];
    const overlay=document.createElement('div');
    overlay.className='antoo-av-captions-mirror';
    overlay.setAttribute('aria-live','off');
@@ -98,12 +99,69 @@
      if(subtitle!==overlay.textContent||!!subtitle===overlay.hidden)
        subtitle?show(subtitle):hide();
    }
+   // Capturar subtítulos desde la SALIDA del decodificador, no desde AssRender.
+   // SubRip/SSA con duración nula o tiempos desfasados se decodifican pero el
+   // planificador de libmedia puede descartarlos antes de dibujarlos.
+   function onDecoded(sub){
+     if(disposed||mode!=='native')return;
+     const now=clock();
+     const pts=Number(sub?.pts)/1000;
+     const duration=Number(sub?.duration)/1000;
+     const start=Number.isFinite(pts)&&pts>=0?pts:now;
+     const end=start+(Number.isFinite(duration)&&duration>.04?Math.min(duration,90):4);
+     if(!Number.isFinite(start)||!Number.isFinite(end))return;
+     const formats=player.subtitleRender?.formats||[];
+     for(const rect of sub?.rects||[]){
+       let raw=String(rect?.text||'');
+       if(/^Dialogue\s*:/i.test(raw)){
+         const fields=raw.replace(/^Dialogue\s*:\s*/i,'').split(',');
+         const at=formats.findIndex(x=>String(x).toLowerCase()==='text');
+         raw=at>=0?fields.slice(at).join(','):fields.slice(Math.min(9,fields.length-1)).join(',');
+       }
+       const subtitle=clean(raw);
+       if(!subtitle)continue;
+       decoded++;
+       if(!nativeCues.some(c=>Math.abs(c.start-start)<.04&&c.text===subtitle))
+         nativeCues.push({start,end,text:subtitle});
+     }
+     if(Number.isFinite(now))nativeCues=nativeCues.filter(c=>c.end>=now-6).slice(-150);
+   }
+   function unhookDecoder(){
+     if(decoderHook&&decoderHook.decoder?.options?.onReceiveSubtitle===decoderHook.wrapped)
+       decoderHook.decoder.options.onReceiveSubtitle=decoderHook.original;
+     decoderHook=null;
+   }
+   function installDecoderHook(){
+     const decoder=player.subtitleRender?.decoder;
+     if(!decoder||typeof decoder.options?.onReceiveSubtitle!=='function')return;
+     if(decoderHook?.decoder===decoder)return;
+     unhookDecoder();
+     const original=decoder.options.onReceiveSubtitle;
+     const wrapped=function(sub){
+       const ret=original.call(this,sub);
+       try{onDecoded(sub);}catch(e){console.warn('ANTOO subtítulos recibidos:',e);}
+       return ret;
+     };
+     decoder.options.onReceiveSubtitle=wrapped;
+     decoderHook={decoder,original,wrapped};
+   }
+   function displayDecoded(){
+     const t=clock();if(!Number.isFinite(t))return;
+     nativeCues=nativeCues.filter(c=>c.end>=t-5);
+     const active=nativeCues.filter(c=>t>=c.start-.15&&t<c.end);
+     if(active.length){
+       const txt=active.slice(-2).map(c=>c.text).join('\n');
+       lastEnd=Math.max(lastEnd,...active.map(c=>c.end));
+       if(overlay.hidden||overlay.textContent!==txt)show(txt);
+     }
+     else if(!overlay.hidden&&lastEnd>0&&(t>lastEnd+.15||t<lastEnd-20))hide();
+   }
    function install(){
      if(disposed)return;
      mount();
      const renderer=player.subtitleRender?.render;
      if(!renderer||typeof renderer.render!=='function')return;
-     if(hook?.renderer===renderer)return;
+     if(hook?.renderer===renderer){installDecoderHook();return;}
      unhook();
      const original=renderer.render;
      const replacement=function(event){
@@ -128,29 +186,28 @@
      };
      renderer.render=replacement;
      hook={renderer,original,replacement};
+     installDecoderHook();
    }
    function unhook(){
      if(hook?.renderer?.render===hook.replacement)hook.renderer.render=hook.original;
      hook=null;
+     unhookDecoder();
    }
    const interval=setInterval(()=>{
      if(disposed)return;
      install();
      if(mode==='external'){pollExternal();return;}
      if(mode!=='native'){hide();return;}
-     if(!overlay.hidden){
-       const t=clock();
-       if(Number.isFinite(t)&&lastEnd>0&&(t>lastEnd+.1||t<lastEnd-20))hide();
-     }
+     displayDecoded();
    },100);
    install();
    const instance={
-     clear(){lastEnd=0;hide();},
+     clear(){lastEnd=0;nativeCues=[];hide();},
      useNative(){
-       external=null;mode='native';lastEnd=0;hide();
+       external=null;mode='native';lastEnd=0;nativeCues=[];hide();
      },
      setEnabled(on){
-       if(!on){mode='off';hide();frame.classList.remove('antoo-av-captions-mirrored');}
+       if(!on){mode='off';nativeCues=[];hide();frame.classList.remove('antoo-av-captions-mirrored');}
        else{mode=external?'external':'native';hide();if(external)pollExternal();}
      },
      async loadFile(file){
@@ -174,8 +231,13 @@
        const sr=player.subtitleRender;
        if(!sr)return 'No se inició el decodificador de subtítulos del MKV.';
        if(!sr.render)return 'Hay una pista, pero no se creó el renderizador de texto.';
-       return rendered?'Se recibieron '+rendered+' diálogos del MKV.':
-         'Pista preparada; esperando diálogos del MKV.';
+       if(decoded)return 'Decodificados '+decoded+' subtítulos del MKV; visibles sin depender de ASS.';
+       if(rendered)return 'Renderizados '+rendered+' diálogos del MKV.';
+       const hasPort=Boolean(sr.currentPort);
+       const q=Array.isArray(sr.queue)?sr.queue.length:'?';
+       return hasPort
+         ?'Decodificador conectado, sin diálogos recibidos (cola: '+q+', fin: '+!!sr.ended+').'
+         :'Pista seleccionada, esperando conexión de subtítulos del MKV.';
      },
      destroy(){
        disposed=true;clearInterval(interval);unhook();
