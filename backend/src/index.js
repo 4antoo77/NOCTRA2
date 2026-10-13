@@ -87,7 +87,7 @@ if(v.password!==undefined){if(!passValid(v.password))return fail('La contraseña
 const itemId=(u)=>{const m=/\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u);const o=/[?&]id=([A-Za-z0-9_-]{10,})/.exec(u);return m?.[1]||o?.[1]||'';};
 function validateMovie(x){if(!x ||typeof x.title!=='string'||x.title.length<1||x.title.length>150)return null;const f=x.fileId||x.file_id||itemId(x.drive||'');if(!/^[a-zA-Z0-9_-]{10,150}$/.test(f))return null;const obj={id:'gdrive-'+f,title:x.title.trim(),genre:String(x.genre||'Otros').slice(0,50),year:String(x.year||'').slice(0,8),description:String(x.description||'').slice(0,750),poster:String(x.poster||'').slice(0,1000),fileId:f,seriesName:String(x.seriesName||x.series_name||'').slice(0,180),path:String(x.path||'').slice(0,500),height:Number(x.height)||0,size:Number(x.size)||0};if(obj.poster&&!/^https:\/\//i.test(obj.poster))obj.poster='';return obj;}
 const metadataKey=m=>m.seriesName?'tv:'+m.seriesName.toLocaleLowerCase('es').trim():'movie:'+m.fileId;
-const METADATA_MATCH_VERSION=2;
+const METADATA_MATCH_VERSION=3;
 // Review items found by an older matcher can automatically be retried once
 // after an improved matching algorithm is deployed.
 function staleMetadataReview(row){
@@ -258,9 +258,19 @@ function metadataQuery(title){
   return {name:clean||source.trim(),year};
 }
 function metadataNorm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+const METADATA_TV_ALIASES=new Map([
+  ['invencible',['invincible']],
+  ['invincible',['invencible']]
+]);
+function metadataTitleNames(source,type){
+  const norm=metadataNorm(source);
+  const aliases=type==='tv'?(METADATA_TV_ALIASES.get(norm)||[]):[];
+  return new Set([norm,...aliases.map(metadataNorm)].filter(Boolean));
+}
 
 function metadataYear(x,type){return String((type==='tv'?x.first_air_date:x.release_date)||'').slice(0,4);}
 function metadataMatch(source,year,type,results){
+  const acceptedNames=metadataTitleNames(source,type);
   const norm=metadataNorm(source);
   if(norm.length<3)return null;
   const scored=new Map();
@@ -272,7 +282,7 @@ function metadataMatch(source,year,type,results){
     // The filename year is a strong disambiguator.
     if(year&&release&&Math.abs(Number(year)-Number(release))>1)continue;
     let confidence=0;
-    if(names.includes(norm))confidence=100;
+    if(names.some(name=>acceptedNames.has(name)))confidence=100;
     else if(names.some(n=>n.split(' ').sort().join(' ')===norm.split(' ').sort().join(' ')))confidence=94;
     // Localized files can include an extra translated subtitle after the official
     // title. Accept a clear prefix ONLY when the release year matches exactly.
@@ -373,9 +383,19 @@ async function metadataSweep(db,env,limit=5){
     let state='review',payload={},tmdbId=null;
     try{
       const query=metadataQuery(item.name);
-      const search=await tmdbGet(env,'search/'+item.type,{query:query.name,include_adult:'false',page:1});
-      if(search instanceof Response)throw Error('TMDB unavailable');
-      let result=metadataMatch(query.name,item.year||query.year,item.type,(search.results||[]).slice(0,20));
+      const titleAliases=item.type==='tv'?(METADATA_TV_ALIASES.get(metadataNorm(query.name))||[]):[];
+      const searchTerms=[
+        {query:query.name,language:'es-ES'},
+        {query:query.name,language:'en-US'},
+        ...titleAliases.map(name=>({query:name,language:'en-US'}))
+      ];
+      const searches=await Promise.all(searchTerms.map(params=>
+        tmdbGet(env,'search/'+item.type,{...params,include_adult:'false',page:1})
+      ));
+      const successfulSearches=searches.filter(search=>!(search instanceof Response));
+      if(!successfulSearches.length)throw Error('TMDB unavailable');
+      const searchResults=successfulSearches.flatMap(search=>search.results||[]);
+      let result=metadataMatch(query.name,item.year||query.year,item.type,searchResults.slice(0,80));
       // If the localized title with its subtitle fails, try its main name.
       // Avoid guessing: each candidate still needs an exact-title or
       // matching-year unambiguous name check.
@@ -383,10 +403,14 @@ async function metadataSweep(db,env,limit=5){
         const words=query.name.split(' ');
         const shorter=words.slice(0,words.length-2).join(' ');
         if(shorter.length>=8){
-          const fallback=await tmdbGet(env,'search/'+item.type,{query:shorter,include_adult:'false',page:1});
-          if(!(fallback instanceof Response)){
-            const combined=[...(search.results||[]),...(fallback.results||[])].slice(0,40);
-            result=metadataMatch(query.name,item.year||query.year,item.type,combined);
+          const fallbackSearches=await Promise.all(['es-ES','en-US'].map(language=>
+            tmdbGet(env,'search/'+item.type,{query:shorter,language,include_adult:'false',page:1})
+          ));
+          const fallbackResults=fallbackSearches
+            .filter(search=>!(search instanceof Response))
+            .flatMap(search=>search.results||[]);
+          if(fallbackResults.length){
+            result=metadataMatch(query.name,item.year||query.year,item.type,[...searchResults,...fallbackResults].slice(0,100));
           }
         }
       }
