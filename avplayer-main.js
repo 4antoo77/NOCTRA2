@@ -248,6 +248,10 @@
      // integrado de subtítulos del MKV, además del audio y el video.
      await player.play({audio:true,video:true,subtitle:true});
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
+     // El renderizador interno se crea durante play, no en load.
+     // Reactivar la pista elegida después del inicio para que libmedia
+     // dibuje los subtítulos SRT/SSA ya detectados en el MKV.
+     state.options?.syncSubtitleAfterStart?.();
      state.requestResize?.();
      state.controls?.show?.();
      if(hint)hint.textContent='Reproduciendo MKV original con AVPlayer. Idiomas y subtítulos: ⚙ Configuración.';
