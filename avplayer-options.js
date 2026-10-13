@@ -216,6 +216,10 @@
          :supportedCount===0
            ?'Los subtítulos integrados parecen ser gráficos (por ejemplo PGS). Este reproductor solo decodifica subtítulos de texto; puedes cargar un SRT o VTT externo.'
            :'Selecciona la pista de texto deseada. Si la película no tiene diálogo subtitulado en ese momento, espera a que aparezca.';
+       const renderStatus=window.antooAVCaptions?.status?.(player);
+       if(renderStatus&&sets.subtitle.length){
+         subHelp.textContent+=' Estado del motor: '+renderStatus;
+       }
      }
      populate(video,sets.video,player.getSelectedVideoStreamId?.(),'Video no disponible');
      if(sets.video.length===1){
