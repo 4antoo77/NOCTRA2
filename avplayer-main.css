@@ -105,7 +105,7 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:-webkit-f
 
 /* AVPlayer: acciones táctiles compactas. Nunca ocultar el engranaje ni
    la pantalla completa; audio/subtítulos/velocidad van en Configuración. */
-@media (max-width:700px){
+@media (max-width:700px), (hover:none) and (pointer:coarse){
  body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer{
   box-sizing:border-box!important;width:100%!important;max-width:100%!important;
   padding-left:6px!important;padding-right:6px!important;
