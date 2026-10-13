@@ -32,7 +32,8 @@ body.abyss-noctra #frame-container movi-player{
 body.abyss-noctra dialog#player.noctra-video-portrait:not(.noctra-player-theater) #frame-container{
  box-sizing:border-box;
  aspect-ratio:9/16!important;
- width:min(100%,calc(68dvh * 9 / 16))!important;
+ width:min(100%,38vh)!important;
+ width:min(100%,38dvh)!important;
  max-width:100%!important;height:auto!important;
  min-height:0!important;max-height:68dvh!important;
  margin-inline:auto;
@@ -141,5 +142,15 @@ body.noctra-tv #player .noctra-player-actions button:focus-visible{
  body.abyss-noctra dialog#player.noctra-player-theater *,
  body.abyss-noctra #player .noctra-player-actions *{
   transition:none!important;
+ }
+}
+
+/* Fallback when dynamic viewport units are not available. */
+@supports not (height:100dvh){
+ body.abyss-noctra dialog#player.noctra-player-theater{
+  height:100vh!important;max-height:100vh!important
+ }
+ body.abyss-noctra dialog#player.noctra-video-portrait:not(.noctra-player-theater) #frame-container{
+  max-height:68vh!important
  }
 }
