@@ -211,3 +211,55 @@ body.abyss-noctra dialog#player.antoo-avplayer-immersive #frame-container{
   padding-right:env(safe-area-inset-bottom,0px)!important;
  }
 }
+
+/* Rotación / fullscreen: el contenedor real de AVPlayer debe ocupar siempre
+   el área que el navegador asigna al reproductor. Los estilos de la ficha
+   de películas no pueden imponer el alto del modo vertical. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container>.avplayer-ui-container,
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container>#avplayer-ui-container{
+ position:absolute!important;inset:0!important;
+ box-sizing:border-box!important;
+ display:block!important;width:100%!important;height:100%!important;
+ min-width:0!important;min-height:0!important;
+ max-width:none!important;max-height:none!important;
+ overflow:hidden!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player{
+ position:absolute!important;inset:0!important;
+ width:100%!important;height:100%!important;
+ min-height:0!important;max-height:none!important;
+}
+/* Mayor especificidad que las antiguas reglas del diálogo móvil. */
+body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive #frame-container,
+body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive[open] #frame-container{
+ position:relative!important;inset:auto!important;
+ flex:1 1 100%!important;box-sizing:border-box!important;
+ display:block!important;width:100%!important;height:100%!important;
+ min-width:0!important;min-height:0!important;
+ max-width:none!important;max-height:none!important;
+ aspect-ratio:auto!important;overflow:hidden!important;
+ margin:0!important;border:0!important;border-radius:0!important;
+}
+/* Fullscreen auténtico, horizontal y vertical: elimina las restricciones de
+   230px y 72dvh usadas por la ficha de información. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:fullscreen,
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:-webkit-full-screen{
+ position:fixed!important;inset:0!important;
+ display:block!important;box-sizing:border-box!important;
+ width:100vw!important;height:100dvh!important;
+ min-width:0!important;min-height:0!important;
+ max-width:none!important;max-height:none!important;
+ padding:0!important;margin:0!important;
+ aspect-ratio:auto!important;border:0!important;border-radius:0!important;
+ background:#000!important;overflow:hidden!important;
+}
+/* Tanto la pantalla completa nativa como la simulada mantienen la
+   barra de progreso y controles pegados al borde inferior. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer{
+ position:absolute!important;left:0!important;right:0!important;bottom:0!important;
+ width:100%!important;max-width:100%!important;
+ box-sizing:border-box!important;z-index:5!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-control{
+ box-sizing:border-box!important;max-width:100%!important;
+}
