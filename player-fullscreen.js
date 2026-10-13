@@ -14,47 +14,6 @@
  let player=null,mode='none',requestId=0,rotationId=0,locked=false;
  let suppressAuto=false,returnToInfo=null,returnAfterClose=null;
  function setReturnInfo(fn){returnToInfo=typeof fn==='function'?fn:null;}
- function backToInfo(){
-   returnAfterClose=returnToInfo;
-   try{player?.exitFullscreen?.();}catch{}
-   try{Promise.resolve(document.exitFullscreen?.()||document.webkitExitFullscreen?.()).catch(()=>{});}catch{}
-   if(dlg.open)dlg.close();
- }
- let backHideTimer=0;
- function fullscreenActive(){
-   return mode!=='none'||ourFullscreen()||dlg.classList.contains('noctra-fullscreen-host')
-     ||dlg.classList.contains('antoo-avplayer-immersive');
- }
- function wakeBackButton(){
-   const button=frame.querySelector(':scope > .antoo-player-back');
-   if(!button)return;
-   clearTimeout(backHideTimer);
-   button.classList.remove('antoo-player-back-hidden');
-   if(!dlg.open||!fullscreenActive())return;
-   backHideTimer=setTimeout(()=>{
-     if(button.isConnected&&fullscreenActive())button.classList.add('antoo-player-back-hidden');
-   },2600);
- }
- function mountBackButton(){
-   let button=frame.querySelector(':scope > .antoo-player-back');
-   if(!button){
-     button=document.createElement('button');
-     button.type='button';button.className='antoo-player-back';
-     button.setAttribute('aria-label','Regresar a la información');
-     button.innerHTML='<span aria-hidden="true">‹</span><span>Regresar</span>';
-     button.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();backToInfo();});
-     frame.append(button);
-   }
-   wakeBackButton();
-   return button;
- }
- frame.addEventListener('pointerdown',wakeBackButton,true);
- frame.addEventListener('touchstart',wakeBackButton,{capture:true,passive:true});
- frame.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')wakeBackButton();},{passive:true});
- document.addEventListener('fullscreenchange',wakeBackButton);
- document.addEventListener('webkitfullscreenchange',wakeBackButton);
- new MutationObserver(wakeBackButton).observe(dlg,{attributes:true,attributeFilter:['class']});
- const onFullscreen=()=>mode!=='none';
  function unlock(){
    ++rotationId;locked=false;
    try{screen.orientation?.unlock?.();}catch{}
@@ -142,7 +101,7 @@
  function attach(instance){
    if(!instance||instance.tagName!=='MOVI-PLAYER')return;
    reset({exitNative:true});
-   player=instance;suppressAuto=false;mountBackButton();
+   player=instance;suppressAuto=false;
    instance.setAttribute('showtitle','');
    instance.setAttribute('titlemode','both back');
    instance.addEventListener('back',e=>goBack(e,instance));
@@ -195,5 +154,5 @@
      suppressAuto=landscape();reset({exitNative:true});
    }else goBack(e,player);
  },true);
- window.noctraPlayerFullscreen={attach,setReturnInfo,mountBackButton,backToInfo};
+ window.noctraPlayerFullscreen={attach,setReturnInfo};
 })();
