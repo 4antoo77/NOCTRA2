@@ -21,7 +21,7 @@
  }
  function rotateFallback(){
    const portrait=!landscape();
-   dlg.classList.toggle('antoo-fs-rotated',mode==='manual'&&portrait&&ios);
+   dlg.classList.toggle('antoo-fs-rotated',mode==='manual'&&portrait&&mobile);
    frame.classList.toggle('antoo-fs-native-rotated',mode==='native'&&portrait&&mobile&&!locked);
  }
  function lockOrientation(){
