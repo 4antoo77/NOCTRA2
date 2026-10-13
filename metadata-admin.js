@@ -9,10 +9,10 @@ const clean=s=>String(s||'').replace(/\.(mkv|mp4|avi|mov|webm|m4v|ts)$/i,'').rep
 function mount(target,api,request){
  if(!target||api?.user?.role!=='admin')return;
  if(target.firstChild){target.noctraRefresh?.();return;}
- const box=el('div','noctra-meta-editor'),msg=el('p','admin-note','NOCTRA2 busca los metadatos automáticamente. Aquí solo corriges coincidencias incorrectas o títulos pendientes.');
+ const box=el('div','noctra-meta-editor'),msg=el('p','admin-note','NOCTRA2 completa las fichas automáticamente. Selecciona una película únicamente si necesitas corregirla.');
  const progress=el('div','noctra-meta-progress','Comprobando metadatos automáticos…');
- const retryBtn=el('button','secondary','Volver a buscar este título');retryBtn.type='button';
- const syncBtn=el('button','secondary','Comprobar ahora');syncBtn.type='button';
+ const retryBtn=el('button','secondary','Reintentar detección');retryBtn.type='button';
+ const syncBtn=el('button','secondary','Actualizar pendientes');syncBtn.type='button';
  const label=(text,child)=>{const node=el('label','',text);node.append(child);return node;};
  const picker=el('select');picker.id='metadata-item';picker.hidden=true;picker.tabIndex=-1;
  // Custom list instead of the Windows native popup, which rendered white-on-white.
@@ -95,12 +95,12 @@ function mount(target,api,request){
  const onlyReview=el('input');onlyReview.type='checkbox';onlyReview.style.width='auto';
  const reviewLabel=label('Mostrar solo títulos que necesitan revisión',onlyReview);
  reviewLabel.classList.add('noctra-meta-review-switch');
- const query=el('input');query.type='search';query.placeholder='Título para buscar en TMDB';query.maxLength=120;
+ const query=el('input');query.type='search';query.placeholder='Nombre original, otro idioma o enlace de TMDB';query.maxLength=180;
  const tools=el('div','button-row');
- const searchBtn=el('button','secondary','Buscar y elegir');
+ const searchBtn=el('button','primary','Buscar en TMDB');
  const autoBtn=el('button','secondary','Autocompletar');
  for(const b of [searchBtn,autoBtn])b.type='button';
- tools.append(searchBtn,autoBtn,retryBtn,syncBtn);
+ tools.append(searchBtn,retryBtn,syncBtn);
  const results=el('div','noctra-meta-results');results.hidden=true;
  const form=el('form','noctra-meta-form');
  const title=el('input');title.maxLength=150;title.required=true;
@@ -108,7 +108,7 @@ function mount(target,api,request){
  const genre=el('select');for(const value of TYPES)genre.add(new Option(value,value));
  const description=el('textarea');description.rows=4;description.maxLength=750;
  const poster=el('input');poster.type='url';poster.placeholder='https://...';
- const save=el('button','primary','Guardar ficha');save.type='submit';
+ const save=el('button','primary','Guardar corrección manual');save.type='submit';
  const pic=el('img','noctra-meta-art');pic.alt='Vista previa';pic.hidden=true;
  pic.onerror=()=>pic.hidden=true;
  poster.addEventListener('input',()=>{const v=https(poster.value.trim());pic.hidden=!v;if(v)pic.src=v;});
@@ -118,7 +118,11 @@ function mount(target,api,request){
  const tmdb=document.createElement('a');tmdb.href='https://www.themoviedb.org';tmdb.target='_blank';tmdb.rel='noopener';tmdb.textContent='The Movie Database';
  const logo=document.createElement('img');logo.alt='TMDB';logo.width=44;logo.style.cssText='width:44px;height:auto;vertical-align:middle;margin-right:8px';logo.src='https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_1-5bdc75aaebeb75dc7ae79426ddd9be3b2be1e342510f8202baf6bffa71d7f5c4.svg';
  credit.prepend(logo,tmdb,document.createTextNode(' — '));
- box.append(msg,progress,label('Buscar en el catálogo',filter),reviewLabel,pickerField,label('Buscar título en TMDB',query),tools,results,form,credit);
+ const advanced=el('details','noctra-meta-advanced');
+ const advancedTitle=el('summary','','Editar campos manualmente');
+ advanced.append(advancedTitle,form);
+ box.append(msg,progress,label('Filtrar mis películas y series',filter),reviewLabel,pickerField,
+   label('Buscar ficha por nombre o enlace de TMDB',query),tools,results,advanced,credit);
  target.append(box);
  let items=[],current=null,lastTmdb=null;
  function status(s){msg.textContent=s;}
@@ -148,7 +152,7 @@ function mount(target,api,request){
  function changed(){
    current=items.find(x=>x.key===picker.value);
    if(!current)return;
-   const m=current.movie;lastTmdb={tmdbId:m.tmdbId||null,rating:m.rating||0,duration:m.duration||0};
+   const m=current.movie;lastTmdb={tmdbId:m.tmdbId||null,rating:m.rating||0,duration:m.duration||0,backdrop:m.backdrop||''};
    title.value=m.seriesTitle||current.name;title.readOnly=false;
    genre.value=TYPES.includes(m.genre)?m.genre:'Otros';
    year.value=m.year||'';description.value=m.description||'';poster.value=m.poster||'';
@@ -169,14 +173,25 @@ function mount(target,api,request){
    try{
      const data=await request('/api/admin/metadata/details?type='+current.type+'&id='+match.id);
      if(current.key!==key)return;
-     const m=data.metadata;lastTmdb={tmdbId:m.tmdbId||null,rating:m.rating||0,duration:m.duration||0};
-     if(m.title&&current.type==='movie')title.value=m.title;
+     const m=data.metadata;lastTmdb={tmdbId:m.tmdbId||null,rating:m.rating||0,duration:m.duration||0,backdrop:m.backdrop||''};
+     if(m.title)title.value=m.title;
      if(m.genre)genre.value=TYPES.includes(m.genre)?m.genre:'Otros';
      if(m.year)year.value=m.year;
      if(m.description)description.value=m.description;
      if(m.poster)poster.value=m.poster;
      poster.dispatchEvent(new Event('input'));
-     results.hidden=true;status('Ficha encontrada. Revísala y pulsa «Guardar ficha».');
+     results.hidden=true;status('Guardando la ficha seleccionada…');
+     // Selecting a result is an explicit choice: apply it immediately.
+     const body={
+       key:current.key,title:title.value.trim(),genre:genre.value,year:year.value.trim(),
+       description:description.value.trim(),poster:poster.value.trim(),
+       ...lastTmdb
+     };
+     if(current.type==='tv')body.seriesName=current.name;
+     await request('/api/admin/metadata/item',{method:'PATCH',body});
+     await api.reloadCatalog();refresh();
+     status('Ficha seleccionada y guardada para todos los usuarios. Puedes corregirla desde «Editar campos manualmente».');
+     await window.noctraMetadataAdmin?.refreshProgress?.(request);
    }catch(e){status(e.message);}
  }
  function showMatches(matches){
@@ -185,7 +200,7 @@ function mount(target,api,request){
      const button=el('button','noctra-meta-result');button.type='button';
      if(m.poster){const image=el('img');image.alt='';image.loading='lazy';image.src=m.poster;button.append(image);}
      const detail=el('span');
-     detail.append(el('strong','',m.title),el('small','',m.year||'Sin año'));
+     detail.append(el('strong','',m.title),el('small','',(m.year||'Sin año')+' · Elegir esta ficha'));
      button.append(detail);button.onclick=()=>pick(m);results.append(button);
    }
  }
@@ -199,13 +214,14 @@ function mount(target,api,request){
        const exact=matches.filter(m=>norm(m.title)===norm(query.value)&&(!year.value||!m.year||m.year===year.value));
        if(exact.length===1){await pick(exact[0]);return;}
        status('Hay varias coincidencias o ninguna exacta: selecciona la correcta.');
-     }else status(matches.length?'Elige la ficha correcta.':'No hay coincidencias; puedes editar manualmente.');
+     }else status(matches.length?'Pulsa la ficha correcta para guardarla automáticamente.':'No hay resultados. Prueba con el nombre original en inglés o pega un enlace de TMDB.');
      showMatches(matches);
    }catch(e){
      status(/Ruta no encontrada/.test(e.message)?'Búsqueda pendiente de activar en Cloudflare. La edición manual ya funciona.':e.message);
    }finally{button.disabled=false;}
  }
  searchBtn.onclick=()=>lookupClick(false);autoBtn.onclick=()=>lookupClick(true);
+ query.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupClick(false);}});
  retryBtn.onclick=async()=>{
    if(!current||!confirm('¿Volver a intentar los metadatos automáticos de '+current.name+'?'))return;
    retryBtn.disabled=true;
