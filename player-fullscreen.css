@@ -1,162 +1,120 @@
-/* NOCTRA2 | Fullscreen belongs to Movi Player's built-in button.
-   No additional theater/rotate actions, no page chrome over the picture. */
-body.abyss-noctra #player .player-tools>label[hidden]{display:none!important}
+/* ANTOO PELIS | Movi Player fullscreen, all devices.
+   The only fullscreen button is Movi Player's original button.
+   Consolidated to avoid mobile bottom-sheet / previous CSS conflicts. */
+html.noctra-fullscreen-lock,
+html.noctra-fullscreen-lock body{
+ overflow:hidden!important;overscroll-behavior:none!important;
+}
 body.abyss-noctra #frame-container{
- position:relative;min-width:0;isolation:isolate;background:#000
+ position:relative;min-width:0;isolation:isolate;background:#000;
 }
 body.abyss-noctra #frame-container movi-player{
  display:block;width:100%;height:100%;min-height:0;max-width:100%;
- object-fit:contain;
+ object-fit:contain;touch-action:manipulation;
 }
-/* Native fullscreen (desktop, Android and compatible Safari variants). */
-body.abyss-noctra #frame-container:fullscreen,
-body.abyss-noctra #frame-container:-webkit-full-screen,
-body.abyss-noctra #frame-container movi-player:fullscreen,
-body.abyss-noctra #frame-container movi-player:-webkit-full-screen{
- box-sizing:border-box;width:100vw!important;height:100vh!important;
- height:100dvh!important;max-width:none!important;max-height:none!important;
- min-height:0!important;aspect-ratio:auto!important;
- margin:0!important;padding:0!important;border:0!important;
- border-radius:0!important;background:#000!important;
- overflow:hidden!important
+body.abyss-noctra #player .player-tools>label[hidden]{
+ display:none!important;
 }
-body.abyss-noctra #frame-container:fullscreen movi-player,
-body.abyss-noctra #frame-container:-webkit-full-screen movi-player{
- display:block!important;width:100%!important;height:100%!important;
- min-height:0!important;max-height:none!important;margin:0!important;
- border:0!important;border-radius:0!important
-}
-/* iOS Safari without element fullscreen API: fill its available viewport.
-   Browser-controlled Safari status/address bars are outside web-page control.
-   Keep the Movi controls upright and do not rotate the page to 90 degrees. */
-html.noctra-fullscreen-lock{overflow:hidden!important}
-body.abyss-noctra dialog#player.noctra-fullscreen-host{
- position:fixed!important;inset:0!important;
- width:100vw!important;max-width:100vw!important;
- height:100vh!important;height:100dvh!important;
- max-height:100vh!important;max-height:100dvh!important;
- margin:0!important;padding:0!important;
- border:0!important;border-radius:0!important;
- box-shadow:none!important;background:#000!important;
- overflow:hidden!important;display:flex!important;
- flex-direction:column!important;
-}
-body.abyss-noctra dialog#player.noctra-fullscreen-host .dialog-top,
-body.abyss-noctra dialog#player.noctra-fullscreen-host .player-tools,
-body.abyss-noctra dialog#player.noctra-fullscreen-host .hint,
-body.abyss-noctra dialog#player.noctra-fullscreen-host #retry{
- display:none!important
-}
-body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container{
- box-sizing:border-box!important;display:block!important;
- flex:1 1 auto!important;position:relative!important;
- width:100%!important;max-width:100%!important;
- height:100%!important;max-height:none!important;
- min-height:0!important;aspect-ratio:auto!important;
- padding:0!important;margin:0!important;
- border:0!important;border-radius:0!important;
- background:#000!important;overflow:hidden!important
-}
-body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container movi-player{
- display:block!important;width:100%!important;height:100%!important;
- min-height:0!important;max-height:100%!important;
- margin:0!important;object-fit:contain
-}
-body.abyss-noctra dialog#player.noctra-fullscreen-host::backdrop{background:#000!important}
-/* Do not let small-phone bottom sheets or TV layouts override fullscreen. */
-@media(max-width:700px){
- body.abyss-noctra dialog#player.noctra-fullscreen-host{
-  width:100vw!important;max-width:100vw!important;
-  height:100dvh!important;max-height:100dvh!important;
-  inset:0!important;border-radius:0!important;
-  padding:0!important
- }
- body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container{
-  max-height:none!important;aspect-ratio:auto!important
- }
-}
-@media(max-height:500px) and (orientation:landscape){
- body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container,
- body.abyss-noctra dialog#player.noctra-fullscreen-host movi-player{
-  width:100%!important;height:100%!important;max-height:none!important
- }
-}
-/* Smart TV remote target stays within Movi's own fullscreen controls. */
-body.noctra-tv.abyss-noctra #frame-container:fullscreen,
-body.noctra-tv.abyss-noctra #frame-container movi-player:fullscreen{
- width:100vw!important;height:100vh!important;border-radius:0!important
-}
-@supports not (height:100dvh){
- body.abyss-noctra dialog#player.noctra-fullscreen-host{
-  height:100vh!important;max-height:100vh!important
- }
-}
-
-
-/* Full-viewport takeover: overrides the mobile bottom-sheet rules, including
-   rules that use !important. Movi's ORIGINAL controls stay inside the video. */
-html.noctra-fullscreen-lock,
-html.noctra-fullscreen-lock body{overflow:hidden!important;overscroll-behavior:none!important}
-body.abyss-noctra dialog#player.noctra-fullscreen-host{
- position:fixed!important;inset:0!important;top:0!important;left:0!important;
- right:0!important;bottom:0!important;transform:none!important;
+/* Viewport fallback, used only when native browser fullscreen is blocked.
+   Overrides mobile <dialog> bottom-sheet sizing and paddings. */
+body.abyss-noctra dialog#player.noctra-fullscreen-host,
+body.abyss-noctra dialog#player.noctra-fullscreen-host[open]{
+ position:fixed!important;inset:0!important;top:0!important;
+ left:0!important;right:0!important;bottom:0!important;
  display:flex!important;flex-direction:column!important;
- box-sizing:border-box!important;width:100vw!important;max-width:none!important;
+ box-sizing:border-box!important;
+ width:100vw!important;min-width:0!important;max-width:none!important;
  height:100dvh!important;min-height:100dvh!important;max-height:none!important;
- padding:0!important;margin:0!important;border:0!important;border-radius:0!important;
- background:#000!important;overflow:hidden!important;overscroll-behavior:none!important;
+ margin:0!important;padding:0!important;border:0!important;
+ border-radius:0!important;transform:none!important;
+ background:#000!important;box-shadow:none!important;
+ overflow:hidden!important;overscroll-behavior:none!important;
 }
 body.abyss-noctra dialog#player.noctra-fullscreen-host .dialog-top,
 body.abyss-noctra dialog#player.noctra-fullscreen-host .player-tools,
 body.abyss-noctra dialog#player.noctra-fullscreen-host > .hint,
 body.abyss-noctra dialog#player.noctra-fullscreen-host > #retry{
- display:none!important
+ display:none!important;
+}
+body.abyss-noctra dialog#player.noctra-fullscreen-host::backdrop{
+ background:#000!important;
 }
 body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container{
  position:relative!important;inset:auto!important;
- box-sizing:border-box!important;display:block!important;
- flex:1 1 auto!important;width:100%!important;min-width:0!important;max-width:none!important;
- height:100%!important;min-height:0!important;max-height:none!important;
- margin:0!important;padding:0!important;aspect-ratio:auto!important;
- border:0!important;border-radius:0!important;overflow:hidden!important;background:#000!important;
+ flex:1 1 auto!important;box-sizing:border-box!important;
+ display:block!important;
+ width:100%!important;max-width:none!important;min-width:0!important;
+ height:100%!important;max-height:none!important;min-height:0!important;
+ margin:0!important;padding:0!important;border:0!important;
+ border-radius:0!important;aspect-ratio:auto!important;
+ background:#000!important;overflow:hidden!important;
 }
-body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container movi-player,
-body.abyss-noctra #frame-container:fullscreen movi-player,
-body.abyss-noctra #frame-container:-webkit-full-screen movi-player{
+body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container movi-player{
  display:block!important;box-sizing:border-box!important;
  width:100%!important;height:100%!important;
  min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
  margin:0!important;padding:0!important;object-fit:contain!important;
 }
+/* Actual element fullscreen when supported (Android/PC/iPad). */
 body.abyss-noctra #frame-container:fullscreen,
 body.abyss-noctra #frame-container:-webkit-full-screen{
- box-sizing:border-box!important;position:relative!important;
- width:100vw!important;height:100dvh!important;
- max-width:none!important;max-height:none!important;min-height:0!important;
+ position:relative!important;display:block!important;
+ box-sizing:border-box!important;width:100vw!important;height:100dvh!important;
+ max-width:none!important;max-height:none!important;min-height:0!important;min-width:0!important;
  margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
  aspect-ratio:auto!important;background:#000!important;overflow:hidden!important;
 }
-/* When the browser forbids orientation locking while physically portrait,
-   the existing player and its controls rotate together. No new buttons. */
-@media(orientation:portrait){
- body.abyss-noctra dialog#player.noctra-fullscreen-host.noctra-fullscreen-rotated{
-  position:fixed!important;inset:auto!important;top:50%!important;left:50%!important;
-  right:auto!important;bottom:auto!important;
-  width:100dvh!important;min-width:100dvh!important;max-width:none!important;
+body.abyss-noctra #frame-container:fullscreen movi-player,
+body.abyss-noctra #frame-container:-webkit-full-screen movi-player,
+body.abyss-noctra #frame-container movi-player:fullscreen,
+body.abyss-noctra #frame-container movi-player:-webkit-full-screen{
+ display:block!important;box-sizing:border-box!important;
+ width:100%!important;height:100%!important;
+ min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
+ margin:0!important;padding:0!important;
+}
+/* Rotated fallback only if the browser cannot lock landscape.
+   Respect the fixed iPhone status-bar region; cannot hide system UI via CSS. */
+@media (orientation:portrait){
+ body.abyss-noctra dialog#player.noctra-fullscreen-host.antoo-fs-rotated,
+ body.abyss-noctra dialog#player.noctra-fullscreen-host.antoo-fs-rotated[open]{
+  position:fixed!important;inset:auto!important;
+  top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+  width:100dvh!important;max-width:none!important;min-width:100dvh!important;
   height:100vw!important;min-height:100vw!important;max-height:none!important;
+  box-sizing:border-box!important;
+  padding:0!important;margin:0!important;
   transform:translate(-50%,-50%) rotate(90deg)!important;
   transform-origin:center center!important;
-  margin:0!important;padding:0!important;overflow:hidden!important;
+  border:0!important;border-radius:0!important;
  }
- body.abyss-noctra #frame-container:fullscreen.noctra-native-rotated,
- body.abyss-noctra #frame-container:-webkit-full-screen.noctra-native-rotated{
-  width:100vw!important;height:100dvh!important;overflow:hidden!important;
+ body.abyss-noctra dialog#player.noctra-fullscreen-host.antoo-fs-rotated #frame-container{
+  /* Rotated x-axis points downward on a physically portrait device. */
+  padding-left:max(32px,env(safe-area-inset-top,0px))!important;
+  padding-right:max(12px,env(safe-area-inset-bottom,0px))!important;
+  box-sizing:border-box!important;
  }
- body.abyss-noctra #frame-container:fullscreen.noctra-native-rotated movi-player,
- body.abyss-noctra #frame-container:-webkit-full-screen.noctra-native-rotated movi-player{
+ body.abyss-noctra #frame-container:fullscreen.antoo-fs-native-rotated,
+ body.abyss-noctra #frame-container:-webkit-full-screen.antoo-fs-native-rotated{
+  position:relative!important;width:100vw!important;height:100dvh!important;
+ }
+ body.abyss-noctra #frame-container:fullscreen.antoo-fs-native-rotated movi-player,
+ body.abyss-noctra #frame-container:-webkit-full-screen.antoo-fs-native-rotated movi-player{
   position:absolute!important;top:50%!important;left:50%!important;
   width:100dvh!important;height:100vw!important;
   transform:translate(-50%,-50%) rotate(90deg)!important;
   transform-origin:center center!important;
  }
+}
+@media (orientation:landscape){
+ body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container{
+  padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)!important;
+ }
+}
+/* In fullscreen, the app's sticky header, bottom nav, and toasts never cover
+   the video. This targets the web-page UI, not iOS browser/system chrome. */
+html.noctra-fullscreen-lock #noctra-app>header,
+html.noctra-fullscreen-lock #noctra-app .noctra-mobile-nav,
+html.noctra-fullscreen-lock #toast{
+ visibility:hidden!important;pointer-events:none!important;
 }
