@@ -312,3 +312,17 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-
 body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer{
  transition:opacity .2s ease,transform .2s ease,visibility .2s ease!important;
 }
+
+/* Subtítulos internos de libmedia: asegurar que el renderizador ASS/SRT
+   quede por encima del canvas de video y siga visible a pantalla completa. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player .ASS-box,
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player>svg{
+ position:absolute!important;
+ z-index:4!important;
+ pointer-events:none!important;
+ visibility:visible;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player .ASS-dialogue{
+ color:#fff;
+ text-shadow:0 1px 3px #000,0 2px 6px #000;
+}
