@@ -40,9 +40,17 @@
      '<label for="antoo-av-subtitles">Subtítulos</label>'+
      '<select id="antoo-av-subtitles" aria-label="Pista de subtítulos"></select>'+
      '<label class="antoo-av-sub-file">Cargar subtítulos externos (SRT o VTT)<input type="file" id="antoo-av-sub-file" accept=".srt,.vtt,.ass,.ssa" /></label>'+
-     '<label for="antoo-av-video">Calidad / pista de video</label>'+
+     '<label for="antoo-av-video">Pista de video del archivo</label>'+
      '<select id="antoo-av-video" aria-label="Calidad de video"></select>'+
      '<p class="antoo-av-quality-note" id="antoo-av-quality-note"></p>'+
+     '<label for="antoo-av-aspect">Formato de pantalla</label>'+
+     '<select id="antoo-av-aspect" aria-label="Relación de aspecto del video">'+
+     '<option value="original" selected>Original · Ajustar sin recortar</option>'+
+     '<option value="16:9">16:9 · Panorámico</option>'+
+     '<option value="4:3">4:3 · Clásico</option>'+
+     '<option value="21:9">21:9 · Cine</option>'+
+     '<option value="fill">Rellenar pantalla · Recortar bordes</option></select>'+
+     '<p class="antoo-av-quality-note">Cambia el encuadre de pantalla, no la resolución ni el peso del archivo.</p>'+
      '<label for="antoo-av-speed">Velocidad</label>'+
      '<select id="antoo-av-speed" aria-label="Velocidad de reproducción">'+
      '<option value="0.5">0.5×</option><option value="0.75">0.75×</option>'+
@@ -56,10 +64,64 @@
    const subs=get('#antoo-av-subtitles');
    const video=get('#antoo-av-video');
    const speed=get('#antoo-av-speed');
+   const aspect=get('#antoo-av-aspect');
    const status=get('#antoo-av-settings-status');
    const hint=get('#antoo-av-quality-note');
    const file=get('#antoo-av-sub-file');
    let sets={audio:[],subtitle:[],video:[]};
+   let format='original', resizeObserver=null, resizeFrame=0, resizeTail=0, resizeFrameLast=0;
+   const stage=()=>host.querySelector('.avplayer-ui-player');
+   const dimensionKey=['position','inset','top','left','right','bottom','width','height','min-width','min-height','max-width','max-height','transform'];
+   function layoutAspect(){
+     const el=stage();if(!el)return;
+     if(format==='original'||format==='fill'){
+       dimensionKey.forEach(k=>el.style.removeProperty(k));
+     }else{
+       const ratio=format==='4:3'?4/3:format==='16:9'?16/9:21/9;
+       const W=host.clientWidth,H=host.clientHeight;
+       if(!(W>0&&H>0))return;
+       const w=Math.round(Math.min(W,H*ratio));
+       const h=Math.round(Math.min(H,W/ratio));
+       const declarations={
+         position:'absolute',inset:'auto',left:Math.round((W-w)/2)+'px',
+         top:Math.round((H-h)/2)+'px',right:'auto',bottom:'auto',
+         width:w+'px',height:h+'px','min-width':'0px','min-height':'0px',
+         'max-width':'none','max-height':'none',transform:'none'
+       };
+       Object.entries(declarations).forEach(([key,val])=>el.style.setProperty(key,val,'important'));
+     }
+     // Libmedia no reajusta automáticamente el lienzo al cambiar solo
+     // las dimensiones CSS: informar la nueva área de reproducción.
+     const width=Math.round(el.clientWidth),height=Math.round(el.clientHeight);
+     if(width&&height&&Number(player.getStatus?.()??0)>=4){
+       const stamp=format+':'+width+'x'+height;
+       if(stamp!==resizeFrameLast){
+         resizeFrameLast=stamp;
+         try{player.setRenderMode?.(format==='original'?0:1);}catch(e){console.warn('ANTOO formato:',e);}
+         try{player.resize?.(width,height);}catch(e){console.warn('ANTOO video:',e);}
+       }
+     }
+   }
+   function scheduleAspect(){
+     if(resizeFrame)cancelAnimationFrame(resizeFrame);
+     clearTimeout(resizeTail);
+     resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;layoutAspect();});
+     resizeTail=setTimeout(layoutAspect,180);
+   }
+   aspect.addEventListener('change',()=>{
+     format=aspect.value;
+     resizeFrameLast=0;
+     scheduleAspect();
+     message(format==='original'?'Formato original restaurado.':
+       format==='fill'?'Rellenando pantalla (puede recortar imagen).':
+       'Formato '+format+' aplicado (puede recortar imagen).');
+   });
+   if(typeof ResizeObserver==='function'){
+     resizeObserver=new ResizeObserver(scheduleAspect);
+     resizeObserver.observe(host);
+   }
+   window.addEventListener('resize',scheduleAspect);
+   window.addEventListener('orientationchange',scheduleAspect);
    function message(t){status.textContent=t||'';}
    function populate(select,items,selectedId,empty){
      select.replaceChildren();
@@ -77,6 +139,7 @@
      });
    }
    function refresh(){
+     scheduleAspect();
      let streams=[];
      try{streams=player.getStreams?.()||[];}catch(e){console.warn('ANTOO pistas:',e);}
      sets={audio:[],subtitle:[],video:[]};
@@ -173,7 +236,14 @@
        host.removeEventListener('click',captureGear,true);
        host.removeEventListener('pointerup',captureGear,true);
        host.removeEventListener('touchend',captureGear,true);
-       document.removeEventListener('keydown',keyHandler,true);panel.remove();}
+       document.removeEventListener('keydown',keyHandler,true);
+       window.removeEventListener('resize',scheduleAspect);
+       window.removeEventListener('orientationchange',scheduleAspect);
+       resizeObserver?.disconnect();
+       if(resizeFrame)cancelAnimationFrame(resizeFrame);
+       clearTimeout(resizeTail);
+       const el=stage();if(el)dimensionKey.forEach(k=>el.style.removeProperty(k));
+       panel.remove();}
    };
  }
  window.antooAvplayerOptions={create};
