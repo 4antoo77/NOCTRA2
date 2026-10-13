@@ -12,8 +12,8 @@ function toast(s){$('#toast').textContent=s;$('#toast').classList.add('show');cl
 function dialog(s){$(s).showModal();}
 $$('dialog').forEach(d=>{d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});});
 $$('.close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
-function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='home');document.body.classList.toggle('antoo-home-page',p==='home');document.body.classList.toggle('antoo-section-page',p!=='home');$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#section-title').textContent=p==='list'?'Mi lista':$('#search').value.trim()?'Resultados de búsqueda':window.noctraMediaCategory==='series'?'Series':'Películas';render();window.scrollTo(0,0);window.antooRoutes?.section?.(p,p==='library'?'movies':window.noctraMediaCategory);if(p==='home')window.antooRefreshHomeCarousel?.();}
-$('.nav').forEach(b=>b.onclick=()=>{if(b.dataset.page==='library')document.querySelector('.media-tabs [data-kind="movies"]')?.click();setPage(b.dataset.page);});
+function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='home');document.body.classList.toggle('antoo-home-page',p==='home');document.body.classList.toggle('antoo-section-page',p!=='home');$$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#section-title').textContent=p==='list'?'Mi lista':$('#search').value.trim()?'Resultados de búsqueda':window.noctraMediaCategory==='series'?'Series':'Películas';render();window.scrollTo(0,0);window.antooRoutes?.section?.(p,p==='library'?'movies':window.noctraMediaCategory);if(p==='home')window.antooRefreshHomeCarousel?.();}
+$$('.nav').forEach(b=>b.onclick=()=>{if(b.dataset.page==='library')document.querySelector('.media-tabs [data-kind="movies"]')?.click();setPage(b.dataset.page);});
 $$('.brand').forEach(a=>a.onclick=e=>{e.preventDefault();setPage('home');});
 $('#explore').onclick=()=>$('#catalog').scrollIntoView({behavior:'smooth'});
 // The one shared search input now lives in the floating top navigation.
@@ -213,7 +213,7 @@ const noctraSpotlight=(()=>{
    if(!eligible.length){
      chosen=[];carousel.hidden=true;play.hidden=true;info.hidden=true;
      backdrop.hidden=true;title.textContent='Descubre tu próxima película.';
-     description.textContent='Explora el catálogo de NOCTRA2 y disfruta de tus películas favoritas.';
+     description.textContent='Explora las películas de ANTOO PELIS y encuentra tu próxima historia.';
      return;
    }
    const pickDaily=(pool,count,salt)=>{
