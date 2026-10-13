@@ -114,3 +114,83 @@ body.abyss-noctra #antoo-profile-dialog .antoo-profile-jokes{max-width:100%}
 #noctra-admin-dialog .admin-activity-list{max-height:220px;overflow:auto;padding-left:20px;color:#cbbfda;font-size:12px;line-height:1.6}
 #noctra-admin-dialog .admin-activity-list li{margin:4px 0;overflow-wrap:anywhere}
 @media(max-width:480px){#noctra-admin-dialog .admin-activity-cards{grid-template-columns:1fr}}
+
+/* NOCTRA2 admin dashboard refresh */
+#noctra-admin-dialog{
+ box-sizing:border-box;width:min(1040px,calc(100vw - 32px));max-width:calc(100vw - 32px);
+ max-height:min(92dvh,920px);padding:0;overflow:auto;color:#f6f1ff;
+ background:radial-gradient(ellipse at 5% 0,#563a7733,transparent 48%),#12101a;
+ border:1px solid #c6a8ff40;border-radius:20px;box-shadow:0 28px 100px #000b;
+ scrollbar-color:#645678 #17131f
+}
+#noctra-admin-dialog::backdrop{background:#05040bd9;backdrop-filter:blur(5px)}
+#noctra-admin-dialog[open]{animation:adminPanelIn .18s ease-out}
+@keyframes adminPanelIn{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+#noctra-admin-dialog .admin-shell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:26px 30px 20px}
+#noctra-admin-dialog .admin-shell-head .eyebrow{margin:0 0 7px;font-size:10px;letter-spacing:1.6px}
+#noctra-admin-dialog .admin-shell-head h2{margin:0;font-size:clamp(24px,3vw,32px);letter-spacing:-.5px}
+#noctra-admin-dialog .admin-shell-subtitle{margin:7px 0 0;color:#b7aec5;font-size:13px;line-height:1.5}
+#noctra-admin-dialog .admin-shell-head>.close{flex:0 0 auto;width:40px;height:40px;border:1px solid #ffffff20;border-radius:10px;background:#ffffff0a;color:#fff;font-size:22px;cursor:pointer}
+#noctra-admin-dialog .admin-nav{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:10px 30px;background:#12101af2;border-top:1px solid #ffffff12;border-bottom:1px solid #ffffff14;backdrop-filter:blur(12px)}
+#noctra-admin-dialog .admin-nav button{min-height:42px;padding:9px 14px;border:1px solid transparent;border-radius:9px;background:transparent;color:#bfb5ce;font-size:13px;font-weight:650;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+#noctra-admin-dialog .admin-nav button:hover{background:#ffffff0a;color:#fff}
+#noctra-admin-dialog .admin-nav button[aria-pressed="true"]{border-color:#bd9cff55;background:#a27dd51c;color:#e8d9ff}
+#noctra-admin-dialog .admin-panel{padding:26px 30px 32px;border:0}
+#noctra-admin-dialog .admin-panel[hidden]{display:none!important}
+#noctra-admin-dialog .admin-panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 20px}
+#noctra-admin-dialog .admin-panel-heading h3{margin:0;font-size:19px;letter-spacing:-.2px}
+#noctra-admin-dialog .admin-panel-heading p{max-width:650px;margin:6px 0 0;color:#aaa0b8;font-size:12px;line-height:1.6}
+#noctra-admin-dialog .admin-panel-heading button{flex:0 0 auto;min-height:40px}
+#noctra-admin-dialog .admin-user-create,#noctra-admin-dialog .admin-user-list,#noctra-admin-dialog .admin-card{margin:14px 0;padding:18px;background:#ffffff07;border:1px solid #ffffff15;border-radius:14px}
+#noctra-admin-dialog .admin-user-create h4,#noctra-admin-dialog .admin-user-list h4{margin:0 0 14px;font-size:14px;color:#e6d8f6}
+#noctra-admin-dialog .admin-user-create form{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:12px}
+#noctra-admin-dialog .admin-user-create form label{display:grid;gap:7px;color:#c9bfd4;font-size:11px;font-weight:600}
+#noctra-admin-dialog .admin-user-create form input{box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #ffffff22;border-radius:9px;background:#0c0a12;color:#fff;font-size:14px}
+#noctra-admin-dialog .admin-user-create form button{min-height:44px;white-space:nowrap}
+#noctra-admin-dialog .admin-user-list #admin-users{overflow:hidden;border:1px solid #ffffff14;border-radius:10px}
+#noctra-admin-dialog .admin-row{gap:14px;padding:14px 16px;background:#ffffff04}
+#noctra-admin-dialog .admin-row:last-child{border-bottom:0}
+#noctra-admin-dialog .admin-row>div:first-child{min-width:150px}
+#noctra-admin-dialog .admin-row strong{font-size:13px}
+#noctra-admin-dialog .admin-row small{color:#a99db6;font-size:11px}
+#noctra-admin-dialog .antoo-avatar-editor{box-sizing:border-box;max-width:460px;margin:0!important;color:#bfb5ca;font-size:11px}
+#noctra-admin-dialog .antoo-avatar-editor input{box-sizing:border-box;min-height:38px;padding:8px 10px;border:1px solid #ffffff20;border-radius:8px;background:#0c0a12;color:#fff}
+#noctra-admin-dialog .admin-actions button,#noctra-admin-dialog .antoo-avatar-editor button{min-height:38px;border:1px solid #ffffff20;border-radius:8px;background:#ffffff0b;color:#eee6f8;font-size:11px;cursor:pointer}
+#noctra-admin-dialog .admin-actions button:hover,#noctra-admin-dialog .antoo-avatar-editor button:hover{border-color:#bd9cff77;background:#a27dd51a}
+#noctra-admin-dialog .admin-card{padding:0;overflow:hidden}
+#noctra-admin-dialog .admin-card>summary{display:flex;align-items:center;min-height:50px;padding:0 18px;cursor:pointer;list-style:none;color:#e9def4;font-size:13px;font-weight:700}
+#noctra-admin-dialog .admin-card>summary::-webkit-details-marker{display:none}
+#noctra-admin-dialog .admin-card>summary::after{content:'＋';margin-left:auto;color:#c8adff;font-size:18px}
+#noctra-admin-dialog .admin-card[open]>summary::after{content:'−'}
+#noctra-admin-dialog .admin-card>summary:hover{background:#ffffff06}
+#noctra-admin-dialog .admin-card>summary~*{margin-right:18px;margin-left:18px}
+#noctra-admin-dialog .admin-card>summary~:last-child{margin-bottom:18px}
+#noctra-admin-dialog .admin-card .admin-note{margin-top:0}
+#noctra-admin-dialog .admin-import-label{display:grid;gap:8px;margin-top:18px;color:#c9bfd4;font-size:11px;font-weight:600}
+#noctra-admin-dialog #admin-activity{min-height:80px;color:#c9bfd4;font-size:13px}
+#noctra-admin-dialog #admin-activity h4{margin:21px 0 8px;color:#e5d8f2;font-size:13px}
+#noctra-admin-dialog .admin-activity-cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 24px}
+#noctra-admin-dialog .admin-activity-cards article{min-height:84px;align-content:center;padding:15px;background:linear-gradient(145deg,#ffffff0c,#ffffff04);border:1px solid #ffffff14;border-radius:12px}
+#noctra-admin-dialog .admin-activity-cards strong{font-size:25px}
+#noctra-admin-dialog .admin-activity-list{max-height:210px;margin:0;padding:0;list-style:none}
+#noctra-admin-dialog .admin-activity-list li{padding:10px 12px;border-bottom:1px solid #ffffff10;background:#ffffff04}
+#noctra-admin-dialog .admin-activity-list li:first-child{border-radius:9px 9px 0 0}
+#noctra-admin-dialog .admin-activity-list li:last-child{border:0;border-radius:0 0 9px 9px}
+#noctra-admin-dialog button:focus-visible,#noctra-admin-dialog summary:focus-visible,#noctra-admin-dialog input:focus-visible{outline:2px solid #c5a7ff;outline-offset:2px}
+@media(max-width:700px){
+ #noctra-admin-dialog{width:calc(100vw - 12px);max-width:calc(100vw - 12px);max-height:94dvh;border-radius:16px}
+ #noctra-admin-dialog .admin-shell-head{padding:20px 18px 16px}
+ #noctra-admin-dialog .admin-nav{gap:3px;padding:8px 10px}
+ #noctra-admin-dialog .admin-nav button{min-height:40px;padding:8px 5px;font-size:12px}
+ #noctra-admin-dialog .admin-panel{padding:20px 14px 24px}
+ #noctra-admin-dialog .admin-user-create,#noctra-admin-dialog .admin-user-list{padding:15px}
+ #noctra-admin-dialog .admin-user-create form{grid-template-columns:1fr}
+ #noctra-admin-dialog .admin-user-create form button{width:100%}
+ #noctra-admin-dialog .admin-panel-heading{align-items:flex-start;flex-direction:column}
+ #noctra-admin-dialog .admin-row{align-items:stretch;flex-direction:column;padding:14px}
+ #noctra-admin-dialog .admin-row>div:first-child{min-width:0}
+ #noctra-admin-dialog .antoo-avatar-editor{max-width:none}
+ #noctra-admin-dialog .admin-activity-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ #noctra-admin-dialog .admin-card>summary{min-height:48px;padding:0 14px}
+ #noctra-admin-dialog .admin-card>summary~*{margin-right:14px;margin-left:14px}
+}
