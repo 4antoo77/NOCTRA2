@@ -46,3 +46,7 @@ body.auth-locked #noctra-app{display:none!important}
  #noctra-admin-dialog #admin-drive-slot .drive-panel{flex-direction:column;align-items:stretch;padding:16px}
  #noctra-admin-dialog #admin-drive-slot .button-row{justify-content:flex-start}
 }
+
+/* Remember session: reachable and readable on mobile, tablet and desktop. */
+#noctra-login .noctra-remember-label{display:flex;align-items:center;gap:11px;font-size:12px;line-height:1.45;cursor:pointer;min-height:34px;font-weight:500;color:#e1d5ec}
+#noctra-login input#login-remember{width:19px;height:19px;min-height:19px;flex:0 0 19px;margin:0;accent-color:#bca1ff;cursor:pointer}
