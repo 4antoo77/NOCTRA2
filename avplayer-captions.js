@@ -66,7 +66,7 @@
      wrapped={renderer,original,replacement};
    }
    function unhook(){
-     if(wrapped?.renderer?.render===wrapped?.replacement)
+     if(wrapped&&wrapped.renderer&&wrapped.renderer.render===wrapped.replacement)
        wrapped.renderer.render=wrapped.original;
      wrapped=null;
    }
