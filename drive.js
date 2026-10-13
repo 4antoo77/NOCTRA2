@@ -246,7 +246,7 @@
      tab.onclick=()=>fillSeason(key);
      tab.onkeydown=e=>{
        if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft'&&e.key!=='Home'&&e.key!=='End')return;
-       e.preventDefault();const at=keys.indexOf(key);
+       e.preventDefault();e.stopPropagation();const at=keys.indexOf(key);
        const next=e.key==='Home'?0:e.key==='End'?keys.length-1:
          (at+(e.key==='ArrowRight'?1:-1)+keys.length)%keys.length;
        fillSeason(keys[next],true);
