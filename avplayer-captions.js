@@ -189,7 +189,7 @@
      installDecoderHook();
    }
    function unhook(){
-     if(hook?.renderer?.render===hook.replacement)hook.renderer.render=hook.original;
+     if(hook&&hook.renderer&&hook.renderer.render===hook.replacement)hook.renderer.render=hook.original;
      hook=null;
      unhookDecoder();
    }
