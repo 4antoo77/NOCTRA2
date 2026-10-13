@@ -73,39 +73,6 @@ body.abyss-noctra #frame-container movi-player:-webkit-full-screen{
  min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
  margin:0!important;padding:0!important;
 }
-/* Rotated fallback only if the browser cannot lock landscape.
-   Respect the fixed iPhone status-bar region; cannot hide system UI via CSS. */
-@media (orientation:portrait){
- body.abyss-noctra dialog#player.noctra-fullscreen-host.antoo-fs-rotated,
- body.abyss-noctra dialog#player.noctra-fullscreen-host.antoo-fs-rotated[open]{
-  position:fixed!important;inset:auto!important;
-  top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
-  width:100dvh!important;max-width:none!important;min-width:100dvh!important;
-  height:100vw!important;min-height:100vw!important;max-height:none!important;
-  box-sizing:border-box!important;
-  padding:0!important;margin:0!important;
-  transform:translate(-50%,-50%) rotate(90deg)!important;
-  transform-origin:center center!important;
-  border:0!important;border-radius:0!important;
- }
- body.abyss-noctra dialog#player.noctra-fullscreen-host.antoo-fs-rotated #frame-container{
-  /* Rotated x-axis points downward on a physically portrait device. */
-  padding-left:max(32px,env(safe-area-inset-top,0px))!important;
-  padding-right:max(12px,env(safe-area-inset-bottom,0px))!important;
-  box-sizing:border-box!important;
- }
- body.abyss-noctra #frame-container:fullscreen.antoo-fs-native-rotated,
- body.abyss-noctra #frame-container:-webkit-full-screen.antoo-fs-native-rotated{
-  position:relative!important;width:100vw!important;height:100dvh!important;
- }
- body.abyss-noctra #frame-container:fullscreen.antoo-fs-native-rotated movi-player,
- body.abyss-noctra #frame-container:-webkit-full-screen.antoo-fs-native-rotated movi-player{
-  position:absolute!important;top:50%!important;left:50%!important;
-  width:100dvh!important;height:100vw!important;
-  transform:translate(-50%,-50%) rotate(90deg)!important;
-  transform-origin:center center!important;
- }
-}
 @media (orientation:landscape){
  body.abyss-noctra dialog#player.noctra-fullscreen-host #frame-container{
   padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)!important;
