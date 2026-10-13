@@ -34,6 +34,51 @@ async function penalize(db,key){const t=now();await db.prepare('INSERT INTO atte
 async function login(db,req){const {username,password}=await input(req);if(!userValid(username)||!passValid(password))return fail('Credenciales incorrectas',401);const key=await sha256((req.headers.get('CF-Connecting-IP')||'unknown')+':'+username.toLowerCase());if(!await limiter(db,key))return fail('Demasiados intentos. Vuelve a intentarlo en 15 minutos.',429);const u=await db.prepare('SELECT * FROM users WHERE username=?').bind(username).first();if(!await verifyPassword(password,u) || u.disabled){await penalize(db,key);return fail('Credenciales incorrectas',401);}await db.prepare('DELETE FROM attempts WHERE attempt_key=?').bind(key).run();const token=makeToken(), th=await sha256(token), exp=now()+12*3600;await db.prepare('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(th,u.id,exp).run();return json({token,user:publicUser(u),expiresAt:exp});}
 async function setup(db,req,env){const exists=await db.prepare("SELECT 1 FROM users WHERE role='admin' LIMIT 1").first();if(exists)return fail('El administrador ya está configurado.',409);const v=await input(req);if(!env.BOOTSTRAP_SECRET || v.bootstrapSecret!==env.BOOTSTRAP_SECRET)return fail('Código de inicialización incorrecto.',403);if(!userValid(v.username)||!passValid(v.password))return fail('Usuario de 3–32 caracteres y contraseña de al menos 12.',400);const p=await createPassword(v.password);await db.prepare("INSERT INTO users(username,password_hash,salt,role,created_at) VALUES(?,?,?,'admin',?)").bind(v.username,p.hash,p.salt,now()).run();return json({ok:true,message:'Administrador creado. Inicia sesión.'},201);}
 async function users(db){const r=await db.prepare('SELECT id,username,role,disabled,created_at FROM users ORDER BY id').all();return json({users:r.results||[]});}
+async function ensureWatchTables(db){
+  await db.batch([
+    db.prepare("CREATE TABLE IF NOT EXISTS watch_progress (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, media_id TEXT NOT NULL, position REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY(user_id,media_id))"),
+    db.prepare("CREATE TABLE IF NOT EXISTS watch_events (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, media_id TEXT NOT NULL, event_type TEXT NOT NULL CHECK(event_type IN ('play','complete','error')), error_code TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL)"),
+    db.prepare('CREATE INDEX IF NOT EXISTS idx_watch_progress_updated ON watch_progress(user_id,updated_at DESC)'),
+    db.prepare('CREATE INDEX IF NOT EXISTS idx_watch_events_created ON watch_events(created_at DESC)'),
+    db.prepare('CREATE INDEX IF NOT EXISTS idx_watch_events_user ON watch_events(user_id,created_at DESC)')
+  ]);
+}
+const validMediaId=s=>typeof s==='string'&&/^gdrive-[A-Za-z0-9_-]{10,150}$/.test(s);
+async function watchProgress(db,req,me){
+  if(req.method==='GET'){
+    const rows=await db.prepare('SELECT c.file_id AS fileId,p.position,p.duration,p.updated_at AS updated FROM watch_progress p JOIN catalog c ON c.id=p.media_id WHERE p.user_id=? ORDER BY p.updated_at DESC LIMIT 100').bind(me.id).all();
+    return json({progress:(rows.results||[]).map(x=>({...x,updated:Number(x.updated)*1000}))});
+  }
+  const v=await input(req),mediaId=v.mediaId,position=Number(v.position),duration=Number(v.duration);
+  if(!validMediaId(mediaId)||!Number.isFinite(position)||position<0||position>172800||!Number.isFinite(duration)||duration<0||duration>172800)return fail('Progreso de reproducción inválido.',400);
+  const exists=await db.prepare('SELECT id FROM catalog WHERE id=?').bind(mediaId).first();if(!exists)return fail('Película inexistente.',404);
+  if(v.completed===true||duration>0&&position/duration>=.96){await db.prepare('DELETE FROM watch_progress WHERE user_id=? AND media_id=?').bind(me.id,mediaId).run();return json({ok:true,completed:true});}
+  if(position<1)return json({ok:true});
+  await db.prepare('INSERT INTO watch_progress(user_id,media_id,position,duration,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(user_id,media_id) DO UPDATE SET position=excluded.position,duration=excluded.duration,updated_at=excluded.updated_at').bind(me.id,mediaId,Math.round(position),Math.round(duration),now()).run();
+  return json({ok:true});
+}
+async function recordWatchEvent(db,req,me){
+  const v=await input(req),mediaId=v.mediaId,type=v.type;
+  if(!validMediaId(mediaId)||!['play','complete','error'].includes(type))return fail('Evento de reproducción inválido.',400);
+  const exists=await db.prepare('SELECT id FROM catalog WHERE id=?').bind(mediaId).first();if(!exists)return fail('Película inexistente.',404);
+  const allowedErrors=['PLAYBACK_START','MEDIA_DECODE','MEDIA_FORMAT','NETWORK','PLAYER_ERROR'];
+  const errorCode=type==='error'?(allowedErrors.includes(v.errorCode)?v.errorCode:'PLAYER_ERROR'):'';
+  const throttle=type==='play'?600:type==='error'?60:0;
+  if(throttle){const prev=await db.prepare('SELECT created_at FROM watch_events WHERE user_id=? AND media_id=? AND event_type=? AND error_code=? ORDER BY created_at DESC LIMIT 1').bind(me.id,mediaId,type,errorCode).first();if(prev&&now()-prev.created_at<throttle)return json({ok:true,duplicate:true});}
+  await db.prepare('INSERT INTO watch_events(user_id,media_id,event_type,error_code,created_at) VALUES(?,?,?,?,?)').bind(me.id,mediaId,type,errorCode,now()).run();
+  return json({ok:true});
+}
+async function adminActivity(db,req){
+  const days=Math.max(1,Math.min(90,Number(new URL(req.url).searchParams.get('days'))||30)),since=now()-days*DAY;
+  await db.prepare('DELETE FROM watch_events WHERE created_at<?').bind(now()-90*DAY).run();
+  const [summary,recentErrors,topTitles,topUsers]=await Promise.all([
+    db.prepare("SELECT event_type,COUNT(*) AS total,COUNT(DISTINCT user_id) AS users FROM watch_events WHERE created_at>=? GROUP BY event_type").bind(since).all(),
+    db.prepare("SELECT e.created_at AS createdAt,u.username,c.title,e.error_code AS errorCode FROM watch_events e JOIN users u ON u.id=e.user_id JOIN catalog c ON c.id=e.media_id WHERE e.event_type='error' AND e.created_at>=? ORDER BY e.created_at DESC LIMIT 30").bind(since).all(),
+    db.prepare("SELECT c.title,COUNT(*) AS plays,COUNT(DISTINCT e.user_id) AS viewers FROM watch_events e JOIN catalog c ON c.id=e.media_id WHERE e.event_type='play' AND e.created_at>=? GROUP BY c.id ORDER BY plays DESC LIMIT 10").bind(since).all(),
+    db.prepare("SELECT u.username,COUNT(*) AS plays FROM watch_events e JOIN users u ON u.id=e.user_id WHERE e.event_type='play' AND e.created_at>=? GROUP BY u.id ORDER BY plays DESC LIMIT 10").bind(since).all()
+  ]);
+  return json({days,summary:summary.results||[],recentErrors:recentErrors.results||[],topTitles:topTitles.results||[],topUsers:topUsers.results||[]});
+}
 async function createUser(db,req){const v=await input(req);if(!userValid(v.username)||!passValid(v.password))return fail('Usuario inválido o contraseña de menos de 12 caracteres.',400);const p=await createPassword(v.password);try{const r=await db.prepare("INSERT INTO users(username,password_hash,salt,role,created_at) VALUES(?,?,?,'viewer',?)").bind(v.username,p.hash,p.salt,now()).run();return json({id:r.meta.last_row_id,username:v.username},201);}catch(e){return fail('El usuario ya existe o no se pudo crear.',409);}}
 async function updateUser(db,req,me,id){const v=await input(req);const u=await db.prepare('SELECT * FROM users WHERE id=?').bind(id).first();if(!u)return fail('Usuario inexistente.',404);if(u.role==='admin' && v.disabled===true)return fail('No se puede desactivar el administrador.',403);if(typeof v.disabled==='boolean'){
   await db.prepare('UPDATE users SET disabled=? WHERE id=?').bind(v.disabled?1:0,id).run();if(v.disabled)await db.prepare('DELETE FROM sessions WHERE user_id=?').bind(id).run();
@@ -534,8 +579,11 @@ export default {async fetch(request,env,ctx){
       else if(path==='/api/me' && request.method==='GET')response=json({user:publicUser(me)});
       else if(path==='/api/logout' && request.method==='POST'){await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(me.token_hash).run();response=json({ok:true});}
       else if(path==='/api/catalog' && request.method==='GET')response=await getCatalog(env.DB);
+      else if(path==='/api/watch/progress' && ['GET','POST'].includes(request.method)){await ensureWatchTables(env.DB);response=await watchProgress(env.DB,request,me);}
+      else if(path==='/api/watch/event' && request.method==='POST'){await ensureWatchTables(env.DB);response=await recordWatchEvent(env.DB,request,me);}
       else if(path.startsWith('/api/play/') && request.method==='POST')response=await signStream(env.DB,env,decodeURIComponent(path.slice('/api/play/'.length)),url);
       else if(me.role!=='admin')response=fail('Solo para el administrador.',403);
+      else if(path==='/api/admin/activity' && request.method==='GET'){await ensureWatchTables(env.DB);response=await adminActivity(env.DB,request);}
       else if(path==='/api/admin/metadata/search' && request.method==='GET')response=await searchMetadata(request,env);
       else if(path==='/api/admin/metadata/details' && request.method==='GET')response=await metadataDetails(request,env);
       else if(path==='/api/admin/users' && request.method==='GET')response=await users(env.DB);

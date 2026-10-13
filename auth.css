@@ -105,3 +105,12 @@ body.abyss-noctra #antoo-profile-dialog .antoo-profile-jokes{max-width:100%}
   width:140px;height:140px;flex-basis:140px;
  }
 }
+#noctra-admin-dialog .admin-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#noctra-admin-dialog .admin-section-heading .admin-subtitle{margin:4px 0 12px}
+#noctra-admin-dialog .admin-activity-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}
+#noctra-admin-dialog .admin-activity-cards article{display:grid;gap:5px;padding:13px;background:#ffffff09;border:1px solid #ffffff18;border-radius:9px}
+#noctra-admin-dialog .admin-activity-cards strong{font-size:20px;color:#e5d3ff}
+#noctra-admin-dialog .admin-activity-cards span{font-size:11px;color:#bcaec9}
+#noctra-admin-dialog .admin-activity-list{max-height:220px;overflow:auto;padding-left:20px;color:#cbbfda;font-size:12px;line-height:1.6}
+#noctra-admin-dialog .admin-activity-list li{margin:4px 0;overflow-wrap:anywhere}
+@media(max-width:480px){#noctra-admin-dialog .admin-activity-cards{grid-template-columns:1fr}}
