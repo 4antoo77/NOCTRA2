@@ -95,7 +95,30 @@
    if(w>0&&h>0)return w+'×'+h;
    return h>0?h+' px de alto (formato original)':'Resolución por comprobar';
  }
- function openEpisodes(name,items){episodeDialog.innerHTML=`<div class="dialog-top"><div><p class="eyebrow purple">SERIES · EPISODIOS</p><h2>${esc(name)}</h2></div><button class="close" aria-label="Cerrar">×</button></div><div class="episode-list"></div>`;episodeDialog.querySelector('.close').onclick=()=>episodeDialog.close();items.sort((a,b)=>a.path.localeCompare(b.path,'es',{numeric:true}));for(const m of items){const b=document.createElement('button');b.className='episode-item';b.innerHTML=`<span>▶</span><div><b>${esc(m.title)}</b><small>${esc(m.path)} · ${resolutionLabel(m)}</small></div>`;b.onclick=()=>{episodeDialog.close();if(m.cloud)window.noctraCloud.play(m);else playDirect(m);};episodeDialog.querySelector('.episode-list').append(b);}episodeDialog.showModal();}
+ function openEpisodes(name,items){
+   const featured=items.find(m=>m.description||m.poster)||items[0]||{};
+   const year=featured.year?esc(featured.year):'';
+   const genreText=featured.genre&&featured.genre!=='Otros'?esc(featured.genre):'';
+   const rating=Number(featured.rating)>0?'★ '+Number(featured.rating).toFixed(1):'';
+   const duration=Number(featured.duration)>0?Math.round(Number(featured.duration))+' min':'';
+   const meta=[genreText,year,rating,duration].filter(Boolean).join(' · ');
+   const poster=posterURL(featured.poster);
+   episodeDialog.innerHTML='<div class="dialog-top"><div><p class="eyebrow purple">SERIES · EPISODIOS</p><h2>'+esc(name)+'</h2></div><button class="close" aria-label="Cerrar">×</button></div>'+
+     '<div class="noctra-series-overview">'+(poster?'<img src="'+esc(poster)+'" alt="" loading="lazy">':'')+
+     '<div>'+(meta?'<p class="noctra-series-meta">'+meta+'</p>':'')+
+     (featured.description?'<p>'+esc(featured.description)+'</p>':'')+'</div></div>'+
+     '<div class="episode-list"></div>';
+   episodeDialog.querySelector('.close').onclick=()=>episodeDialog.close();
+   items.sort((a,b)=>String(a.path||'').localeCompare(String(b.path||''),'es',{numeric:true}));
+   for(const m of items){
+     const b=document.createElement('button');b.className='episode-item';b.type='button';
+     b.innerHTML='<span>▶</span><div><b>'+esc(m.title)+'</b><small>'+esc(m.path||'')+' · '+resolutionLabel(m)+'</small></div>';
+     b.onclick=()=>{episodeDialog.close();if(m.cloud)window.noctraCloud.play(m);else playDirect(m);};
+     episodeDialog.querySelector('.episode-list').append(b);
+   }
+   episodeDialog.showModal();
+ }
+
  tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{
    category=b.dataset.kind;
    if($('#search').value)$('#search').value='';
