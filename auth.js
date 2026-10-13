@@ -156,9 +156,9 @@
         });
         activePlayer=el;
         $('frame-container').replaceChildren(el,notice);
-        // The optional mobile/TV orientation helper acts on Movi's own
-        // rotate attribute, leaving its controls, audio and subtitles intact.
-        window.noctraPlayerControls?.attach?.(el,fileId);
+        // Movi Player keeps its own original fullscreen button.
+        // iPhone Safari receives a video-only fallback without rotating UI.
+        window.noctraPlayerFullscreen?.attach?.(el);
         el.src=signed.url;
 
         // Movi Player es el único reproductor. La preparación de este MKV
