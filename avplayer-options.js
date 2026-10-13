@@ -2,7 +2,13 @@
    Trabaja con las pistas reales del MKV sin generar calidades inexistentes. */
 (()=>{
  'use strict';
- const byId=id=>document.getElementById(id);
+ // Códecs de texto compatibles con el renderizador de subtítulos de libmedia.
+ // Los subtítulos gráficos PGS/DVD/DVB presentes en algunos MKV no lo son.
+ const textSubtitleCodecs=new Set([94210,94212,94213,94225,94226,94230,94232]);
+ function textSubtitleSupported(stream){
+   const id=Number((stream.codecparProxy||stream.codecpar||{}).codecId);
+   return !Number.isFinite(id)||textSubtitleCodecs.has(id);
+ }
  function kind(stream){
    const media=String(stream?.mediaType||'').toLowerCase();
    if(media.includes('subtitle'))return 'subtitle';
@@ -39,6 +45,7 @@
      '<select id="antoo-av-audio" aria-label="Pista de audio"></select>'+
      '<label for="antoo-av-subtitles">Subtítulos</label>'+
      '<select id="antoo-av-subtitles" aria-label="Pista de subtítulos"></select>'+
+     '<p class="antoo-av-quality-note" id="antoo-av-subtitle-help"></p>'+
      '<label class="antoo-av-sub-file">Cargar subtítulos externos (SRT o VTT)<input type="file" id="antoo-av-sub-file" accept=".srt,.vtt,.ass,.ssa" /></label>'+
      '<label for="antoo-av-video">Pista de video del archivo</label>'+
      '<select id="antoo-av-video" aria-label="Calidad de video"></select>'+
@@ -69,6 +76,23 @@
    const hint=get('#antoo-av-quality-note');
    const file=get('#antoo-av-sub-file');
    let sets={audio:[],subtitle:[],video:[]};
+   let subtitleOff=false;
+   function selectedSubtitleId(){
+     try{return Number(player.getSelectedSubtitleStreamId?.()??-1);}
+     catch{return -1;}
+   }
+   function activateSubtitle(id){
+     const actual=selectedSubtitleId();
+     if(actual===id){
+       player.setSubtitleEnable?.(true);
+       return Promise.resolve();
+     }
+     return Promise.resolve(player.selectSubtitle?.(id)).then(()=>{
+       if(selectedSubtitleId()!==id)
+         throw Error('Esta pista no se pudo activar con el decodificador actual.');
+       player.setSubtitleEnable?.(true);
+     });
+   }
    let format='original', resizeObserver=null, resizeFrame=0, resizeTail=0, resizeFrameLast=0;
    const stage=()=>host.querySelector('.avplayer-ui-player');
    const dimensionKey=['position','inset','top','left','right','bottom','width','height','min-width','min-height','max-width','max-height','transform'];
@@ -148,17 +172,34 @@
        if(sets[type])sets[type].push(stream);
      }
      populate(audio,sets.audio,player.getSelectedAudioStreamId?.(),'Este archivo no tiene pistas de audio');
-     const selected=player.getSelectedSubtitleStreamId?.();
+     const selected=selectedSubtitleId();
      subs.replaceChildren();
-     let no=document.createElement('option');
-     no.value='off';no.textContent='Desactivados';subs.appendChild(no);
-     sets.subtitle.forEach((s,i)=>{
+     const no=document.createElement('option');
+     no.value='off';no.textContent='Desactivados';
+     no.selected=subtitleOff||selected<0;
+     subs.appendChild(no);
+     let supportedCount=0;
+     sets.subtitle.forEach((track,i)=>{
        const opt=document.createElement('option');
-       opt.value=String(s.id);opt.textContent=label(s,'subtitle',i);
-       opt.selected=Number(s.id)===Number(selected);
+       opt.value=String(track.id);
+       const supported=textSubtitleSupported(track);
+       if(supported)supportedCount++;
+       opt.textContent=label(track,'subtitle',i)+(supported?'':' · No compatible (gráfico)');
+       opt.disabled=!supported;
+       opt.selected=!subtitleOff&&supported&&Number(track.id)===selected;
        subs.appendChild(opt);
      });
-     subs.disabled=false;
+     // Mantener el selector desactivado si solo hay pistas de subtítulos
+     // gráficos que libmedia no decodifica; SRT externo sigue disponible.
+     subs.disabled=supportedCount===0;
+     const subHelp=get('#antoo-av-subtitle-help');
+     if(subHelp){
+       subHelp.textContent=!sets.subtitle.length
+         ?'No se detectaron subtítulos integrados. Puedes cargar un SRT, ASS o VTT.'
+         :supportedCount===0
+           ?'Los subtítulos integrados parecen ser gráficos (por ejemplo PGS). Este reproductor solo decodifica subtítulos de texto; puedes cargar un SRT o VTT externo.'
+           :'Selecciona la pista de texto deseada. Si la película no tiene diálogo subtitulado en ese momento, espera a que aparezca.';
+     }
      populate(video,sets.video,player.getSelectedVideoStreamId?.(),'Video no disponible');
      if(sets.video.length===1){
        const s=sets.video[0],p=s.codecparProxy||s.codecpar||{};
@@ -182,9 +223,17 @@
    }
    audio.addEventListener('change',()=>change('el audio',audio,()=>player.selectAudio(Number(audio.value))));
    subs.addEventListener('change',()=>change('los subtítulos',subs,async()=>{
-     if(subs.value==='off'){player.setSubtitleEnable?.(false);return;}
-     await player.selectSubtitle(Number(subs.value));
-     player.setSubtitleEnable?.(true);
+     if(subs.value==='off'){
+       subtitleOff=true;
+       player.setSubtitleEnable?.(false);
+       return;
+     }
+     const id=Number(subs.value);
+     const stream=sets.subtitle.find(track=>Number(track.id)===id);
+     if(!stream||!textSubtitleSupported(stream))
+       throw Error('Esta pista de subtítulos no es compatible. Carga un archivo SRT o VTT.');
+     await activateSubtitle(id);
+     subtitleOff=false;
    }));
    video.addEventListener('change',()=>change('la pista de video',video,()=>player.selectVideo(Number(video.value))));
    speed.addEventListener('change',()=>{
@@ -197,9 +246,15 @@
      if(selected.size>15*1024*1024){message('El archivo de subtítulos es demasiado grande (máximo 15 MB).');file.value='';return;}
      try{
        if(typeof player.loadExternalSubtitle!=='function')throw Error('No se admiten subtítulos externos en este motor.');
+       const before=new Set((player.getStreams?.()||[]).map(s=>Number(s.id)));
        await player.loadExternalSubtitle({title:selected.name.replace(/\.[^.]+$/,''),source:selected});
        refresh();
-       message('Subtítulos añadidos. Selecciona la nueva pista en la lista.');
+       const added=sets.subtitle.find(s=>!before.has(Number(s.id)));
+       if(!added)throw Error('El archivo no creó una pista de subtítulos compatible.');
+       await activateSubtitle(Number(added.id));
+       subtitleOff=false;
+       refresh();
+       message('Subtítulos externos cargados y activados: '+selected.name);
      }catch(e){message('No se pudieron cargar los subtítulos: '+(e?.message||e));}
      file.value='';
    });
