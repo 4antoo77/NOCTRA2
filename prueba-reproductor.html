@@ -12,6 +12,18 @@ button{background:#a384ed;color:#100b18;border:0;cursor:pointer;font-weight:700}
 button:disabled{opacity:.6;cursor:progress}
 #screen{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;border:1px solid #57476e;border-radius:12px;margin-top:15px}
 #screen>*{width:100%;height:100%}
+#screen>.ASS-box,#screen>svg{position:absolute!important;z-index:4!important;pointer-events:none!important}
+#screen>.antoo-av-captions-mirror[hidden]{display:none!important}
+#screen>.antoo-av-captions-mirror{
+ position:absolute!important;z-index:35!important;
+ left:4%!important;right:4%!important;top:auto!important;bottom:10%!important;
+ width:92%!important;height:auto!important;max-height:40%!important;
+ color:#fff!important;text-align:center!important;
+ font:700 clamp(15px,2.5vw,27px)/1.35 system-ui,sans-serif!important;
+ text-shadow:0 2px 4px #000,0 0 8px #000!important;
+ white-space:pre-line!important;pointer-events:none!important;
+}
+#screen.antoo-av-captions-mirrored>.ASS-box{visibility:hidden!important}
 #screen:fullscreen{width:100vw;height:100dvh;aspect-ratio:auto;border:0;border-radius:0}
 #status{color:#d2c1ff;white-space:pre-wrap;overflow-wrap:anywhere}
 .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
@@ -90,12 +102,12 @@ button:disabled{opacity:.6;cursor:progress}
 <div class="controls"><button type="button" id="start">Probar reproducción MKV</button><button type="button" id="full">Pantalla completa</button><button type="button" id="back">Salir del reproductor</button></div>
 <div id="screen" aria-label="Reproductor de prueba"></div><p role="status" id="status">Comprobando sesión…</p>
 <p>Este motor admite archivos Matroska y dispone de una ruta MSE para códecs compatibles. El modo de pantalla completa del sistema depende del navegador y del códec de cada MKV.</p>
-</main><script src="config.js"></script><script src="avplayer-es.js?v=20261013-spanish1"></script><script src="avplayer-options.js?v=20261013-stream-options2"></script><script type="module">
+</main><script src="config.js"></script><script src="avplayer-es.js?v=20261013-spanish1"></script><script src="avplayer-options.js?v=20261013-subtitles48"></script><script src="avplayer-captions.js?v=20261013-subtitles48"></script><script type="module">
 const $=id=>document.getElementById(id);
 const root=String(window.NOCTRA2_CONFIG?.API_BASE||'').replace(/\/+$/,'');
 const token=sessionStorage.getItem('noctra2.token')||localStorage.getItem('noctra2.remembered-token')||'';
 const status=message=>{$('status').textContent=message;};
-let catalog=[],player=null,optionsController=null;
+let catalog=[],player=null,optionsController=null,captions=null;
 async function req(path,options={}){
  if(!token||!/^https:\/\//.test(root))throw Error('Inicia sesión en la página principal de ANTOO PELIS primero.');
  const response=await fetch(root+path,{
@@ -125,6 +137,7 @@ $('start').addEventListener('click',async()=>{
  button.disabled=true;status('Preparando el nuevo motor de reproducción…');
  try{
    optionsController?.destroy?.();optionsController=null;
+   captions?.destroy?.();captions=null;
    if(player){await Promise.resolve(player.stop?.()).catch(()=>{});player=null;}
    $('screen').replaceChildren();
    const signed=await req('/api/play/'+encodeURIComponent('gdrive-'+id),{method:'POST'});
@@ -171,9 +184,24 @@ $('start').addEventListener('click',async()=>{
      console.warn('ANTOO PELIS: el paquete AVPlayerUI no permitió aplicar el idioma español.');
    }
    await player.load(signed.url);
+   // Preferir subtítulos de texto desde el arranque (no PGS/DVB gráficos).
+   if(typeof player.findBestStream==='function'){
+     const original=player.findBestStream;
+     player.findBestStream=function(streams,type,...rest){
+       if(Number(type)!==3)return original.call(this,streams,type,...rest);
+       const ids=new Set((player.getStreams?.()||[]).filter(x=>
+         String(x.mediaType||'').toLowerCase().includes('subtitle')&&
+         [94210,94212,94213,94225,94226,94230,94232].includes(Number(x.codecparProxy?.codecId))
+       ).map(x=>Number(x.id)));
+       const usable=streams.filter(x=>ids.has(Number(x.id)));
+       return usable.length?original.call(this,usable,type,...rest):undefined;
+     };
+   }
+   captions=window.antooAVCaptions?.create?.(player,$('screen'),document.body)||null;
    optionsController?.refresh?.();
-   await player.play();
-   status('Prueba iniciada. Comprueba la imagen, audio, subtítulos y pantalla completa.');
+   await player.play({audio:true,video:true,subtitle:true});
+   optionsController?.syncSubtitleAfterStart?.();
+   status('Prueba iniciada. Revisa Configuración → Subtítulos. Estado: '+(captions?.status?.()||'sin diagnóstico'));
  }catch(e){
    status('Esta prueba todavía no es compatible con tu dispositivo o con el módulo cargado: '+(e?.message||e)+'.\nEl reproductor habitual de ANTOO PELIS no se modificó.');
  }finally{button.disabled=false;}
@@ -191,6 +219,7 @@ $('full').addEventListener('click',async()=>{
 $('back').addEventListener('click',async()=>{
  try{if(document.fullscreenElement)await document.exitFullscreen();screen.orientation?.unlock?.();}catch{}
  optionsController?.destroy?.();optionsController=null;
+ captions?.destroy?.();captions=null;
  try{await player?.stop?.();}catch{}
  player=null;$('screen').replaceChildren();status('Reproductor detenido.');
 });
