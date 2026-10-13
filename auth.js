@@ -278,6 +278,44 @@
     const list=document.createElement('ul');list.className='antoo-profile-jokes';jokes.forEach(j=>{const item=document.createElement('li');item.textContent=j;list.append(item);});
     modal.append(close,head,heading,list);modal.showModal();
   }
+  function setupSuggestionUI(){
+    const dialog=$('suggestion-dialog'),form=$('suggestion-form'),open=$('suggest-open'),history=$('my-suggestions'),status=$('suggestion-status');
+    if(!dialog||!form||!open)return;
+    const labels={pending:'Pendiente',added:'Agregada al catálogo',declined:'No se agregará por ahora'};
+    async function refreshMine(){
+      if(!history)return;
+      history.textContent='Cargando…';
+      try{
+        const data=await request('/api/suggestions');
+        const rows=data.suggestions||[];
+        if(!rows.length){history.textContent='Todavía no has enviado sugerencias.';return;}
+        history.replaceChildren();
+        for(const item of rows){
+          const row=document.createElement('article');row.className='suggestion-history-row';
+          const title=document.createElement('strong');title.textContent=item.title+(item.year?' ('+item.year+')':'');
+          const meta=document.createElement('span');meta.className='suggestion-status-tag';meta.textContent=labels[item.status]||'Pendiente';
+          const date=document.createElement('small');date.textContent=new Date(Number(item.createdAt)*1000).toLocaleDateString('es-HN');
+          row.append(title,meta,date);history.append(row);
+        }
+      }catch(e){history.textContent='No se pudieron cargar tus sugerencias: '+e.message;}
+    }
+    open.onclick=async()=>{if(!dialog.open)dialog.showModal();status.textContent='';await refreshMine();};
+    $('suggest-close')?.addEventListener('click',()=>dialog.close());
+    form.onsubmit=async event=>{
+      event.preventDefault();status.textContent='';
+      const submit=form.querySelector('[type="submit"]');submit.disabled=true;
+      const data=new FormData(form);
+      try{
+        await request('/api/suggestions',{method:'POST',body:{
+          title:String(data.get('title')||'').trim(),type:String(data.get('type')||'movie'),
+          year:String(data.get('year')||'').trim(),note:String(data.get('note')||'').trim()
+        }});
+        form.reset();status.textContent='¡Listo! Tu sugerencia fue enviada al administrador.';
+        await refreshMine();
+      }catch(e){status.textContent=e.message;}
+      finally{submit.disabled=false;}
+    };
+  }
   function userbar(){const box=document.createElement('div');box.className='noctra-userbar';const name=document.createElement('button');name.type='button';name.className='antoo-profile-trigger';name.append(avatarNode(me.username),document.createTextNode(me.username));name.onclick=openProfile;box.append(name);if(me.role==='admin'){const b=document.createElement('button');b.textContent='Administrar';b.onclick=()=>openAdmin();box.append(b);}const exit=document.createElement('button');exit.textContent='Salir';exit.onclick=cloudApi.logout;box.append(exit);document.querySelector('.header-right').append(box);}
   async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;$('auth-loading').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-item-progress2');await script('drive.js?v=20261013-item-progress2');await script('watch-state.js?v=20261013-resume1');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
     document.body.classList.toggle('noctra-admin',me.role==='admin');
@@ -309,6 +347,7 @@
       <nav class="admin-nav" aria-label="Secciones de administración">
         <button type="button" data-admin-tab="overview" aria-pressed="true">Resumen</button>
         <button type="button" data-admin-tab="users" aria-pressed="false">Usuarios</button>
+        <button type="button" data-admin-tab="suggestions" aria-pressed="false">Sugerencias</button>
         <button type="button" data-admin-tab="catalog" aria-pressed="false">Catálogo</button>
         <button type="button" data-admin-tab="settings" aria-pressed="false">Ajustes</button>
       </nav>
@@ -320,6 +359,10 @@
         <div class="admin-panel-heading"><div><h3>Cuentas de acceso</h3><p>Crea usuarios con nombre y contraseña, sin correo electrónico.</p></div></div>
         <div class="admin-user-create"><h4>Crear cuenta</h4><form id="new-user-form"><label>Nombre de usuario<input id="new-username" required minlength="3" maxlength="32" autocomplete="off" placeholder="Ejemplo: amigo1"></label><label>Contraseña temporal<input id="new-password" type="password" required minlength="12" autocomplete="new-password" placeholder="Mínimo 12 caracteres"></label><button class="primary" type="submit">＋ Crear usuario</button></form><p class="admin-error" id="admin-error" role="alert"></p></div>
         <div class="admin-user-list"><h4>Usuarios existentes</h4><div id="admin-users"></div></div>
+      </section>
+      <section class="admin-panel" data-admin-panel="suggestions" hidden>
+        <div class="admin-panel-heading"><div><h3>Sugerencias de usuarios</h3><p>Revisa lo que quieren ver y marca lo que ya agregaste al catálogo.</p></div><button class="secondary" id="refresh-suggestions" type="button">↻ Actualizar</button></div>
+        <div id="admin-suggestions" aria-live="polite">Cargando sugerencias…</div>
       </section>
       <section class="admin-panel admin-catalog-panel" data-admin-panel="catalog" hidden>
         <div class="admin-panel-heading"><div><h3>Biblioteca y contenido</h3><p>Conecta Drive, revisa metadatos y publica el catálogo compartido.</p></div></div>
@@ -338,10 +381,38 @@
     const localSettings=$('settings-dialog')?.querySelector('.settings-section:first-of-type');
     const localSlot=d.querySelector('#admin-settings-slot');
     if(localSettings&&localSlot){localSlot.append(localSettings);localSettings.hidden=false;}
-    d.showModal();await listUsers();d.querySelector('#refresh-activity').onclick=loadActivity;await loadActivity();}
+    d.showModal();await listUsers();d.querySelector('#refresh-activity').onclick=loadActivity;await loadActivity();void loadSuggestions();}
   function setupAdminNav(d){
     const tabs=[...d.querySelectorAll('[data-admin-tab]')],panels=[...d.querySelectorAll('[data-admin-panel]')];
-    for(const tab of tabs)tab.onclick=()=>{const key=tab.dataset.adminTab;for(const item of tabs)item.setAttribute('aria-pressed',String(item===tab));for(const panel of panels)panel.hidden=panel.dataset.adminPanel!==key;};
+    for(const tab of tabs)tab.onclick=()=>{const key=tab.dataset.adminTab;for(const item of tabs)item.setAttribute('aria-pressed',String(item===tab));for(const panel of panels)panel.hidden=panel.dataset.adminPanel!==key;if(key==='suggestions')void loadSuggestions();};
+    d.querySelector('#refresh-suggestions').onclick=loadSuggestions;
+  }
+  async function loadSuggestions(){
+    const box=$('admin-suggestions');if(!box)return;box.textContent='Cargando sugerencias…';
+    try{
+      const data=await request('/api/admin/suggestions'),rows=data.suggestions||[];
+      const pending=rows.filter(x=>x.status==='pending').length;
+      const heading=$('admin-suggestions')?.closest('.admin-panel')?.querySelector('.admin-panel-heading p');
+      if(heading)heading.textContent=pending+' pendientes · '+rows.length+' en total';
+      box.replaceChildren();
+      if(!rows.length){box.textContent='Aún no hay sugerencias.';return;}
+      for(const item of rows){
+        const row=document.createElement('article');row.className='admin-row suggestion-admin-row';
+        const detail=document.createElement('div');detail.className='suggestion-admin-detail';
+        const title=document.createElement('strong');title.textContent=item.title+(item.year?' ('+item.year+')':'');
+        const meta=document.createElement('small');meta.textContent=(item.type==='tv'?'Serie':'Película')+' · '+item.username+' · '+new Date(Number(item.createdAt)*1000).toLocaleString('es-HN');
+        detail.append(title,meta);
+        if(item.note){const note=document.createElement('p');note.textContent=item.note;detail.append(note);}
+        const state=document.createElement('span');state.className='suggestion-status-tag';state.textContent=item.status==='added'?'Agregada al catálogo':item.status==='declined'?'No se agregará':'Pendiente';detail.append(state);
+        row.append(detail);
+        const actions=document.createElement('div');actions.className='admin-actions';
+        const update=async status=>{try{await request('/api/admin/suggestions/'+item.id,{method:'PATCH',body:{status}});await loadSuggestions();}catch(e){box.textContent='No se pudo actualizar: '+e.message;}};
+        if(item.status!=='added'){const added=document.createElement('button');added.type='button';added.textContent='Marcar agregada';added.onclick=()=>update('added');actions.append(added);}
+        if(item.status!=='declined'){const declined=document.createElement('button');declined.type='button';declined.textContent='Descartar';declined.onclick=()=>update('declined');actions.append(declined);}
+        if(item.status!=='pending'){const reopen=document.createElement('button');reopen.type='button';reopen.textContent='Volver a pendientes';reopen.onclick=()=>update('pending');actions.append(reopen);}
+        row.append(actions);box.append(row);
+      }
+    }catch(e){box.textContent='No se pudieron cargar las sugerencias: '+e.message;}
   }
   async function loadActivity(){
     const box=$('admin-activity');if(!box)return;box.textContent='Cargando actividad…';
@@ -367,5 +438,6 @@
     const avatarInput=document.createElement('input');avatarInput.type='url';avatarInput.placeholder='https://ejemplo.com/foto.jpg';avatarInput.value=avatarFor(u.username);
     const saveAvatar=document.createElement('button');saveAvatar.type='button';saveAvatar.textContent='Guardar foto';saveAvatar.onclick=async()=>{const v=avatarInput.value.trim();if(v&&!/^https:\/\//i.test(v)){$('admin-error').textContent='La imagen debe usar una URL HTTPS.';return;}saveAvatar.disabled=true;try{await request('/api/admin/users/'+u.id,{method:'PATCH',body:{avatarUrl:v}});setAvatar(u.username,v);$('admin-error').textContent='Foto guardada en Cloudflare para todos los dispositivos.';if(me?.username===u.username){me.avatarUrl=v;document.querySelector('.antoo-profile-trigger')?.replaceChildren(avatarNode(u.username),document.createTextNode(u.username));}}catch(e){$('admin-error').textContent='No se pudo guardar la foto en Cloudflare: '+e.message;}finally{saveAvatar.disabled=false;}};
     avatarField.append(avatarInput,saveAvatar);row.append(avatarField);if(u.role!=='admin'){const actions=document.createElement('div');actions.className='admin-actions';const block=document.createElement('button');block.textContent=u.disabled?'Reactivar':'Desactivar';block.onclick=async()=>{try{await request('/api/admin/users/'+u.id,{method:'PATCH',body:{disabled:!u.disabled}});await listUsers();}catch(e){$('admin-error').textContent=e.message;}};const pass=document.createElement('button');pass.textContent='Cambiar contraseña';pass.onclick=async()=>{const p=prompt('Nueva contraseña para '+u.username+' (12 caracteres mínimo):');if(p===null)return;try{await request('/api/admin/users/'+u.id,{method:'PATCH',body:{password:p}});$('admin-error').textContent='Contraseña actualizada. Sesiones anteriores cerradas.';}catch(e){$('admin-error').textContent=e.message;}};actions.append(block,pass);row.append(actions);}box.append(row);}}catch(e){box.textContent=e.message;}}
+  setupSuggestionUI();
   init();
 })();
