@@ -55,6 +55,8 @@
    return out;
  }
  function closeDialogs(){
+   // A history navigation should not reopen the previous title after closing playback.
+   window.noctraPlayerFullscreen?.setReturnInfo?.(null);
    for(const id of ['player','details','episodes-dialog']){
      const node=document.getElementById(id);
      if(node?.open)node.close();
@@ -119,4 +121,20 @@
  };
  window.antooRoutes=api;
  window.addEventListener('popstate',restore);
+ // Closing a detail sheet leaves the catalog URL, except while opening the
+ // existing player or during a browser-history transition.
+ for(const id of ['details','episodes-dialog']){
+   const dlg=document.getElementById(id);
+   dlg?.addEventListener('close',()=>{
+     setTimeout(()=>{
+       if(restoring||document.getElementById('player')?.open||
+          document.getElementById('details')?.open||
+          document.getElementById('episodes-dialog')?.open)return;
+       if(id==='details'&&location.pathname.startsWith('/peliculas/'))
+         navigate('/peliculas');
+       if(id==='episodes-dialog'&&location.pathname.startsWith('/series/'))
+         navigate('/series');
+     },80);
+   });
+ }
 })();
