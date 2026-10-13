@@ -123,7 +123,6 @@
       item.title,item.originalTitle,item.seriesName,item.seriesTitle,
       item.description,item.episodeTitle,item.episodeDescription
     ].filter(Boolean).join(' '));
-    if(family&&searchable.includes(family))return title.includes(family)?78:65;
     const currentWords=recommendationNormalize(current?.title).split(' ');
     if(currentWords.includes('spiderman')&&searchable.includes('spiderman'))
       return title.includes('spiderman')?72:58;
@@ -133,37 +132,39 @@
     const shared=words.filter(word=>titleWords.has(word));
     return shared.length>=2?40+Math.min(shared.length,5):0;
   }
+  function recommendationPosterURL(value){
+    try{const url=new URL(String(value||''));if(url.protocol!=='https:')return '';
+      const parts=url.pathname.split('/');
+      if(parts[1]==='t'&&parts[2]==='p'&&['w','h'].includes(parts[3]?.[0])&&Number.isFinite(Number(parts[3].slice(1))))parts[3]='w780';
+      url.pathname=parts.join('/');return url.href;
+    }catch{return '';}
+  }
   function renderRelatedRecommendations(current,section,onSelect,actionText){
     if(!section)return;
     const all=playerCatalog();
-    const related=all.map(item=>({item,score:recommendationScore(current,item)}))
-      .filter(entry=>entry.score>0)
-      .sort((a,b)=>b.score-a.score||String(a.item.title||'').localeCompare(String(b.item.title||''),'es'))
-      .map(entry=>entry.item);
+    const related=all.map(item=>({item,score:recommendationScore(current,item)})).filter(x=>x.score>0)
+      .sort((x,y)=>y.score-x.score||String(x.item.title||'').localeCompare(String(y.item.title||''),'es')).map(x=>x.item);
     for(const variant of current?.variants||[]){
-      const id=typeof driveId==='function'?driveId(variant.url):null;
-      const found=id&&all.find(item=>String(item.fileId||'')===String(id));
-      if(found&&!related.some(item=>String(item.fileId)===String(found.fileId)))
-        related.unshift({...found,recommendationLabel:variant.label||'Otra versión'});
+      const id=typeof driveId==='function'?driveId(variant.url):null,found=id&&all.find(item=>String(item.fileId||'')===String(id));
+      if(found&&!related.some(item=>String(item.fileId)===String(found.fileId)))related.unshift({...found,recommendationLabel:variant.label||'Otra versión'});
     }
     const unique=[],seen=new Set();
     for(const item of related){const id=String(item.fileId||'');if(!id||seen.has(id))continue;seen.add(id);unique.push(item);}
-    section.replaceChildren();
-    if(!unique.length){section.hidden=true;return;}
-    section.hidden=false;
+    section.replaceChildren();if(!unique.length){section.hidden=true;return;}section.hidden=false;
     const heading=document.createElement('h3');heading.textContent='Más títulos relacionados';
+    const carousel=document.createElement('div');carousel.className='player-rec-carousel';
     const row=document.createElement('div');row.className='player-rec-list';
+    const arrow=(direction,label)=>{const button=document.createElement('button');button.type='button';button.className='player-rec-arrow';button.setAttribute('aria-label',label);button.textContent=direction<0?'‹':'›';button.addEventListener('click',()=>row.scrollBy({left:direction*Math.max(240,row.clientWidth*.8),behavior:'smooth'}));return button;};
     for(const item of unique){
       const button=document.createElement('button');button.type='button';button.className='player-rec-item';
-      const poster=String(item.poster||'');
-      if(poster.startsWith('https://')){const img=document.createElement('img');img.src=poster;img.alt='';img.loading='lazy';button.append(img);}
+      const poster=recommendationPosterURL(item.poster);if(poster){const img=document.createElement('img');img.src=poster;img.alt='';img.loading='lazy';button.append(img);}
       const label=document.createElement('span');label.textContent=String(item.recommendationLabel||item.episodeTitle||item.title||'Ver título');
       const year=document.createElement('small');year.textContent=item.year?String(item.year):'';
       const action=document.createElement('small');action.textContent=actionText;
       button.append(label);if(year.textContent)button.append(year);button.append(action);
       button.addEventListener('click',()=>onSelect(item));row.append(button);
     }
-    section.append(heading,row);
+    carousel.append(arrow(-1,'Ver títulos anteriores'),row,arrow(1,'Ver más títulos'));section.append(heading,carousel);
   }
   function renderPlayerRecommendations(current){
     renderRelatedRecommendations(current,$('player-recommendations'),item=>cloudApi.play(item),'▶ Reproducir');
@@ -471,7 +472,7 @@
     };
   }
   function userbar(){const box=document.createElement('div');box.className='noctra-userbar';const name=document.createElement('button');name.type='button';name.className='antoo-profile-trigger';name.append(avatarNode(me.username),document.createTextNode(me.username));name.onclick=openProfile;box.append(name);if(me.role==='admin'){const b=document.createElement('button');b.textContent='Administrar';b.onclick=()=>openAdmin();box.append(b);}const exit=document.createElement('button');exit.textContent='Salir';exit.onclick=cloudApi.logout;box.append(exit);document.querySelector('.header-right').append(box);}
-  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;$('auth-loading').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-detail-recommendations1');await script('drive.js?v=20261013-item-progress2');await script('watch-state.js?v=20261013-resume1');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
+  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;$('auth-loading').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-related-carousel-hd1');await script('drive.js?v=20261013-related-carousel-hd1');await script('watch-state.js?v=20261013-resume1');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
     document.body.classList.toggle('noctra-admin',me.role==='admin');
     if(me.role!=='admin'){
       document.querySelectorAll('[data-add], #editor, #import, #export, #import-file').forEach(el=>{el.hidden=true;el.disabled=true;});
