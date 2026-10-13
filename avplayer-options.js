@@ -152,9 +152,8 @@
      const gear=origin.closest('.avplayer-ui-control-settings');
      if(!gear||!host.contains(gear))return;
      if(e.type==='pointerup'&&e.pointerType!=='touch')return;
-     if(e.type==='touchend'&&typeof PointerEvent==='function')return;
      const now=Date.now();
-     const duplicate=now-lastTouchAction<650;
+     const duplicate=now-lastTouchAction<450;
      e.preventDefault();e.stopImmediatePropagation();e.stopPropagation();
      if(duplicate)return;
      if(e.type!=='click')lastTouchAction=now;
