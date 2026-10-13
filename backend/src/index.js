@@ -146,6 +146,18 @@ async function searchMetadata(req,env){
   }));
   const error=requests.find(x=>x instanceof Response);
   if(requests.every(x=>!x||x instanceof Response))return error||fail('TMDB no respondió.',502);
+  // For difficult names, search the cleaned filename or main phrase;
+  // results always require the administrator to choose the correct record.
+  if(requests.every(x=>!x||x instanceof Response||!(x.results||[]).length)){
+    const parsed=metadataQuery(raw),alternates=[parsed.name];
+    const words=parsed.name.split(' ');
+    if(words.length>2)alternates.push(words.slice(0,Math.min(3,words.length-1)).join(' '));
+    for(const term of [...new Set(alternates)]){
+      if(!term||term===raw||term.length<3)continue;
+      const r=await tmdbGet(env,'search/'+type,{query:term,language:'es-ES',include_adult:'false'});
+      if(r&&!(r instanceof Response)&&r.results?.length){requests.push(r);break;}
+    }
+  }
   const byId=new Map();
   for(const result of requests){
     if(!result||result instanceof Response)continue;
@@ -278,7 +290,22 @@ async function metadataStatus(db,env){
     else if(m.status==='retry'||m.status==='working')counts.working++;
     else counts.pending++;
   }
-  return {configured:!!env.TMDB_READ_ACCESS_TOKEN,...counts};
+  const metadataMap=new Map(statuses.map(x=>[x.item_key,x]));
+  let backgroundsPending=0;
+  for(const x of targets){
+    const state=metadataMap.get(x.key);
+    if(!state?.tmdb_id)continue;
+    let payload={};try{payload=JSON.parse(state.payload_json||'{}');}catch{}
+    if(!payload.backdrop&&!payload.backdropChecked)backgroundsPending++;
+  }
+  const episodeRows=(await db.prepare("SELECT file_id AS fileId,series_name AS seriesName,title,path FROM catalog WHERE series_name!=''").all()).results||[];
+  const savedEps=new Set((await episodeMetadataRows(db)).map(x=>x.fileId));
+  let episodesPending=0;
+  for(const m of episodeRows){
+    const match=metadataMap.get(metadataKey(m));
+    if(match?.tmdb_id&&episodeNumbers(m)&&!savedEps.has(m.fileId))episodesPending++;
+  }
+  return {configured:!!env.TMDB_READ_ACCESS_TOKEN,...counts,backgroundsPending,episodesPending};
 }
 async function metadataSweep(db,env,limit=5){
   if(!env.TMDB_READ_ACCESS_TOKEN)return {configured:false,processed:0,...await metadataStatus(db,env)};
@@ -511,7 +538,13 @@ export default {async fetch(request,env,ctx){
         const backdrops=await refreshBackdropMetadata(env.DB,env,2);
         response=json({...summary,episodes,backdrops});
       }
-      else if(path==='/api/admin/metadata/item' && request.method==='PATCH')response=await metadataSaveManual(env.DB,request);
+      else if(path==='/api/admin/metadata/item' && request.method==='PATCH'){
+        response=await metadataSaveManual(env.DB,request);
+        if(response.ok&&env.TMDB_READ_ACCESS_TOKEN)ctx.waitUntil((async()=>{
+          await syncEpisodeMetadata(env.DB,env,1);
+          await refreshBackdropMetadata(env.DB,env,1);
+        })().catch(e=>console.error('Episode metadata after manual match:',e)));
+      }
       else if(path==='/api/admin/metadata/episode' && request.method==='PATCH')response=await saveEpisodeMetadata(env.DB,request);
       else if(path==='/api/admin/metadata/retry' && request.method==='POST')response=await metadataRetry(env.DB,request);
       else if(path==='/api/admin/catalog' && request.method==='PUT'){
