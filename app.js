@@ -12,7 +12,7 @@ function toast(s){$('#toast').textContent=s;$('#toast').classList.add('show');cl
 function dialog(s){$(s).showModal();}
 $$('dialog').forEach(d=>{d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});});
 $$('.close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
-function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='home');$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#section-title').textContent=p==='list'?'Mi lista':$('#search').value.trim()?'Resultados de búsqueda':window.noctraMediaCategory==='series'?'Series':'Películas';render();window.scrollTo(0,0);window.antooRoutes?.section?.(p,p==='library'?'movies':window.noctraMediaCategory);}
+function setPage(p){page=p;document.body.classList.toggle('library-mode',p!=='home');document.body.classList.toggle('antoo-home-page',p==='home');document.body.classList.toggle('antoo-section-page',p!=='home');$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#section-title').textContent=p==='list'?'Mi lista':$('#search').value.trim()?'Resultados de búsqueda':window.noctraMediaCategory==='series'?'Series':'Películas';render();window.scrollTo(0,0);window.antooRoutes?.section?.(p,p==='library'?'movies':window.noctraMediaCategory);if(p==='home')window.antooRefreshHomeCarousel?.();}
 $('.nav').forEach(b=>b.onclick=()=>{if(b.dataset.page==='library')document.querySelector('.media-tabs [data-kind="movies"]')?.click();setPage(b.dataset.page);});
 $$('.brand').forEach(a=>a.onclick=e=>{e.preventDefault();setPage('home');});
 $('#explore').onclick=()=>$('#catalog').scrollIntoView({behavior:'smooth'});
@@ -231,8 +231,9 @@ const noctraSpotlight=(()=>{
    hero.classList.add('is-abyss-feature');
    activeIndex=0;buildTrack();show(0);start();
  }
- return {update};
+ return {update,forceRefresh(){signature='';update();}};
 })();
+window.antooRefreshHomeCarousel=()=>{if(page==='home')noctraSpotlight.forceRefresh();};
 function openEditor(m=null){if(window.noctraCloud?.user?.role!=='admin')return;editing=m?.id||null;$('#movie-form').reset();$('#variants').innerHTML='';$('#form-error').textContent='';$('#edit-title').textContent=m?'Editar película':'Añadir película';if(m){for(const key of ['title','genre','year','description','poster','drive'])$('#movie-form').elements[key].value=m[key]||'';m.variants.forEach(v=>addVariant(v));}dialog('#editor');}
 $$('[data-add]').forEach(b=>b.onclick=()=>openEditor());
 function addVariant(v={label:'1080p',url:''}){if($('#variants').children.length>=8)return;const row=document.createElement('div');row.className='variant';row.innerHTML=`<select aria-label="Calidad declarada">${['360p','480p','720p','1080p','1440p','2160p','Original'].map(q=>`<option ${q===v.label?'selected':''}>${q}</option>`).join('')}</select><input type="url" placeholder="Enlace de esta versión en Drive" aria-label="Enlace de la versión" required value="${esc(v.url)}"><button type="button" aria-label="Eliminar versión">×</button>`;row.querySelector('button').onclick=()=>row.remove();$('#variants').append(row);}
@@ -250,4 +251,5 @@ $('#player').addEventListener('close',()=>{$('#frame-container').innerHTML='';})
 $('#export').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,movies},null,2)],{type:'application/json'}));a.download='noctra-catalogo.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Copia del catálogo exportada.');};
 $('#import').onclick=()=>$('#import-file').click();
 $('#import-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(f.size>5e6)throw Error();const d=JSON.parse(await f.text());if(d.version!==1||!Array.isArray(d.movies)||d.movies.length>2000||!d.movies.every(validMovie))throw Error();let n=0;for(const m of d.movies){if(!movies.some(x=>driveId(x.drive)===driveId(m.drive))){movies.push({...m,id:crypto.randomUUID(),poster:posterURL(m.poster)});n++;}}const ok=persist();render();if(ok)toast(`${n} películas importadas.`);}catch{toast('Archivo no válido. Selecciona una copia JSON exportada por NOCTRA.');}finally{e.target.value='';}};
+document.body.classList.toggle('antoo-home-page',page==='home');
 render();
