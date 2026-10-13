@@ -7,6 +7,31 @@
   const error=document.getElementById('login-error');
   const $=id=>document.getElementById(id);
   let token=sessionStorage.getItem('noctra2.token')||'',me=null,loaded=false,cloud=[];
+  // This is read-only recovery. It never republishes or overwrites Drive data.
+  function catalogNotice(message=''){
+    const catalog=$('catalog');if(!catalog)return;
+    let node=$('noctra-catalog-notice');
+    if(!node){
+      node=document.createElement('div');
+      node.id='noctra-catalog-notice';
+      node.setAttribute('role','status');
+      node.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#282330;color:#f8f4ff;border:1px solid #ba99de88;border-radius:12px;padding:14px 18px;margin:12px 0 20px;font-size:14px;';
+      const label=document.createElement('span');label.className='noctra-catalog-message';label.style.flex='1 1 200px';
+      const retry=document.createElement('button');retry.type='button';retry.textContent='Volver a cargar catálogo';
+      retry.className='secondary';retry.style.minHeight='44px';
+      retry.onclick=async()=>{
+        retry.disabled=true;
+        try{await cloudApi.reloadCatalog();}catch(e){catalogNotice('No se pudo recuperar el catálogo: '+e.message);}
+        finally{retry.disabled=false;}
+      };
+      node.append(label,retry);
+      const heading=catalog.querySelector('.section-heading')||catalog.firstElementChild;
+      if(heading)heading.insertAdjacentElement('afterend',node);else catalog.prepend(node);
+    }
+    node.hidden=!message;
+    node.querySelector('.noctra-catalog-message').textContent=message;
+  }
+
   let moviLoader=null,activePlayer=null,playRequest=0;
   async function loadMovi(){
     if(customElements.get('movi-player'))return;
@@ -36,7 +61,22 @@
   const cloudApi={
     get user(){return me},get movies(){return cloud},get token(){return token},
     request,
-    async reloadCatalog(){const d=await request('/api/catalog');let fav;try{fav=new Set(JSON.parse(localStorage.getItem('noctra2.favorites')||'[]'));}catch{fav=new Set();}cloud=(d.movies||[]).map(m=>({...m,saved:fav.has(m.fileId)}));if(typeof window.noctraShowLibrary==='function')window.noctraShowLibrary();else {window.serverMovies=[...cloud];if(typeof render==='function')render();}return cloud;},
+    async reloadCatalog(){
+      let data;
+      try{data=await request('/api/catalog');}
+      catch(e){catalogNotice('No se pudo consultar el catálogo publicado. Tus archivos no se han eliminado. '+e.message);throw e;}
+      if(!Array.isArray(data.movies)){
+        const e=Error('Respuesta de catálogo incorrecta.');
+        catalogNotice('El servidor devolvió una respuesta de catálogo incorrecta. No vuelvas a publicar todavía.');
+        throw e;
+      }
+      let fav;try{fav=new Set(JSON.parse(localStorage.getItem('noctra2.favorites')||'[]'));}catch{fav=new Set();}
+      cloud=data.movies.map(m=>({...m,saved:fav.has(m.fileId)}));
+      if(typeof window.noctraShowLibrary==='function')window.noctraShowLibrary();
+      else {window.serverMovies=[...cloud];if(typeof render==='function')render();}
+      catalogNotice(cloud.length?'':'El servidor devolvió 0 títulos. No vuelvas a publicar ni importar un catálogo vacío. Usa «Volver a cargar catálogo» para comprobarlo.');
+      return cloud;
+    },
     async play(m){
       const fileId=m.fileId||(typeof driveId==='function'?driveId(m.drive):null)||
         (typeof m.id==='string'&&m.id.startsWith('gdrive-')?m.id.slice(7):null);
@@ -149,11 +189,12 @@
       document.querySelectorAll('.banner .primary, .empty .text-button, header .add-top').forEach(b=>{b.textContent='Ver películas';b.onclick=()=>{document.querySelector('#catalog').scrollIntoView({behavior:'smooth'});};});document.querySelector('.showcase')?.setAttribute('hidden','');
       const panel=document.querySelector('.drive-panel');if(panel)panel.hidden=true;
     }
-    await cloudApi.reloadCatalog();
+    try{await cloudApi.reloadCatalog();}
+    catch(e){console.warn('NOCTRA2 catalog read failed:',e);}
     // Automatic TMDB processing starts on admin login; no per-title clicks.
     if(me.role==='admin')void window.noctraMetadataAdmin?.autoStart?.(cloudApi,request);
   }}
-  async function init(){if(!validApi){msg('Configura primero Cloudflare: abre config.js y reemplaza TU-WORKER.');return;}try{const s=await request('/api/status');setup.hidden=!!s.ready;form.hidden=!s.ready;if(token && s.ready){const v=await request('/api/me');await activate(v.user);}}catch(e){msg(e.message);}}
+  async function init(){if(!validApi){msg('Configura primero Cloudflare: abre config.js y reemplaza TU-WORKER.');return;}try{const s=await request('/api/status');setup.hidden=!!s.ready;form.hidden=!s.ready;if(token && s.ready){const v=await request('/api/me');await activate(v.user);}}catch(e){msg(e.message);if(me)catalogNotice('No se pudo completar el inicio del catálogo: '+e.message);}}
   form.addEventListener('submit',async e=>{e.preventDefault();msg('');$('login-submit').disabled=true;try{const d=await request('/api/login',{method:'POST',body:{username:$('login-username').value.trim(),password:$('login-password').value}});token=d.token;sessionStorage.setItem('noctra2.token',token);await activate(d.user);}catch(e){msg(e.message);}finally{$('login-submit').disabled=false;}});
   setup.addEventListener('submit',async e=>{e.preventDefault();msg('');$('setup-submit').disabled=true;try{await request('/api/setup',{method:'POST',body:{bootstrapSecret:$('setup-secret').value,username:$('setup-username').value.trim(),password:$('setup-password').value}});$('setup-secret').value='';$('setup-password').value='';setup.hidden=true;form.hidden=false;msg('Administrador creado. Inicia sesión.');}catch(e){msg(e.message);}finally{$('setup-submit').disabled=false;}});
   async function openAdmin(){
