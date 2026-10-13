@@ -377,7 +377,7 @@ async function metadataSweep(db,env,limit=5){
   let processed=0,completed=0,review=0,errors=0;
   for(const item of pending.slice(0,Math.max(1,Math.min(6,limit)))){
     const claimed=await db.prepare(
-      "INSERT INTO metadata_match(item_key,status,checked_at) VALUES(?,'working',?) ON CONFLICT(item_key) DO UPDATE SET status='working',checked_at=excluded.checked_at WHERE (metadata_match.status IN ('working','retry') AND metadata_match.checked_at < ?) OR (metadata_match.status='review' AND metadata_match.payload_json='{}')"
+      "INSERT INTO metadata_match(item_key,status,checked_at) VALUES(?,'working',?) ON CONFLICT(item_key) DO UPDATE SET status='working',checked_at=excluded.checked_at WHERE (metadata_match.status IN ('working','retry') AND metadata_match.checked_at < ?) OR metadata_match.status='review'"
     ).bind(item.key,now(),now()-240).run();
     if(!claimed.meta?.changes)continue;
     let state='review',payload={},tmdbId=null;
