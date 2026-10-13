@@ -36,9 +36,9 @@ body.abyss-noctra #hero{
 .noctra-card-progress>span,.noctra-episode-progress>span{display:block;height:100%;background:#c6a4ff;border-radius:inherit;box-shadow:0 0 8px #bd9cffaa}
 .noctra-episode-progress{display:block;width:100%;height:4px;margin-top:9px;overflow:hidden;background:#ffffff25;border-radius:5px}
 
-#player-recommendations,#detail-recommendations[hidden]{display:none!important}
+#player-recommendations[hidden],#detail-recommendations[hidden]{display:none!important}
 #player-recommendations,#detail-recommendations{margin:16px 0 8px;padding:14px 16px;border:1px solid #ffffff17;border-radius:14px;background:linear-gradient(120deg,#171320,#100f16);color:#f7f3fc}
-#player-recommendations,#detail-recommendations h3{margin:0 0 11px;font-size:15px;font-weight:700}
+#player-recommendations h3,#detail-recommendations h3{margin:0 0 11px;font-size:15px;font-weight:700}
 .player-rec-list{display:flex;gap:10px;overflow-x:auto;padding:2px 1px 7px;scroll-snap-type:x proximity}
 .player-rec-item{flex:0 0 138px;display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-height:60px;padding:9px;border:1px solid #ffffff20;border-radius:11px;background:#211d2b;color:#f7f3fc;text-align:left;cursor:pointer;scroll-snap-align:start}
 .player-rec-item:hover,.player-rec-item:focus-visible{border-color:#bca1ff;background:#2b2438}
