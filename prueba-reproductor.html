@@ -134,6 +134,9 @@ $('start').addEventListener('click',async()=>{
    if(typeof Constructor!=='function')throw Error('Esta versión de libmedia no expone el constructor esperado.');
    const options={
      container:$('screen'),
+     // Files come from the authenticated ANTOO PELIS catalog above.
+     // Hide libmedia's redundant open-file/GitHub header.
+     ui:{hasFolder:false,hasHeader:false,hasFooter:true},
      getWasm:(type,codecId)=>{
        // Upstream libmedia documents @latest as its wasm distribution.
        // The previous test incorrectly assumed a 1.3.1 git tag and omitted AC3.
