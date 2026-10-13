@@ -57,15 +57,16 @@ async function metadataRows(db){
   try{return (await db.prepare('SELECT item_key,status,tmdb_id,payload_json,checked_at FROM metadata_match').all()).results||[];}catch{return [];}
 }
 async function getCatalog(db){
-  const [r,metadata]=await Promise.all([
+  const [r,metadata,episodes]=await Promise.all([
     db.prepare('SELECT id,title,genre,year,description,poster,file_id AS fileId,series_name AS seriesName,path,height,size FROM catalog ORDER BY updated_at DESC').all(),
-    metadataRows(db)
+    metadataRows(db),episodeMetadataRows(db)
   ]);
+  const episodeMap=new Map(episodes.map(x=>[x.fileId,x]));
   const statuses=new Map(metadata.map(x=>[x.item_key,x]));
   return json({movies:(r.results||[]).map(m=>{
     const meta=statuses.get(metadataKey(m));let extra={};
-    if(meta){try{const payload=JSON.parse(meta.payload_json);extra={rating:payload.rating||0,duration:payload.duration||0,tmdbId:meta.tmdb_id||null,metadataStatus:meta.status,...(m.seriesName&&payload.title?{seriesTitle:payload.title}:{})};}catch{}}
-    return {...m,drive:'https://drive.google.com/file/d/'+m.fileId+'/view',variants:[],added:0,connected:true,cloud:true,...extra};
+    if(meta){try{const payload=JSON.parse(meta.payload_json);extra={rating:payload.rating||0,duration:payload.duration||0,backdrop:payload.backdrop||'',tmdbId:meta.tmdb_id||null,metadataStatus:meta.status,...(m.seriesName&&payload.title?{seriesTitle:payload.title}:{})};}catch{}}
+    return {...m,drive:'https://drive.google.com/file/d/'+m.fileId+'/view',variants:[],added:0,connected:true,cloud:true,...extra,...(episodeMap.get(m.fileId)||{})};
   })});
 }
 async function saveCatalog(db,req){
@@ -97,6 +98,9 @@ async function saveCatalog(db,req){
 }
 // TMDB metadata lookup: admin-only, token stays in Worker secrets.
 const TMDB_IMAGE='https://image.tmdb.org/t/p/w500';
+const TMDB_BACKDROP='https://image.tmdb.org/t/p/original';
+const TMDB_STILL='https://image.tmdb.org/t/p/w780';
+const safeTmdbBackdrop=p=>typeof p==='string'&&/^\/[A-Za-z0-9_.-]{4,250}$/.test(p)?TMDB_BACKDROP+p:'';
 const TMDB_GENRES={'Action':'Acción','Adventure':'Acción','Animation':'Animación','Comedy':'Comedia','Crime':'Suspenso','Documentary':'Documental','Drama':'Drama','Family':'Animación','Fantasy':'Ciencia ficción','History':'Drama','Horror':'Terror','Music':'Otros','Mystery':'Suspenso','Romance':'Drama','Science Fiction':'Ciencia ficción','Sci-Fi & Fantasy':'Ciencia ficción','Thriller':'Suspenso','War':'Acción','Western':'Acción','Kids':'Animación'};
 // TMDB returns localized genre labels when language=es-ES.
 Object.assign(TMDB_GENRES,{
@@ -120,15 +124,51 @@ async function tmdbGet(env,endpoint,params={}){
   return response.json();
 }
 async function searchMetadata(req,env){
-  const url=new URL(req.url),query=(url.searchParams.get('q')||'').trim(),type=url.searchParams.get('type')==='tv'?'tv':'movie';
-  if(query.length<2||query.length>120)return fail('Escribe un título de entre 2 y 120 caracteres.',400);
-  const r=await tmdbGet(env,'search/'+type,{query,include_adult:'false',page:1});
-  if(r instanceof Response)return r;
-  return json({results:(r.results||[]).filter(x=>!x.adult).slice(0,12).map(x=>({
-     id:x.id,title:(type==='tv'?x.name:x.title)||'',
-     year:((type==='tv'?x.first_air_date:x.release_date)||'').slice(0,4),
-     description:x.overview||'',poster:safeTmdbImage(x.poster_path),
-     rating:Math.round(Number(x.vote_average||0)*10)/10,type
+  const url=new URL(req.url),raw=(url.searchParams.get('q')||'').trim(),type=url.searchParams.get('type')==='tv'?'tv':'movie';
+  if(raw.length<2||raw.length>180)return fail('Escribe un título o pega un enlace de TMDB.',400);
+  const direct=/^(?:https?:\/\/(?:www\.)?themoviedb\.org\/(?:es(?:-[A-Z]{2})?\/)?(?:movie|tv)\/)?(\d{1,12})(?:[-/?#].*)?$/i.exec(raw);
+  if(direct){
+    const id=Number(direct[1]);if(!Number.isSafeInteger(id)||id<=0)return fail('ID incorrecto.',400);
+    const info=await tmdbGet(env,type+'/'+id);if(info instanceof Response)return info;
+    return json({results:[{
+      id:info.id,title:(type==='tv'?info.name:info.title)||'',
+      year:((type==='tv'?info.first_air_date:info.release_date)||'').slice(0,4),
+      description:info.overview||'',poster:safeTmdbImage(info.poster_path),
+      rating:Math.round((Number(info.vote_average)||0)*10)/10,type
+    }]});
+  }
+  // Search both Spanish-localized and international names. TMDB often lacks
+  // Spanish search aliases for a movie that is available under its original name.
+  const queries=[{query:raw,language:'es-ES'},{query:raw,language:'en-US'}];
+  const requests=await Promise.all(queries.map(async opts=>{
+    try{return await tmdbGet(env,'search/'+type,{...opts,include_adult:'false',page:1});}
+    catch{return null;}
+  }));
+  const error=requests.find(x=>x instanceof Response);
+  if(requests.every(x=>!x||x instanceof Response))return error||fail('TMDB no respondió.',502);
+  const byId=new Map();
+  for(const result of requests){
+    if(!result||result instanceof Response)continue;
+    for(const x of result.results||[]){
+      if(x.adult||!Number.isSafeInteger(Number(x.id)))continue;
+      const prev=byId.get(x.id);
+      if(!prev||(prev.overview?.length||0)<(x.overview?.length||0))byId.set(x.id,x);
+    }
+  }
+  const norm=metadataNorm(raw);
+  const ordered=[...byId.values()].sort((a,b)=>{
+    const score=x=>{
+      const title=type==='tv'?x.name:x.title;
+      const original=type==='tv'?x.original_name:x.original_title;
+      return (metadataNorm(title)===norm||metadataNorm(original)===norm?1000:0)+Math.min(100,Number(x.popularity)||0);
+    };
+    return score(b)-score(a);
+  }).slice(0,24);
+  return json({results:ordered.map(x=>({
+    id:x.id,title:(type==='tv'?x.name:x.title)||'',
+    year:((type==='tv'?x.first_air_date:x.release_date)||'').slice(0,4),
+    description:x.overview||'',poster:safeTmdbImage(x.poster_path),
+    rating:Math.round((Number(x.vote_average)||0)*10)/10,type
   }))});
 }
 async function metadataDetails(req,env){
@@ -139,7 +179,7 @@ async function metadataDetails(req,env){
   if(r instanceof Response)return r;
   return json({metadata:{
     title:(type==='tv'?r.name:r.title)||'',year:((type==='tv'?r.first_air_date:r.release_date)||'').slice(0,4),
-    description:String(r.overview||'').slice(0,750),poster:safeTmdbImage(r.poster_path),
+    description:String(r.overview||'').slice(0,750),poster:safeTmdbImage(r.poster_path),backdrop:safeTmdbBackdrop(r.backdrop_path),
     genre:TMDB_GENRES[r.genres?.[0]?.name]||'Otros',
     duration:Number(type==='tv'?r.episode_run_time?.[0]:r.runtime)||0,
     rating:Math.round(Number(r.vote_average||0)*10)/10,
@@ -200,7 +240,7 @@ function metadataPayloadFromTmdb(r,type){
     genre:TMDB_GENRES[r.genres?.[0]?.name]||'Otros',
     year:((type==='tv'?r.first_air_date:r.release_date)||'').slice(0,4),
     description:String(r.overview||'').slice(0,750),
-    poster:safeTmdbImage(r.poster_path),
+    poster:safeTmdbImage(r.poster_path),backdrop:safeTmdbBackdrop(r.backdrop_path),
     rating:Math.round((Number(r.vote_average)||0)*10)/10,
     duration:Number(type==='tv'?r.episode_run_time?.[0]:r.runtime)||0
   };
@@ -324,7 +364,7 @@ async function metadataSaveManual(db,req){
   if(typeof x.title!=='string'||!x.title.trim()||x.title.length>150)return fail('Título inválido.',400);
   const payload={
     title:String(x.title||'').trim()|| (isTv?found.seriesName:found.title),genre:x.genre,
-    year:String(x.year||''),description:x.description,poster:x.poster,
+    year:String(x.year||''),description:x.description,poster:x.poster,backdrop:typeof x.backdrop==='string'&&x.backdrop.startsWith('https://')?x.backdrop.slice(0,1000):'',
     rating:Math.max(0,Math.min(10,Number(x.rating)||0)),duration:Math.max(0,Math.min(600,Number(x.duration)||0))
   };
   await metadataApply(db,{type:isTv?'tv':'movie',fileId,seriesName:found.seriesName,name:found.title},payload);
@@ -332,6 +372,103 @@ async function metadataSaveManual(db,req){
     "INSERT INTO metadata_match(item_key,status,tmdb_id,payload_json,checked_at) VALUES(?,'manual',?,?,?) ON CONFLICT(item_key) DO UPDATE SET status='manual',tmdb_id=excluded.tmdb_id,payload_json=excluded.payload_json,checked_at=excluded.checked_at"
   ).bind(itemKey,Number.isSafeInteger(x.tmdbId)&&x.tmdbId>0?x.tmdbId:null,JSON.stringify(payload),now()).run();
   return json({ok:true,affected:isTv?'series':'movie'});
+}
+
+// Series episode metadata is stored independently from Google Drive filenames.
+async function episodeTable(db){
+  await db.prepare("CREATE TABLE IF NOT EXISTS episode_metadata (file_id TEXT PRIMARY KEY, series_id INTEGER, season_no INTEGER NOT NULL, episode_no INTEGER NOT NULL, title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', still TEXT NOT NULL DEFAULT '', manual INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)").run();
+}
+function episodeNumbers(m){
+  const filename=String(m.title||''),path=String(m.path||'');
+  const txt=(path+' / '+filename).replace(/[._-]/g,' ');
+  // e.g. S01E02 / T1E02 / 1x02, including compound two-episode packs.
+  let found=/(?:^|[^\p{L}\p{N}])(?:S|T)\s*(\d{1,2})\s*E\s*(\d{1,3})(?!\d)/iu.exec(txt)||
+    /(?:^|[^\d])(\d{1,2})\s*x\s*(\d{1,3})(?!\d)/i.exec(txt);
+  if(found)return {season:Number(found[1]),episode:Number(found[2])};
+  const folder=/(?:temporada|season|temp|seas|s)\s*0*(\d{1,2})(?!\d)/i.exec(path);
+  const episode=/(?:episodio|episode|capitulo|capítulo|cap|ep)\s*0*(\d{1,3})(?!\d)/i.exec(filename);
+  if(folder&&episode)return {season:Number(folder[1]),episode:Number(episode[1])};
+  // Pure sequential numeric filenames under an explicitly named season folder.
+  const numeric=/^\s*0*(\d{1,3})(?:\s|$)/.exec(filename);
+  if(folder&&numeric)return {season:Number(folder[1]),episode:Number(numeric[1])};
+  return null;
+}
+async function episodeMetadataRows(db){
+  try{return (await db.prepare('SELECT file_id AS fileId,series_id AS seriesId,season_no AS season,episode_no AS episode,title AS episodeTitle,description AS episodeDescription,still AS episodeStill,manual FROM episode_metadata').all()).results||[];}
+  catch{return [];}
+}
+async function syncEpisodeMetadata(db,env,limit=2){
+  if(!env.TMDB_READ_ACCESS_TOKEN)return {synced:0,pending:0};
+  await episodeTable(db);
+  const [rows,matches,existing]=await Promise.all([
+    db.prepare("SELECT file_id AS fileId,series_name AS seriesName,title,path FROM catalog WHERE series_name!=''").all(),
+    metadataRows(db),episodeMetadataRows(db)
+  ]);
+  const ids=new Map(matches.filter(x=>x.tmdb_id&&(x.status==='auto'||x.status==='manual')).map(x=>[x.item_key,Number(x.tmdb_id)]));
+  const saved=new Map(existing.map(x=>[x.fileId,x]));
+  const batches=new Map();
+  for(const m of rows.results||[]){
+    const tvId=ids.get(metadataKey(m));if(!tvId)continue;
+    const parts=episodeNumbers(m);
+    if(!parts||parts.episode<1||parts.episode>500||parts.season<0||parts.season>80)continue;
+    if(saved.has(m.fileId))continue;
+    const key=tvId+':'+parts.season;
+    if(!batches.has(key))batches.set(key,{tvId,season:parts.season,files:[]});
+    batches.get(key).files.push({...m,...parts});
+  }
+  let synced=0,errors=0;
+  for(const batch of [...batches.values()].slice(0,Math.max(1,Math.min(limit,3)))){
+    const data=await tmdbGet(env,'tv/'+batch.tvId+'/season/'+batch.season);
+    if(data instanceof Response){errors++;continue;}
+    const episodes=new Map((data.episodes||[]).map(x=>[Number(x.episode_number),x]));
+    const stmts=[];
+    for(const file of batch.files){
+      const ep=episodes.get(file.episode);
+      if(!ep)continue; // No TMDB entry: retain original filename and retry later.
+      stmts.push(db.prepare(
+        "INSERT INTO episode_metadata(file_id,series_id,season_no,episode_no,title,description,still,manual,updated_at) VALUES(?,?,?,?,?,?,?,0,?) ON CONFLICT(file_id) DO NOTHING"
+      ).bind(file.fileId,batch.tvId,file.season,file.episode,
+        String(ep.name||'').slice(0,150),String(ep.overview||'').slice(0,1200),
+        typeof ep.still_path==='string'&&/^\/[a-zA-Z0-9_.-]+$/.test(ep.still_path)?TMDB_STILL+ep.still_path:'',
+        now()));
+    }
+    if(stmts.length){await db.batch(stmts);synced+=stmts.length;}
+  }
+  return {synced,pending:batches.size,errors};
+}
+async function saveEpisodeMetadata(db,req){
+  const x=await input(req);
+  const fileId=String(x.fileId||'');
+  if(!/^[A-Za-z0-9_-]{10,150}$/.test(fileId))return fail('Archivo incorrecto.',400);
+  const found=await db.prepare("SELECT file_id,series_name FROM catalog WHERE file_id=? AND series_name!='' LIMIT 1").bind(fileId).first();
+  if(!found)return fail('Este episodio no existe en tu catálogo.',404);
+  const title=String(x.title||'').trim(),description=String(x.description||'').trim();
+  if(!title||title.length>150||description.length>1200)return fail('Revisa el nombre o la sinopsis.',400);
+  await episodeTable(db);
+  const existing=await db.prepare('SELECT season_no,episode_no,series_id,still FROM episode_metadata WHERE file_id=?').bind(fileId).first();
+  const parts=existing?{season:existing.season_no,episode:existing.episode_no}:episodeNumbers({title:x.filename||'',path:x.path||''})||{season:0,episode:0};
+  await db.prepare(
+    "INSERT INTO episode_metadata(file_id,series_id,season_no,episode_no,title,description,still,manual,updated_at) VALUES(?,?,?,?,?,?,?,1,?) ON CONFLICT(file_id) DO UPDATE SET title=excluded.title,description=excluded.description,manual=1,updated_at=excluded.updated_at"
+  ).bind(fileId,existing?.series_id||null,parts.season,parts.episode,title,description,existing?.still||'',now()).run();
+  return json({ok:true});
+}
+async function refreshBackdropMetadata(db,env,limit=3){
+  if(!env.TMDB_READ_ACCESS_TOKEN)return {updated:0};
+  const rows=(await metadataRows(db)).filter(x=>x.tmdb_id&&(x.status==='auto'||x.status==='manual'));
+  let updated=0;
+  for(const row of rows){
+    let data={};try{data=JSON.parse(row.payload_json||'{}');}catch{}
+    if(data.backdrop||data.backdropChecked)continue;
+    const type=row.item_key.startsWith('tv:')?'tv':'movie';
+    const r=await tmdbGet(env,type+'/'+row.tmdb_id);
+    if(r instanceof Response)continue;
+    data.backdrop=safeTmdbBackdrop(r.backdrop_path);
+    data.backdropChecked=true;
+    await db.prepare('UPDATE metadata_match SET payload_json=? WHERE item_key=? AND tmdb_id=?').bind(JSON.stringify(data),row.item_key,row.tmdb_id).run();
+    updated++;
+    if(updated>=limit)break;
+  }
+  return {updated};
 }
 async function metadataRetry(db,req){
   const body=await input(req),key=String(body.key||'');
@@ -368,12 +505,22 @@ export default {async fetch(request,env,ctx){
       else if(path==='/api/admin/users' && request.method==='POST')response=await createUser(env.DB,request);
       else if(/^\/api\/admin\/users\/\d+$/.test(path)&&request.method==='PATCH')response=await updateUser(env.DB,request,me,Number(path.split('/').pop()));
       else if(path==='/api/admin/metadata/status' && request.method==='GET')response=json(await metadataStatus(env.DB,env));
-      else if(path==='/api/admin/metadata/sync' && request.method==='POST')response=json(await metadataSweep(env.DB,env,5));
+      else if(path==='/api/admin/metadata/sync' && request.method==='POST'){
+        const summary=await metadataSweep(env.DB,env,5);
+        const episodes=await syncEpisodeMetadata(env.DB,env,1);
+        const backdrops=await refreshBackdropMetadata(env.DB,env,2);
+        response=json({...summary,episodes,backdrops});
+      }
       else if(path==='/api/admin/metadata/item' && request.method==='PATCH')response=await metadataSaveManual(env.DB,request);
+      else if(path==='/api/admin/metadata/episode' && request.method==='PATCH')response=await saveEpisodeMetadata(env.DB,request);
       else if(path==='/api/admin/metadata/retry' && request.method==='POST')response=await metadataRetry(env.DB,request);
       else if(path==='/api/admin/catalog' && request.method==='PUT'){
         response=await saveCatalog(env.DB,request);
-        if(response.ok&&env.TMDB_READ_ACCESS_TOKEN)ctx.waitUntil(metadataSweep(env.DB,env,4).catch(e=>console.error('TMDB sweep:',e)));
+        if(response.ok&&env.TMDB_READ_ACCESS_TOKEN)ctx.waitUntil((async()=>{
+          await metadataSweep(env.DB,env,4);
+          await syncEpisodeMetadata(env.DB,env,1);
+          await refreshBackdropMetadata(env.DB,env,2);
+        })().catch(e=>console.error('TMDB sweep:',e)));
       }
       else response=fail('Ruta no encontrada',404);
     }
@@ -383,5 +530,9 @@ export default {async fetch(request,env,ctx){
 },
 async scheduled(event,env,ctx){
   if(!env.DB||!env.TMDB_READ_ACCESS_TOKEN)return;
-  ctx.waitUntil(metadataSweep(env.DB,env,5).catch(e=>console.error('Metadata scheduled sweep:',e)));
+  ctx.waitUntil((async()=>{
+    await metadataSweep(env.DB,env,5);
+    await syncEpisodeMetadata(env.DB,env,2);
+    await refreshBackdropMetadata(env.DB,env,3);
+  })().catch(e=>console.error('Metadata scheduled sweep:',e)));
 }};
