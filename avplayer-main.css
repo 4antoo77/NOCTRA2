@@ -349,8 +349,8 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container >.antoo-a
 body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-controls-hidden >.antoo-av-captions-mirror{
  bottom:8%!important;
 }
-/* Solo se oculta el renderizado ASS anterior cuando el respaldo recibió
-   un diálogo real: si no lo recibe, AVPlayer permanece intacto. */
-body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-captions-mirrored >.ASS-box{
- visibility:hidden!important;
+/* Una sola capa visible: AVPlayerUI puede anidar ASS-box dentro de su
+   escenario. display:none también oculta hijos con visibility:visible. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-captions-mirrored .ASS-box{
+ display:none!important;
 }
