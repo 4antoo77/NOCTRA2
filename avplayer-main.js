@@ -244,7 +244,9 @@
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
      state.options?.refresh?.();
      state.requestResize?.();
-     await player.play();
+     // Pedir de forma explícita la inicialización del renderizador
+     // integrado de subtítulos del MKV, además del audio y el video.
+     await player.play({audio:true,video:true,subtitle:true});
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
      state.requestResize?.();
      state.controls?.show?.();
