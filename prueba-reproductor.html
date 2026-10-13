@@ -147,6 +147,10 @@ $('start').addEventListener('click',async()=>{
    if(typeof Constructor!=='function')throw Error('Esta versión de libmedia no expone el constructor esperado.');
    const options={
      container:$('screen'),
+     // libmedia 1.3.1: subtitle packets must remain in the same heap
+     // when shared memory is unavailable (same policy as the main player).
+     enableWorker:globalThis.crossOriginIsolated===true
+       && typeof globalThis.SharedArrayBuffer==='function',
      // Files come from the authenticated ANTOO PELIS catalog above.
      // Hide libmedia's redundant open-file/GitHub header.
      ui:{hasFolder:false,hasHeader:false,hasFooter:true},

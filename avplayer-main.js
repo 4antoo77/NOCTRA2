@@ -240,6 +240,13 @@
      player=new Ctor({
        container:frame,
        fullscreenDom:frame,
+       // libmedia 1.3.1 SubtitleRender.pull only accepts AVPacket pointers.
+       // Without shared memory, its worker demuxer sends serialized objects
+       // instead; the subtitle reader then stalls before decoding any text.
+       // Keep packets in the same heap on ordinary pages (including GitHub
+       // Pages). Isolated pages can retain workers with shared memory.
+       enableWorker:globalThis.crossOriginIsolated===true
+         && typeof globalThis.SharedArrayBuffer==='function',
        ui:{hasFolder:false,hasHeader:false,hasFooter:true},
        getWasm:wasm,
        // libmedia: audioWorkletBufferLength usa bloques de 128 muestras.
