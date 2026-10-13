@@ -34,6 +34,37 @@ async function penalize(db,key){const t=now();await db.prepare('INSERT INTO atte
 async function login(db,req){const {username,password}=await input(req);if(!userValid(username)||!passValid(password))return fail('Credenciales incorrectas',401);const key=await sha256((req.headers.get('CF-Connecting-IP')||'unknown')+':'+username.toLowerCase());if(!await limiter(db,key))return fail('Demasiados intentos. Vuelve a intentarlo en 15 minutos.',429);const u=await db.prepare('SELECT * FROM users WHERE username=?').bind(username).first();if(!await verifyPassword(password,u) || u.disabled){await penalize(db,key);return fail('Credenciales incorrectas',401);}await db.prepare('DELETE FROM attempts WHERE attempt_key=?').bind(key).run();const token=makeToken(), th=await sha256(token), exp=now()+12*3600;await db.prepare('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(th,u.id,exp).run();return json({token,user:publicUser(u),expiresAt:exp});}
 async function setup(db,req,env){const exists=await db.prepare("SELECT 1 FROM users WHERE role='admin' LIMIT 1").first();if(exists)return fail('El administrador ya está configurado.',409);const v=await input(req);if(!env.BOOTSTRAP_SECRET || v.bootstrapSecret!==env.BOOTSTRAP_SECRET)return fail('Código de inicialización incorrecto.',403);if(!userValid(v.username)||!passValid(v.password))return fail('Usuario de 3–32 caracteres y contraseña de al menos 12.',400);const p=await createPassword(v.password);await db.prepare("INSERT INTO users(username,password_hash,salt,role,created_at) VALUES(?,?,?,'admin',?)").bind(v.username,p.hash,p.salt,now()).run();return json({ok:true,message:'Administrador creado. Inicia sesión.'},201);}
 async function users(db){const r=await db.prepare('SELECT id,username,role,disabled,created_at FROM users ORDER BY id').all();return json({users:r.results||[]});}
+async function ensureSuggestionTable(db){
+  await db.prepare("CREATE TABLE IF NOT EXISTS title_suggestions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, media_type TEXT NOT NULL CHECK(media_type IN ('movie','tv')), year TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','added','declined')), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_title_suggestions_status_created ON title_suggestions(status,created_at DESC)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_title_suggestions_user_created ON title_suggestions(user_id,created_at DESC)").run();
+}
+async function submitSuggestion(db,req,me){
+  const v=await input(req),title=String(v.title||'').trim(),type=String(v.type||''),year=String(v.year||'').trim(),note=String(v.note||'').trim();
+  if(title.length<2||title.length>120)return fail('El título debe tener entre 2 y 120 caracteres.',400);
+  if(!['movie','tv'].includes(type))return fail('Selecciona película o serie.',400);
+  if(year&&!/^\d{4}$/.test(year))return fail('El año debe tener cuatro dígitos.',400);
+  if(note.length>500)return fail('La nota puede tener máximo 500 caracteres.',400);
+  const recent=await db.prepare('SELECT COUNT(*) AS total FROM title_suggestions WHERE user_id=? AND created_at>?').bind(me.id,now()-DAY).first();
+  if(Number(recent?.total||0)>=10)return fail('Puedes enviar hasta 10 sugerencias cada 24 horas.',429);
+  const result=await db.prepare("INSERT INTO title_suggestions(user_id,title,media_type,year,note,status,created_at,updated_at) VALUES(?,?,?,?,?,'pending',?,?)").bind(me.id,title,type,year,note,now(),now()).run();
+  return json({ok:true,id:result.meta?.last_row_id||null},201);
+}
+async function ownSuggestions(db,me){
+  const rows=await db.prepare('SELECT id,title,media_type AS type,year,note,status,created_at AS createdAt FROM title_suggestions WHERE user_id=? ORDER BY created_at DESC LIMIT 50').bind(me.id).all();
+  return json({suggestions:rows.results||[]});
+}
+async function listSuggestions(db){
+  const rows=await db.prepare('SELECT s.id,s.title,s.media_type AS type,s.year,s.note,s.status,s.created_at AS createdAt,u.username FROM title_suggestions s JOIN users u ON u.id=s.user_id ORDER BY CASE s.status WHEN \'pending\' THEN 0 WHEN \'added\' THEN 1 ELSE 2 END,s.created_at DESC LIMIT 500').all();
+  return json({suggestions:rows.results||[]});
+}
+async function updateSuggestion(db,req,id){
+  const v=await input(req),status=String(v.status||'');
+  if(!Number.isInteger(id)||id<1||!['pending','added','declined'].includes(status))return fail('Estado de sugerencia inválido.',400);
+  const result=await db.prepare('UPDATE title_suggestions SET status=?,updated_at=? WHERE id=?').bind(status,now(),id).run();
+  if(!result.meta?.changes)return fail('La sugerencia no existe.',404);
+  return json({ok:true});
+}
 async function ensureWatchTables(db){
   await db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS watch_progress (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, media_id TEXT NOT NULL, position REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY(user_id,media_id))"),
@@ -605,10 +636,14 @@ export default {async fetch(request,env,ctx){
       else if(path==='/api/me' && request.method==='GET')response=json({user:publicUser(me)});
       else if(path==='/api/logout' && request.method==='POST'){await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(me.token_hash).run();response=json({ok:true});}
       else if(path==='/api/catalog' && request.method==='GET')response=await getCatalog(env.DB);
+      else if(path==='/api/suggestions' && request.method==='GET'){await ensureSuggestionTable(env.DB);response=await ownSuggestions(env.DB,me);}
+      else if(path==='/api/suggestions' && request.method==='POST'){await ensureSuggestionTable(env.DB);response=await submitSuggestion(env.DB,request,me);}
       else if(path==='/api/watch/progress' && ['GET','POST'].includes(request.method)){await ensureWatchTables(env.DB);response=await watchProgress(env.DB,request,me);}
       else if(path==='/api/watch/event' && request.method==='POST'){await ensureWatchTables(env.DB);response=await recordWatchEvent(env.DB,request,me);}
       else if(path.startsWith('/api/play/') && request.method==='POST')response=await signStream(env.DB,env,decodeURIComponent(path.slice('/api/play/'.length)),url);
       else if(me.role!=='admin')response=fail('Solo para el administrador.',403);
+      else if(path==='/api/admin/suggestions' && request.method==='GET'){await ensureSuggestionTable(env.DB);response=await listSuggestions(env.DB);}
+      else if(/^\/api\/admin\/suggestions\/\d+$/.test(path)&&request.method==='PATCH'){await ensureSuggestionTable(env.DB);response=await updateSuggestion(env.DB,request,Number(path.split('/').pop()));}
       else if(path==='/api/admin/activity' && request.method==='GET'){await ensureWatchTables(env.DB);response=await adminActivity(env.DB,request);}
       else if(path==='/api/admin/metadata/search' && request.method==='GET')response=await searchMetadata(request,env);
       else if(path==='/api/admin/metadata/details' && request.method==='GET')response=await metadataDetails(request,env);
