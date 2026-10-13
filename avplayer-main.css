@@ -276,3 +276,58 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer
 body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-control{
  box-sizing:border-box!important;max-width:100%!important;
 }
+
+/* Detección FÍSICA de orientación con bloqueo de giro activado.
+   Solo con el reproductor a pantalla completa Y un dato confirmado del
+   acelerómetro. La pantalla no gira artificialmente al pulsar el botón. */
+@media (orientation:portrait){
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-right,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-left,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-right[open],
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-left[open]{
+   position:fixed!important;inset:auto!important;
+   top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+   box-sizing:border-box!important;
+   width:100dvh!important;min-width:100dvh!important;max-width:none!important;
+   height:100vw!important;min-height:100vw!important;max-height:none!important;
+   padding:0!important;margin:0!important;
+   transform-origin:center center!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-right,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-right[open]{
+   transform:translate(-50%,-50%) rotate(-90deg)!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-left,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-left[open]{
+   transform:translate(-50%,-50%) rotate(90deg)!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-right #frame-container,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-immersive.antoo-avplayer-sensor-left #frame-container{
+   flex:1 1 100%!important;width:100%!important;height:100%!important;
+   min-width:0!important;min-height:0!important;max-height:none!important;
+   max-width:none!important;aspect-ratio:auto!important;
+   padding:0!important;margin:0!important;
+ }
+ /* En móviles que admiten Fullscreen API incluso con el giro bloqueado,
+    rotar la superficie de libmedia dentro del elemento fullscreen. */
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-sensor-right #frame-container:fullscreen>.avplayer-ui-container,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-sensor-left #frame-container:fullscreen>.avplayer-ui-container,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-sensor-right #frame-container:-webkit-full-screen>.avplayer-ui-container,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-sensor-left #frame-container:-webkit-full-screen>.avplayer-ui-container{
+   position:absolute!important;inset:auto!important;
+   top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+   width:100dvh!important;min-width:100dvh!important;max-width:none!important;
+   height:100vw!important;min-height:100vw!important;max-height:none!important;
+   transform-origin:center center!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-sensor-right #frame-container:fullscreen>.avplayer-ui-container,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-sensor-right #frame-container:-webkit-full-screen>.avplayer-ui-container{
+   transform:translate(-50%,-50%) rotate(-90deg)!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-sensor-left #frame-container:fullscreen>.avplayer-ui-container,
+ body.abyss-noctra dialog#player.antoo-avplayer-active.antoo-avplayer-sensor-left #frame-container:-webkit-full-screen>.avplayer-ui-container{
+   transform:translate(-50%,-50%) rotate(90deg)!important;
+ }
+}
+/* Al desactivar pantalla completa se retiran esas clases; el contenido
+   vuelve a ser vertical sin ninguna transformación CSS. */
