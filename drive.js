@@ -95,28 +95,85 @@
    if(w>0&&h>0)return w+'×'+h;
    return h>0?h+' px de alto (formato original)':'Resolución por comprobar';
  }
+ const episodeEditDialog=document.createElement('dialog');
+ episodeEditDialog.id='noctra-episode-edit';
+ episodeEditDialog.innerHTML='<div class="dialog-top"><div><p class="eyebrow purple">NOCTRA2 · EPISODIO</p><h2>Editar nombre y sinopsis</h2></div><button class="close" type="button" aria-label="Cerrar">×</button></div>'+
+ '<form class="noctra-episode-edit-form"><label>Nombre del episodio<input name="title" maxlength="150" required></label><label>Sinopsis<textarea name="description" maxlength="1200" rows="5"></textarea></label><p class="hint">Esta corrección se conservará al actualizar Google Drive.</p><p id="noctra-episode-edit-error" role="alert"></p><div class="button-row"><button class="primary" type="submit">Guardar episodio</button><button type="button" class="secondary" id="noctra-episode-cancel">Cancelar</button></div></form>';
+ document.body.append(episodeEditDialog);
+ episodeEditDialog.querySelector('.close').onclick=()=>episodeEditDialog.close();
+ episodeEditDialog.querySelector('#noctra-episode-cancel').onclick=()=>episodeEditDialog.close();
+ function editEpisode(m,seriesName,items){
+   if(!isAdmin()||!m.cloud)return;
+   const form=episodeEditDialog.querySelector('form');
+   form.elements.title.value=m.episodeTitle||m.title;
+   form.elements.description.value=m.episodeDescription||'';
+   const error=episodeEditDialog.querySelector('#noctra-episode-edit-error');
+   error.textContent='';
+   form.onsubmit=async event=>{
+     event.preventDefault();const button=form.querySelector('button[type="submit"]');
+     button.disabled=true;error.textContent='Guardando…';
+     try{
+       await window.noctraCloud.request('/api/admin/metadata/episode',{method:'PATCH',body:{
+         fileId:m.fileId,title:form.elements.title.value.trim(),
+         description:form.elements.description.value.trim(),filename:m.title,path:m.path||''
+       }});
+       m.episodeTitle=form.elements.title.value.trim();
+       m.episodeDescription=form.elements.description.value.trim();
+       episodeEditDialog.close();
+       await window.noctraCloud.reloadCatalog();
+       openEpisodes(seriesName,items);
+     }catch(e){error.textContent=e.message;}
+     finally{button.disabled=false;}
+   };
+   episodeEditDialog.showModal();
+ }
  function openEpisodes(name,items){
    const featured=items.find(m=>m.description||m.poster)||items[0]||{};
+   const displayName=featured.seriesTitle||name;
    const year=featured.year?esc(featured.year):'';
    const genreText=featured.genre&&featured.genre!=='Otros'?esc(featured.genre):'';
    const rating=Number(featured.rating)>0?'★ '+Number(featured.rating).toFixed(1):'';
    const duration=Number(featured.duration)>0?Math.round(Number(featured.duration))+' min':'';
    const meta=[genreText,year,rating,duration].filter(Boolean).join(' · ');
    const poster=posterURL(featured.poster);
-   episodeDialog.innerHTML='<div class="dialog-top"><div><p class="eyebrow purple">SERIES · EPISODIOS</p><h2>'+esc(name)+'</h2></div><button class="close" aria-label="Cerrar">×</button></div>'+
+   episodeDialog.innerHTML='<div class="dialog-top"><div><p class="eyebrow purple">SERIES · EPISODIOS</p><h2>'+esc(displayName)+'</h2></div><button class="close" aria-label="Cerrar">×</button></div>'+
      '<div class="noctra-series-overview">'+(poster?'<img src="'+esc(poster)+'" alt="" loading="lazy">':'')+
      '<div>'+(meta?'<p class="noctra-series-meta">'+meta+'</p>':'')+
      (featured.description?'<p>'+esc(featured.description)+'</p>':'')+'</div></div>'+
-     '<div class="episode-list"></div>';
+     '<div class="episode-list noctra-episode-catalog"></div>';
    episodeDialog.querySelector('.close').onclick=()=>episodeDialog.close();
-   items.sort((a,b)=>String(a.path||'').localeCompare(String(b.path||''),'es',{numeric:true}));
-   for(const m of items){
-     const b=document.createElement('button');b.className='episode-item';b.type='button';
-     b.innerHTML='<span>▶</span><div><b>'+esc(m.title)+'</b><small>'+esc(m.path||'')+' · '+resolutionLabel(m)+'</small></div>';
-     b.onclick=()=>{episodeDialog.close();if(m.cloud)window.noctraCloud.play(m);else playDirect(m);};
-     episodeDialog.querySelector('.episode-list').append(b);
+   const ordered=[...items].sort((a,b)=>{
+     const seasonA=Number(a.season||0),seasonB=Number(b.season||0);
+     const epA=Number(a.episode||0),epB=Number(b.episode||0);
+     return seasonA&&seasonB?(seasonA-seasonB||epA-epB):
+       String(a.path||'').localeCompare(String(b.path||''),'es',{numeric:true})||
+       String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true});
+   });
+   for(const m of ordered){
+     const row=document.createElement('div');row.className='episode-item noctra-episode-entry';
+     const main=document.createElement('button');main.type='button';
+     main.className='noctra-episode-play';
+     const number=m.episode&&m.season!==undefined?'T'+String(m.season).padStart(2,'0')+' · E'+String(m.episode).padStart(2,'0'):'EPISODIO';
+     const episodeTitle=m.episodeTitle||m.title;
+     const still=posterURL(m.episodeStill);
+     main.innerHTML=(still?'<img class="noctra-episode-still" src="'+esc(still)+'" alt="" loading="lazy">':'<span class="noctra-episode-play-icon">▶</span>')+
+       '<div class="noctra-episode-text"><small class="noctra-episode-number">'+esc(number)+'</small>'+
+       '<strong>'+esc(episodeTitle)+'</strong>'+
+       (m.episodeDescription?'<p>'+esc(m.episodeDescription)+'</p>':
+          '<small class="noctra-episode-filename">'+esc(m.title)+'</small>')+
+       '</div><span class="noctra-episode-watch">▶</span>';
+     main.onclick=()=>{episodeDialog.close();if(m.cloud)window.noctraCloud.play(m);else playDirect(m);};
+     row.append(main);
+     if(isAdmin()&&m.cloud){
+       const edit=document.createElement('button');edit.type='button';
+       edit.className='noctra-episode-edit';edit.textContent='Editar';
+       edit.setAttribute('aria-label','Editar '+episodeTitle);
+       edit.onclick=()=>editEpisode(m,name,items);
+       row.append(edit);
+     }
+     episodeDialog.querySelector('.episode-list').append(row);
    }
-   episodeDialog.showModal();
+   if(!episodeDialog.open)episodeDialog.showModal();
  }
 
  tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{
