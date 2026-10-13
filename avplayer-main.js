@@ -56,12 +56,19 @@
    frame.replaceChildren();
    frame.classList.add('antoo-avplayer-container');
    dialog.classList.add('antoo-avplayer-active');
-   const player=new Ctor({
-     container:frame,
-     fullscreenDom:frame,
-     ui:{hasFolder:false,hasHeader:false,hasFooter:true},
-     getWasm:wasm
-   });
+   let player;
+   try{
+     player=new Ctor({
+       container:frame,
+       fullscreenDom:frame,
+       ui:{hasFolder:false,hasHeader:false,hasFooter:true},
+       getWasm:wasm
+     });
+   }catch(e){
+     frame.classList.remove('antoo-avplayer-container');
+     dialog.classList.remove('antoo-avplayer-active');
+     throw e;
+   }
    const fullscreenListener=()=>{
      const active=(document.fullscreenElement||document.webkitFullscreenElement)===frame;
      if(active){
