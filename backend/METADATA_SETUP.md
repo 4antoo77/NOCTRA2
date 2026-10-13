@@ -43,3 +43,17 @@ Al sincronizar Google Drive o republicar el catálogo, se mantienen los metadato
 ## TMDB
 
 Metadatos de [The Movie Database](https://www.themoviedb.org). This product uses the TMDB API but is not endorsed or certified by TMDB. Respeta las condiciones y requisitos de atribución de TMDB.
+
+## Imágenes nítidas y episodios
+
+La pantalla principal utiliza los fondos panorámicos de TMDB en tamaño original cuando están disponibles y selecciona imágenes de menor tamaño para móviles mediante `srcset`. Las imágenes verticales de las miniaturas del carrusel utilizan mayor resolución, pero **no se amplía una portada de 500 píxeles para llenar la pantalla**. Las películas que no tengan fondo disponible muestran el fondo neutro existente.
+
+En las series, NOCTRA2 detecta el número de temporada y capítulo a partir de formatos habituales como `S01E02`, `T1E2`, `1x02` y `Temporada 1 / Capítulo 2`. Cuando encuentra una ficha de la serie y un número de episodio válido, consulta TMDB para completar nombre, sinopsis y fotograma. Si TMDB no tiene la traducción española, intenta la información en inglés. Si no puede determinar el episodio de forma fiable, conserva el nombre del archivo. Un administrador puede abrir una serie y pulsar **Editar** junto a cualquier episodio publicado; el ajuste queda protegido ante futuras sincronizaciones.
+
+## Cómo corregir un título ahora
+
+Abre **Administrar → Metadatos** y selecciona el título por nombre. Introduce un nombre que TMDB reconozca (puede ser el original en inglés) o pega una URL de su ficha, por ejemplo `https://www.themoviedb.org/movie/603`. Pulsa **Buscar en TMDB**. Al pulsar un resultado, NOCTRA2 guarda la selección directamente. Para cambios particulares, expande **Editar campos manualmente**.
+
+La búsqueda manual combina nombres en español e inglés. El proceso automático y las opciones de revisión continúan disponibles.
+
+**Después de actualizar el Worker en GitHub, es necesario publicarlo nuevamente** desde la carpeta `backend` con `npx wrangler deploy --keep-vars`. Así se conservan las variables y secretos configurados desde Cloudflare. Los cambios solo del sitio web se publican a través del hosting web habitual.
