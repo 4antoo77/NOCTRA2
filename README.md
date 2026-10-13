@@ -59,7 +59,7 @@ Desde ANTOO PELIS, entra con el administrador y presiona **Administrar**.
 - En «Crear cuenta» introduce `amigo1`, una contraseña segura y pulsa `Crear usuario`.
 - Repite con tus otros amigos.
 - Puedes desactivar o cambiar las contraseñas sin añadir correos.
-- Para publicar películas, conecta **tu** Drive como administrador (la ventana «Configurar» requiere el **ID de cliente OAuth web** de Google, no una contraseña), espera a la exploración y pulsa **Publicar catálogo actual**, o importa el JSON exportado de NOCTRA.
+- Para publicar películas, conecta **tu** Drive como administrador (la ventana «Configurar» requiere el **ID de cliente OAuth web** de Google, no una contraseña), espera a la exploración y pulsa **Publicar catálogo actual**, o importa el JSON exportado de ANTOO PELIS.
 
 Los amigos verán el **mismo catálogo** al ingresar. El catálogo contiene títulos, metadatos y enlaces de Google Drive, NO archivos de video. Nunca publiques el JSON de ese catálogo ni tokens privados en un repositorio público.
 
