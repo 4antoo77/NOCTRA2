@@ -193,7 +193,39 @@
   };
   window.noctraCloud=cloudApi;
   function script(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('No se pudo cargar '+src));document.body.append(s);});}
-  function userbar(){const box=document.createElement('div');box.className='noctra-userbar';const name=document.createElement('span');name.className='auth-user';name.textContent=me.username;box.append(name);if(me.role==='admin'){const b=document.createElement('button');b.textContent='Administrar';b.onclick=()=>openAdmin();box.append(b);}const exit=document.createElement('button');exit.textContent='Salir';exit.onclick=cloudApi.logout;box.append(exit);document.querySelector('.header-right').append(box);}
+  // Profile image settings are browser-local until the API supports avatars.
+  const avatarKey='antoo.profile.avatars.v1';
+  function avatarMap(){try{return JSON.parse(localStorage.getItem(avatarKey)||'{}')||{};}catch{return {};}}
+  function avatarFor(username){const url=avatarMap()[username];return typeof url==='string'&&/^https:\/\//i.test(url)?url:'';}
+  function setAvatar(username,url){const data=avatarMap();if(url)data[username]=url;else delete data[username];localStorage.setItem(avatarKey,JSON.stringify(data));}
+  function avatarNode(username,large=false){
+    const photo=document.createElement('span');photo.className='antoo-profile-avatar'+(large?' antoo-avatar-large':'');
+    const url=avatarFor(username);
+    if(url){const img=document.createElement('img');img.alt='Foto del perfil';img.src=url;img.referrerPolicy='no-referrer';img.onerror=()=>{photo.textContent=username.slice(0,1).toUpperCase();img.remove();};photo.append(img);}
+    else photo.textContent=username.slice(0,1).toUpperCase();
+    return photo;
+  }
+  const jokes=[
+    'Porque cuando aparece, hasta el Wi-Fi se conecta solo.',
+    'Porque mi corazón hace más ruido que una laptop jugando a 20 FPS.',
+    'Porque ni Google sabe explicar este nivel de encule.',
+    'Porque parece que salió de un cuento de ogros, pero del que yo soy fan.',
+    'Porque me tiene más perdido que un control remoto entre los cojines.',
+    'Porque si Paty fuera una película, la pondría en favoritos mil veces.'
+  ];
+  function openProfile(){
+    if(!me)return;
+    let modal=$('antoo-profile-dialog');
+    if(!modal){modal=document.createElement('dialog');modal.id='antoo-profile-dialog';document.body.append(modal);}
+    modal.replaceChildren();
+    const close=document.createElement('button');close.type='button';close.className='close antoo-profile-close';close.textContent='×';close.setAttribute('aria-label','Cerrar perfil');close.onclick=()=>modal.close();
+    const head=document.createElement('div');head.className='antoo-profile-head';head.append(avatarNode(me.username,true));
+    const name=document.createElement('h2');name.textContent=me.username;head.append(name);
+    const heading=document.createElement('h3');heading.textContent='RAZONES POR LAS QUE ESTOY ENCULADO DE PATY BURGOS';
+    const list=document.createElement('ul');list.className='antoo-profile-jokes';jokes.forEach(j=>{const item=document.createElement('li');item.textContent=j;list.append(item);});
+    modal.append(close,head,heading,list);modal.showModal();
+  }
+  function userbar(){const box=document.createElement('div');box.className='noctra-userbar';const name=document.createElement('button');name.type='button';name.className='antoo-profile-trigger';name.append(avatarNode(me.username),document.createTextNode(me.username));name.onclick=openProfile;box.append(name);if(me.role==='admin'){const b=document.createElement('button');b.textContent='Administrar';b.onclick=()=>openAdmin();box.append(b);}const exit=document.createElement('button');exit.textContent='Salir';exit.onclick=cloudApi.logout;box.append(exit);document.querySelector('.header-right').append(box);}
   async function activate(user){me=user;form.reset();$('noctra-login').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261012-brand23');await script('drive.js?v=20261012-return-info18');await script('responsive.js?v=20261012-global-search2');loaded=true;userbar();
     document.body.classList.toggle('noctra-admin',me.role==='admin');
     if(me.role!=='admin'){
@@ -222,6 +254,10 @@
     const localSlot=d.querySelector('#admin-local-tools-slot');
     if(localSettings&&localSlot){localSlot.append(localSettings);localSettings.hidden=false;}
     d.showModal();await listUsers();}
-  async function listUsers(){const box=$('admin-users');box.textContent='Cargando…';try{const data=await request('/api/admin/users');box.replaceChildren();for(const u of data.users){const row=document.createElement('div');row.className='admin-row';const detail=document.createElement('div');const name=document.createElement('strong');name.textContent=u.username;const subtitle=document.createElement('small');subtitle.textContent=u.role==='admin'?'Administrador':u.disabled?'Desactivado':'Activo';detail.append(name,subtitle);row.append(detail);if(u.role!=='admin'){const actions=document.createElement('div');actions.className='admin-actions';const block=document.createElement('button');block.textContent=u.disabled?'Reactivar':'Desactivar';block.onclick=async()=>{try{await request('/api/admin/users/'+u.id,{method:'PATCH',body:{disabled:!u.disabled}});await listUsers();}catch(e){$('admin-error').textContent=e.message;}};const pass=document.createElement('button');pass.textContent='Cambiar contraseña';pass.onclick=async()=>{const p=prompt('Nueva contraseña para '+u.username+' (12 caracteres mínimo):');if(p===null)return;try{await request('/api/admin/users/'+u.id,{method:'PATCH',body:{password:p}});$('admin-error').textContent='Contraseña actualizada. Sesiones anteriores cerradas.';}catch(e){$('admin-error').textContent=e.message;}};actions.append(block,pass);row.append(actions);}box.append(row);}}catch(e){box.textContent=e.message;}}
+  async function listUsers(){const box=$('admin-users');box.textContent='Cargando…';try{const data=await request('/api/admin/users');box.replaceChildren();for(const u of data.users){const row=document.createElement('div');row.className='admin-row';const detail=document.createElement('div');const name=document.createElement('strong');name.textContent=u.username;const subtitle=document.createElement('small');subtitle.textContent=u.role==='admin'?'Administrador':u.disabled?'Desactivado':'Activo';detail.append(name,subtitle);row.append(detail);
+    const avatarField=document.createElement('label');avatarField.className='antoo-avatar-editor';avatarField.textContent='Imagen de perfil (URL HTTPS)';
+    const avatarInput=document.createElement('input');avatarInput.type='url';avatarInput.placeholder='https://ejemplo.com/foto.jpg';avatarInput.value=avatarFor(u.username);
+    const saveAvatar=document.createElement('button');saveAvatar.type='button';saveAvatar.textContent='Guardar foto';saveAvatar.onclick=()=>{const v=avatarInput.value.trim();if(v&&!/^https:\/\//i.test(v)){$('admin-error').textContent='La imagen debe usar una URL HTTPS.';return;}setAvatar(u.username,v);$('admin-error').textContent='Foto guardada en este navegador. Para verla en otros dispositivos será necesario añadir soporte al servidor.';if(me?.username===u.username){document.querySelector('.antoo-profile-trigger')?.replaceChildren(avatarNode(u.username),document.createTextNode(u.username));}};
+    avatarField.append(avatarInput,saveAvatar);row.append(avatarField);if(u.role!=='admin'){const actions=document.createElement('div');actions.className='admin-actions';const block=document.createElement('button');block.textContent=u.disabled?'Reactivar':'Desactivar';block.onclick=async()=>{try{await request('/api/admin/users/'+u.id,{method:'PATCH',body:{disabled:!u.disabled}});await listUsers();}catch(e){$('admin-error').textContent=e.message;}};const pass=document.createElement('button');pass.textContent='Cambiar contraseña';pass.onclick=async()=>{const p=prompt('Nueva contraseña para '+u.username+' (12 caracteres mínimo):');if(p===null)return;try{await request('/api/admin/users/'+u.id,{method:'PATCH',body:{password:p}});$('admin-error').textContent='Contraseña actualizada. Sesiones anteriores cerradas.';}catch(e){$('admin-error').textContent=e.message;}};actions.append(block,pass);row.append(actions);}box.append(row);}}catch(e){box.textContent=e.message;}}
   init();
 })();
