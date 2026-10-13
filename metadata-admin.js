@@ -262,7 +262,7 @@ async function refreshProgress(request){
    const result=await request('/api/admin/metadata/status');
    if(p){
      p.textContent=!result.configured?'TMDB todavía no está configurado en Cloudflare.':
-       'Metadatos: '+(result.completed+result.manual)+' de '+result.total+' completados · '+result.pending+' pendientes · '+result.review+' por revisar'+(result.working?' · '+result.working+' en proceso':'')+'.';
+       'Películas y series: '+(result.completed+result.manual)+' de '+result.total+' · '+result.review+' para revisar'+(result.pending?' · '+result.pending+' buscando':'')+(result.episodesPending?' · '+result.episodesPending+' episodios por completar':'')+(result.backgroundsPending?' · '+result.backgroundsPending+' fondos HD por cargar':'')+'.';
    }
    return result;
  }catch(e){
@@ -281,14 +281,14 @@ function autoStart(api,request,force=false){
    // remaining work automatically even when no browser is open.
    let changed=false;
    for(let pass=0;pass<220;pass++){
-     if(status.pending===0)break;
+     if(status.pending===0&&!(status.episodesPending||status.backgroundsPending))break;
      try{
        const step=await request('/api/admin/metadata/sync',{method:'POST'});
        changed ||=step.processed>0;
        status=step;
        const p=document.querySelector('#admin-metadata-slot .noctra-meta-progress');
-       if(p)p.textContent='Metadatos: '+(step.completed+step.manual)+' de '+step.total+' completados · '+step.pending+' pendientes · '+step.review+' por revisar.';
-       if(!step.processed)break;
+       if(p)p.textContent='Películas y series: '+(step.completed+step.manual)+' de '+step.total+' · '+step.review+' para revisar'+(step.episodesPending?' · '+step.episodesPending+' episodios pendientes':'')+(step.backgroundsPending?' · '+step.backgroundsPending+' fondos HD pendientes':'')+'.';
+       if(!step.processed&&!step.episodes?.synced&&!step.backdrops?.updated)break;
      }catch{break;}
      // Yield between batches to reduce TMDB rate pressure and keep UI responsive.
      await new Promise(resolve=>setTimeout(resolve,1100));
