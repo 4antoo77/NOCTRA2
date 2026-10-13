@@ -30,6 +30,7 @@
    if(!sessionToStop)return;
    sessionToStop.options?.destroy?.();
    sessionToStop.seekControls?.destroy?.();
+   sessionToStop.controls?.destroy?.();
    sessionToStop.touchCleanup?.();
    document.removeEventListener('fullscreenchange',sessionToStop.fullscreenListener);
    document.removeEventListener('webkitfullscreenchange',sessionToStop.fullscreenListener);
@@ -228,7 +229,7 @@
      // Nunca bloquear 'landscape': la pantalla completa sigue al teléfono.
      state.requestResize?.();
    };
-   const state={player,options:null,seekControls:null,touchCleanup:null,requestResize:null,frame,dialog,fullscreenListener};
+   const state={player,options:null,seekControls:null,controls:null,touchCleanup:null,requestResize:null,frame,dialog,fullscreenListener};
    session=state;
    state.touchCleanup=installTouchFullscreen(state);
    document.addEventListener('fullscreenchange',fullscreenListener);
@@ -237,6 +238,7 @@
      window.antooAvplayerSpanish?.apply?.(player);
      state.options=window.antooAvplayerOptions?.create?.(player,frame)||null;
      state.seekControls=window.antooAVSeek?.create?.(player,frame,dialog)||null;
+     state.controls=window.antooAVControls?.create?.(player,frame,dialog)||null;
      if(hint)hint.textContent='Preparando '+(title||'tu película')+' con AVPlayer…';
      await player.load(url);
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
@@ -245,6 +247,7 @@
      await player.play();
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
      state.requestResize?.();
+     state.controls?.show?.();
      if(hint)hint.textContent='Reproduciendo MKV original con AVPlayer. Idiomas y subtítulos: ⚙ Configuración.';
      return true;
    }catch(err){
