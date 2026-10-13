@@ -146,16 +146,27 @@
      if(control.matches('.avplayer-ui-control-fullscreen')){toggle();return;}
      if(control.matches('.avplayer-ui-control-play')){
        try{
+         const suspended=state.player.isSuspended?.()===true;
          const status=state.player.getStatus?.();
-         if(status===6)state.player.pause?.();else Promise.resolve(state.player.play?.()).catch(()=>{});
-       }catch(err){console.warn('ANTOO PELIS pausa táctil:',err);}
+         // libmedia necesita que AudioContext.resume() ocurra dentro del gesto
+         // real. Si el audio está suspendido, este toque lo reactiva; no pausa.
+         if(suspended){
+           Promise.resolve(state.player.resume?.()).catch(err=>console.warn('ANTOO PELIS: no se pudo reactivar el audio:',err));
+           if(status!==6)Promise.resolve(state.player.play?.()).catch(()=>{});
+         }else if(status===6)Promise.resolve(state.player.pause?.()).catch(()=>{});
+         else Promise.resolve(state.player.play?.()).catch(()=>{});
+       }catch(err){console.warn('ANTOO PELIS control táctil:',err);}
        return;
      }
      if(control.matches('.avplayer-ui-volume-icon')){
        try{
          const volume=Number(state.player.getVolume?.()??1);
-         if(volume>0){lastVolume=volume;state.player.setVolume?.(0);}
-         else state.player.setVolume?.(lastVolume||1);
+         if(volume>0){lastVolume=volume;Promise.resolve(state.player.setVolume?.(0)).catch(()=>{});}
+         else{
+           // También reanudar desde el mismo toque que quita el silencio.
+           if(state.player.isSuspended?.())Promise.resolve(state.player.resume?.()).catch(err=>console.warn('ANTOO PELIS: no se pudo reactivar el audio:',err));
+           Promise.resolve(state.player.setVolume?.(lastVolume||1)).catch(()=>{});
+         }
        }catch(err){console.warn('ANTOO PELIS volumen táctil:',err);}
      }
    }
@@ -257,10 +268,10 @@
          && typeof globalThis.SharedArrayBuffer==='function',
        ui:{hasFolder:false,hasHeader:false,hasFooter:true},
        getWasm:wasm,
-       // libmedia: audioWorkletBufferLength usa bloques de 128 muestras.
-       // Sus valores predeterminados (20 móvil, 10 escritorio) pueden causar
-       // microcortes cuando la comunicación de audio sufre latencia.
-       audioWorkletBufferLength:isPhone?64:32,
+       // libmedia expresa este tamaño en bloques de 128 muestras.
+       // 128 en móviles deja más margen a la comunicación con AudioWorklet
+       // cuando el navegador retrasa el hilo de audio.
+       audioWorkletBufferLength:isPhone?128:32,
        // Archivos MKV bajo demanda de Google Drive: dar un poco más de margen
        // a la carga inicial sin habilitar el modo de baja latencia en vivo.
        preLoadTime:6,
@@ -311,8 +322,9 @@
      await player.play({audio:true,video:true,subtitle:true});
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
      if(isPhone&&player.isSuspended?.()){
-       try{await player.resume?.();}catch(err){console.warn('ANTOO PELIS: el navegador no reactivó el audio:',err);}
-       if(player.isSuspended?.()&&hint)hint.textContent='El teléfono pausó el audio. Toca reproducir para activarlo.';
+       // Aquí la activación del toque inicial ya pudo expirar por la carga del
+       // enlace y el análisis del MKV. Se reactiva desde el control táctil.
+       if(hint)hint.textContent='Toca reproducir para activar el audio del teléfono.';
      }
      // Si el primer intento no dibuja ningún cuadro, reiniciar AVPlayer una vez
      // automáticamente. Es el mismo reinicio manual que antes necesitaba el usuario.
