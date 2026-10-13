@@ -116,16 +116,18 @@
    series(name,items){navigate(seriesBase(name,items));},
    season(name,items,key){navigate(seasonPath(name,items,key));},
    episode(m,name,items,key){navigate(episodePath(m,name,items,key));},
-   onCatalogReady(){if(!ready){ready=true;restore();}},
+   onCatalogReady(){installCloseHandlers();if(!ready){ready=true;restore();}},
    restore
  };
  window.antooRoutes=api;
  window.addEventListener('popstate',restore);
- // Closing a detail sheet leaves the catalog URL, except while opening the
- // existing player or during a browser-history transition.
+ // Details already exist at startup; the episodes dialog is created on login.
+ function installCloseHandlers(){
  for(const id of ['details','episodes-dialog']){
    const dlg=document.getElementById(id);
-   dlg?.addEventListener('close',()=>{
+   if(!dlg||dlg.dataset.antooRoutesCloseBound)return;
+   dlg.dataset.antooRoutesCloseBound='yes';
+   dlg.addEventListener('close',()=>{
      setTimeout(()=>{
        if(restoring||document.getElementById('player')?.open||
           document.getElementById('details')?.open||
@@ -137,4 +139,6 @@
      },80);
    });
  }
+ }
+ installCloseHandlers();
 })();
