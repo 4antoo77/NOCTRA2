@@ -136,7 +136,10 @@
         if(playId!==playRequest||!dialog.open)return;
         // AVPlayer fue verificado con MKV, audio y subtítulos en la prueba.
         // Si falla al iniciar este título concreto, recuperar Movi Player.
-        if(window.antooAVPlayerMain?.start){
+        // En móviles, Movi usa WebCodecs con aceleración disponible y expone
+        // las pistas de audio/subtítulos del MKV en sus controles integrados.
+        // AVPlayer conserva la ruta de escritorio y queda como respaldo móvil.
+        if(window.antooAVPlayerMain?.start&&!isMobilePlayback){
           if(activePlayer){
             try{activePlayer.pause?.();activePlayer.removeAttribute('src');activePlayer.remove();}catch{}
             activePlayer=null;
@@ -151,11 +154,7 @@
           }catch(newPlayerError){
             if(playId!==playRequest||!dialog.open)return;
             console.warn('ANTOO PELIS: AVPlayer no pudo iniciar después del reintento.',newPlayerError);
-            if(isMobilePlayback){
-              hint.textContent='AVPlayer no pudo iniciar este archivo después de reintentarlo. Puedes volver a cargarlo.';
-              $('frame-container').textContent='No se pudo iniciar el video en este teléfono. Usa «Volver a cargar el reproductor» para intentarlo otra vez.';
-              return;
-            }
+            // En móvil, si Movi Player también falla, se muestra el error final.
             hint.textContent='Este archivo no inició con AVPlayer. Probando el reproductor alternativo…';
             $('frame-container').textContent='Cargando reproductor de respaldo…';
           }
@@ -172,6 +171,7 @@
         // Recupera la configuración original de Movi usada para el MKV.
         // No forzar primero "native": puede limitar el acceso a las pistas muxed.
         el.setAttribute('sw','auto');
+        if(isMobilePlayback)el.setAttribute('renderer','canvas');
         el.setAttribute('theme','dark');
         el.setAttribute('persist','volume speed audiolang subtitlelang');
         el.setAttribute('persistkey','noctra2-cine');
@@ -224,9 +224,30 @@
           notice.hidden=true;
           hint.textContent='Reproduciendo con Movi Player.';
         });
+        let mobileFallbackStarted=false;
         el.addEventListener('error',()=>{
           if(playId!==playRequest)return;
           notice.hidden=true;
+          if(isMobilePlayback&&!mobileFallbackStarted&&window.antooAVPlayerMain?.start){
+            mobileFallbackStarted=true;
+            hint.textContent='Movi Player encontró un problema con este archivo. Probando AVPlayer…';
+            window.noctraWatchState?.detach?.();
+            try{el.pause?.();el.removeAttribute('src');el.remove();}catch{}
+            if(activePlayer===el)activePlayer=null;
+            void window.antooAVPlayerMain.start({
+              url:signed.url,frame:$('frame-container'),dialog,hint,title:m.title,resumeAt,media:m
+            }).then(ready=>{
+              if(playId!==playRequest||!dialog.open)return;
+              if(!ready)throw Error('AVPlayer no pudo iniciar.');
+            }).catch(error=>{
+              if(playId!==playRequest||!dialog.open)return;
+              console.warn('ANTOO PELIS: fallaron ambos reproductores móviles.',error);
+              window.noctraWatchState?.reportError?.(m,'MEDIA_FORMAT');
+              hint.textContent='Este archivo no pudo iniciarse en este teléfono. Revisa el formato y vuelve a intentarlo.';
+              $('frame-container').textContent='No se pudo reproducir este archivo con Movi Player ni AVPlayer.';
+            });
+            return;
+          }
           window.noctraWatchState?.reportError?.(m,'MEDIA_FORMAT');
           hint.textContent='Movi Player no pudo abrir este archivo. Comprueba el formato y la conexión.';
         });
@@ -239,7 +260,10 @@
 
         // Movi Player es el único reproductor. La preparación de este MKV
         // puede tardar; la interfaz indica el estado sin superponer otro player.
-        if(typeof el.play==='function')Promise.resolve(el.play()).catch(()=>{});
+        if(typeof el.play==='function')Promise.resolve(el.play()).catch(()=>{
+          if(playId===playRequest&&dialog.open)
+            hint.textContent='Toca ▶ en el reproductor para iniciar el video con audio.';
+        });
 
       }catch(e){
         if(playId!==playRequest)return;
