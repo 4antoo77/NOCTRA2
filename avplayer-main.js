@@ -191,6 +191,38 @@
      document.documentElement.classList.remove('antoo-avplayer-fullscreen');
    };
  }
+ // El motor de libmedia escoge una pista por defecto ANTES de crear su
+ // renderizador. Si el primer subtítulo es PGS (imagen), no crea el
+ // renderizador y después selectSubtitle tampoco funciona.
+ // Filtrar SOLO esa selección conserva el algoritmo original de audio/vídeo.
+ const subtitleCodecs=new Set([94210,94212,94213,94225,94226,94230,94232]);
+ function fixInitialSubtitleTrack(player){
+   if(typeof player.findBestStream!=='function')return false;
+   const original=player.findBestStream;
+   player.findBestStream=function(streams,mediaType,...extra){
+     if(Number(mediaType)!==3)return original.call(this,streams,mediaType,...extra);
+     try{
+       const info=player.getStreams?.()||[];
+       const usable=new Set(info.filter(s=>{
+         const type=String(s.mediaType||'').toLowerCase();
+         const cp=s.codecparProxy||{};
+         return type.includes('subtitle')&&subtitleCodecs.has(Number(cp.codecId));
+       }).map(s=>Number(s.id)));
+       const candidates=streams.filter(s=>usable.has(Number(s.id)));
+       if(!candidates.length){
+         console.info('ANTOO: este archivo no contiene subtítulos de texto decodificables; las pistas gráficas necesitan otra implementación.');
+         return undefined;
+       }
+       const selected=original.call(this,candidates,mediaType,...extra);
+       console.info('ANTOO: subtítulo inicial compatible',selected?.id);
+       return selected;
+     }catch(error){
+       console.warn('ANTOO: selección inicial de subtítulos',error);
+       return original.call(this,streams,mediaType,...extra);
+     }
+   };
+   return true;
+ }
  async function start({url,frame,dialog,hint,title}){
    if(!/^https:\/\//.test(String(url)))throw Error('El enlace de reproducción no es válido.');
    if(!frame||!dialog)throw Error('No existe el contenedor del reproductor.');
@@ -243,6 +275,9 @@
      if(hint)hint.textContent='Preparando '+(title||'tu película')+' con AVPlayer…';
      await player.load(url);
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
+     // El filtro se instala después de analizar las pistas del MKV y
+     // antes de elegir la que inicializa SubtitleRender.
+     fixInitialSubtitleTrack(player);
      state.options?.refresh?.();
      state.requestResize?.();
      // Conectar el respaldo ANTES de play para no perder el primer diálogo.
