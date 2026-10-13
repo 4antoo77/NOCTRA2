@@ -14,7 +14,83 @@ function mount(target,api,request){
  const retryBtn=el('button','secondary','Volver a buscar este título');retryBtn.type='button';
  const syncBtn=el('button','secondary','Comprobar ahora');syncBtn.type='button';
  const label=(text,child)=>{const node=el('label','',text);node.append(child);return node;};
- const picker=el('select');picker.id='metadata-item';
+ const picker=el('select');picker.id='metadata-item';picker.hidden=true;picker.tabIndex=-1;
+ // Custom list instead of the Windows native popup, which rendered white-on-white.
+ const pickerField=el('div','noctra-meta-field');
+ const pickerCaption=el('span','noctra-meta-field-label','Selecciona una película o serie');
+ const pickerUI=el('div','noctra-meta-picker');
+ const pickerTrigger=el('button','noctra-meta-picker-trigger');
+ pickerTrigger.type='button';
+ pickerTrigger.setAttribute('aria-haspopup','listbox');
+ pickerTrigger.setAttribute('aria-expanded','false');
+ pickerTrigger.setAttribute('aria-label','Elegir película o serie');
+ const pickerText=el('span','noctra-meta-picker-selected','Seleccionar título');
+ const pickerArrow=el('span','noctra-meta-picker-chevron','⌄');pickerArrow.setAttribute('aria-hidden','true');
+ pickerTrigger.append(pickerText,pickerArrow);
+ const pickerOptions=el('div','noctra-meta-picker-options');
+ pickerOptions.id='noctra-meta-options';pickerOptions.setAttribute('role','listbox');
+ pickerOptions.setAttribute('aria-label','Películas y series del catálogo');pickerOptions.hidden=true;
+ pickerTrigger.setAttribute('aria-controls',pickerOptions.id);
+ pickerUI.append(picker,pickerTrigger,pickerOptions);
+ pickerField.append(pickerCaption,pickerUI);
+ let pickerOpen=false;
+ function closePicker(focus=false){
+   pickerOpen=false;pickerOptions.hidden=true;
+   pickerTrigger.setAttribute('aria-expanded','false');
+   pickerArrow.textContent='⌄';
+   if(focus)pickerTrigger.focus();
+ }
+ function openPicker(){
+   if(!picker.options.length||!picker.value)return;
+   pickerOpen=true;pickerOptions.hidden=false;
+   pickerTrigger.setAttribute('aria-expanded','true');
+   pickerArrow.textContent='⌃';
+   const selected=pickerOptions.querySelector('[aria-selected="true"]');
+   selected?.scrollIntoView({block:'nearest'});
+ }
+ function syncPickerUI(){
+   const selected=picker.options[picker.selectedIndex];
+   pickerText.textContent=selected?.textContent||'No hay títulos disponibles';
+   pickerTrigger.title=selected?.textContent||'';
+   pickerTrigger.disabled=!picker.value;
+   pickerOptions.replaceChildren();
+   for(const opt of picker.options){
+     if(!opt.value)continue;
+     const button=el('button','noctra-meta-picker-option',opt.textContent);
+     button.type='button';button.setAttribute('role','option');
+     button.dataset.value=opt.value;
+     const chosen=opt.value===picker.value;
+     button.setAttribute('aria-selected',String(chosen));
+     if(chosen)button.classList.add('is-selected');
+     button.onclick=()=>{
+       picker.value=opt.value;
+       picker.dispatchEvent(new Event('change'));
+       closePicker(true);
+     };
+     pickerOptions.append(button);
+   }
+   if(pickerOpen)closePicker();
+ }
+ pickerTrigger.onclick=()=>pickerOpen?closePicker():openPicker();
+ pickerTrigger.onkeydown=e=>{
+   if(e.key==='Escape'){e.preventDefault();closePicker();return;}
+   if(e.key==='ArrowDown'||e.key==='ArrowUp'||e.key==='Enter'||e.key===' '){
+     e.preventDefault();
+     if(!pickerOpen)openPicker();
+     const first=pickerOptions.querySelector('[aria-selected="true"]')||pickerOptions.firstElementChild;
+     first?.focus();
+   }
+ };
+ pickerOptions.onkeydown=e=>{
+   const entries=[...pickerOptions.querySelectorAll('[role="option"]')];
+   const index=entries.indexOf(document.activeElement);
+   if(e.key==='Escape'){e.preventDefault();closePicker(true);}
+   else if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+     e.preventDefault();entries[(Math.max(index,0)+(e.key==='ArrowDown'?1:entries.length-1))%entries.length]?.focus();
+   }else if(e.key==='Home'){e.preventDefault();entries[0]?.focus();}
+   else if(e.key==='End'){e.preventDefault();entries[entries.length-1]?.focus();}
+ };
+ document.addEventListener('pointerdown',e=>{if(pickerOpen&&!pickerUI.contains(e.target))closePicker();});
  const filter=el('input');filter.type='search';filter.placeholder='Buscar dentro de tu catálogo';
  const onlyReview=el('input');onlyReview.type='checkbox';onlyReview.style.width='auto';
  const reviewLabel=label('Mostrar solo títulos que necesitan revisión',onlyReview);
@@ -42,7 +118,7 @@ function mount(target,api,request){
  const tmdb=document.createElement('a');tmdb.href='https://www.themoviedb.org';tmdb.target='_blank';tmdb.rel='noopener';tmdb.textContent='The Movie Database';
  const logo=document.createElement('img');logo.alt='TMDB';logo.width=44;logo.style.cssText='width:44px;height:auto;vertical-align:middle;margin-right:8px';logo.src='https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_1-5bdc75aaebeb75dc7ae79426ddd9be3b2be1e342510f8202baf6bffa71d7f5c4.svg';
  credit.prepend(logo,tmdb,document.createTextNode(' — '));
- box.append(msg,progress,label('Buscar en el catálogo',filter),reviewLabel,label('Selecciona una película o serie',picker),label('Buscar título en TMDB',query),tools,results,form,credit);
+ box.append(msg,progress,label('Buscar en el catálogo',filter),reviewLabel,pickerField,label('Buscar título en TMDB',query),tools,results,form,credit);
  target.append(box);
  let items=[],current=null,lastTmdb=null;
  function status(s){msg.textContent=s;}
@@ -57,15 +133,16 @@ function mount(target,api,request){
    }
    items.sort((a,b)=>a.name.localeCompare(b.name,'es'));
    picker.replaceChildren();
-   if(!items.length){picker.add(new Option('Publica primero tus películas',''));form.hidden=true;status('El catálogo está vacío.');return;}
+   if(!items.length){picker.add(new Option('Publica primero tus películas',''));syncPickerUI();form.hidden=true;status('El catálogo está vacío.');return;}
    const term=norm(filter.value);
    const displayed=items.filter(x=>(!term||norm(x.name).includes(term))&&(!onlyReview.checked||x.movie.metadataStatus==='review'));
-   if(!displayed.length){picker.add(new Option('No hay títulos con esos filtros',''));form.hidden=true;current=null;status('No hay títulos con esos filtros.');return;}
+   if(!displayed.length){picker.add(new Option('No hay títulos con esos filtros',''));syncPickerUI();form.hidden=true;current=null;status('No hay títulos con esos filtros.');return;}
    for(const x of displayed){
      const flag=x.movie.metadataStatus==='auto'?'✓ ':x.movie.metadataStatus==='manual'?'✎ ':x.movie.metadataStatus==='review'?'⚠ ':'○ ';
      picker.add(new Option(flag+(x.type==='tv'?'Serie: ':'Película: ')+x.name,x.key));
    }
    picker.value=displayed.some(x=>x.key===previous)?previous:(displayed.find(x=>x.movie.metadataStatus==='review')||displayed[0]).key;
+   syncPickerUI();
    changed();
  }
  function changed(){
@@ -80,7 +157,7 @@ function mount(target,api,request){
    results.hidden=true;results.replaceChildren();form.hidden=false;
    status(m.metadataStatus==='review'?'No se encontró una coincidencia segura: busca y selecciona la ficha correcta.':m.metadataStatus==='auto'?'Metadatos automáticos: puedes corregirlos si no coinciden.':m.metadataStatus==='manual'?'Esta ficha se editó manualmente y no será reemplazada automáticamente.':'NOCTRA2 procesará este título automáticamente.');
  }
- picker.onchange=changed;filter.oninput=refresh;onlyReview.onchange=refresh;
+ picker.onchange=()=>{syncPickerUI();changed();};filter.oninput=refresh;onlyReview.onchange=refresh;
  target.noctraRefresh=refresh;
  async function lookup(){
    if(query.value.trim().length<2)throw Error('Introduce un título.');
