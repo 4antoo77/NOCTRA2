@@ -102,7 +102,7 @@
  document.body.append(episodeEditDialog);
  episodeEditDialog.querySelector('.close').onclick=()=>episodeEditDialog.close();
  episodeEditDialog.querySelector('#noctra-episode-cancel').onclick=()=>episodeEditDialog.close();
- function editEpisode(m,seriesName,items){
+ function editEpisode(m,seriesName,items,seasonKey=null){
    if(!isAdmin()||!m.cloud)return;
    const form=episodeEditDialog.querySelector('form');
    form.elements.title.value=m.episodeTitle||m.title;
@@ -121,13 +121,39 @@
        m.episodeDescription=form.elements.description.value.trim();
        episodeEditDialog.close();
        await window.noctraCloud.reloadCatalog();
-       openEpisodes(seriesName,items);
+       openEpisodes(seriesName,items,seasonKey);
      }catch(e){error.textContent=e.message;}
      finally{button.disabled=false;}
    };
    episodeEditDialog.showModal();
  }
- function openEpisodes(name,items){
+ // Infer seasons for items that have not yet been enriched by the Worker.
+ // Never confuse 1080p/years with episode numbers; ambiguous files remain separate.
+ function seasonOf(m){
+   const synced=Number(m.season);
+   if(m.episode>0&&Number.isInteger(synced)&&synced>=0&&synced<=80)return synced;
+   const title=String(m.title||'');
+   const path=String(m.path||'');
+   const joined=(path+' / '+title).replace(/[._-]/g,' ');
+   const explicit=/(?:^|[^\p{L}\p{N}])(?:s|t)\s*0*(\d{1,2})\s*e\s*0*\d{1,3}(?!\d)/iu.exec(joined)||
+     /(?:^|[^\d])(\d{1,2})\s*x\s*0*\d{1,3}(?!\d)/i.exec(joined);
+   if(explicit)return Number(explicit[1]);
+   const folder=/(?:^|[/\\ ])(?:temporada|season|temp|seas)\s*0*(\d{1,2})(?!\d)/i.exec(path);
+   if(folder)return Number(folder[1]);
+   return null;
+ }
+ function episodeOf(m){
+   if(Number(m.episode)>0)return Number(m.episode);
+   const title=String(m.title||'').replace(/[._-]/g,' ');
+   const numbered=/(?:^|[^\p{L}\p{N}])(?:s|t)\s*\d{1,2}\s*e\s*0*(\d{1,3})(?!\d)/iu.exec(title)||
+     /(?:^|[^\d])\d{1,2}\s*x\s*0*(\d{1,3})(?!\d)/i.exec(title)||
+     /(?:episodio|episode|capitulo|capítulo|cap|ep)\s*0*(\d{1,3})(?!\d)/i.exec(title);
+   if(numbered)return Number(numbered[1]);
+   const folder=/(?:temporada|season|temp|seas)\s*\d{1,2}/i.test(String(m.path||''));
+   const simple=folder?/^\s*0*(\d{1,3})(?:\s|$)/.exec(title):null;
+   return simple?Number(simple[1]):null;
+ }
+ function openEpisodes(name,items,preferredSeason=null){
    const featured=items.find(m=>m.description||m.poster)||items[0]||{};
    const displayName=featured.seriesTitle||name;
    const year=featured.year?esc(featured.year):'';
@@ -136,43 +162,100 @@
    const duration=Number(featured.duration)>0?Math.round(Number(featured.duration))+' min':'';
    const meta=[genreText,year,rating,duration].filter(Boolean).join(' · ');
    const poster=posterURL(featured.poster);
-   episodeDialog.innerHTML='<div class="dialog-top"><div><p class="eyebrow purple">SERIES · EPISODIOS</p><h2>'+esc(displayName)+'</h2></div><button class="close" aria-label="Cerrar">×</button></div>'+
+   const group=new Map();
+   for(const m of items){
+     const season=seasonOf(m);
+     const key=season===null?'unknown':String(season);
+     if(!group.has(key))group.set(key,[]);
+     group.get(key).push(m);
+   }
+   const keys=[...group.keys()].sort((a,b)=>
+     a==='unknown'?1:b==='unknown'?-1:Number(a)-Number(b));
+   if(!keys.length)return;
+   // Preserve the chosen season when re-opening after an episode edit.
+   let selected=preferredSeason!==null&&group.has(String(preferredSeason))?
+     String(preferredSeason):keys.find(x=>Number(x)===1)||keys[0];
+   const labelFor=key=>key==='unknown'?'Sin temporada':Number(key)===0?'Especiales':'Temporada '+Number(key);
+   episodeDialog.classList.add('noctra-seasons-dialog');
+   episodeDialog.innerHTML='<div class="dialog-top noctra-series-dialog-head"><div>'+
+     '<p class="eyebrow purple">NOCTRA2 · SERIES</p><h2>'+esc(displayName)+'</h2></div>'+
+     '<button class="close" type="button" aria-label="Cerrar">×</button></div>'+
      '<div class="noctra-series-overview">'+(poster?'<img src="'+esc(poster)+'" alt="" loading="lazy">':'')+
      '<div>'+(meta?'<p class="noctra-series-meta">'+meta+'</p>':'')+
      (featured.description?'<p>'+esc(featured.description)+'</p>':'')+'</div></div>'+
-     '<div class="episode-list noctra-episode-catalog"></div>';
+     '<div class="noctra-season-heading"><h3>Temporadas</h3><span>'+items.length+
+     (items.length===1?' episodio':' episodios')+'</span></div>'+
+     '<div class="noctra-season-tabs" role="tablist" aria-label="Temporadas de '+esc(displayName)+'"></div>'+
+     '<div class="noctra-season-current" role="status"></div>'+
+     '<div class="episode-list noctra-episode-catalog" id="noctra-season-episode-list" role="tabpanel"></div>';
+   const tabs=episodeDialog.querySelector('.noctra-season-tabs');
+   const list=episodeDialog.querySelector('.episode-list');
+   const currentHeading=episodeDialog.querySelector('.noctra-season-current');
    episodeDialog.querySelector('.close').onclick=()=>episodeDialog.close();
-   const ordered=[...items].sort((a,b)=>{
-     const seasonA=Number(a.season||0),seasonB=Number(b.season||0);
-     const epA=Number(a.episode||0),epB=Number(b.episode||0);
-     return seasonA&&seasonB?(seasonA-seasonB||epA-epB):
-       String(a.path||'').localeCompare(String(b.path||''),'es',{numeric:true})||
-       String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true});
-   });
-   for(const m of ordered){
-     const row=document.createElement('div');row.className='episode-item noctra-episode-entry';
-     const main=document.createElement('button');main.type='button';
-     main.className='noctra-episode-play';
-     const number=m.episode&&m.season!==undefined?'T'+String(m.season).padStart(2,'0')+' · E'+String(m.episode).padStart(2,'0'):'EPISODIO';
-     const episodeTitle=m.episodeTitle||m.title;
-     const still=posterURL(m.episodeStill);
-     main.innerHTML=(still?'<img class="noctra-episode-still" src="'+esc(still)+'" alt="" loading="lazy">':'<span class="noctra-episode-play-icon">▶</span>')+
-       '<div class="noctra-episode-text"><small class="noctra-episode-number">'+esc(number)+'</small>'+
-       '<strong>'+esc(episodeTitle)+'</strong>'+
-       (m.episodeDescription?'<p>'+esc(m.episodeDescription)+'</p>':
-          '<small class="noctra-episode-filename">'+esc(m.title)+'</small>')+
-       '</div><span class="noctra-episode-watch">▶</span>';
-     main.onclick=()=>{episodeDialog.close();if(m.cloud)window.noctraCloud.play(m);else playDirect(m);};
-     row.append(main);
-     if(isAdmin()&&m.cloud){
-       const edit=document.createElement('button');edit.type='button';
-       edit.className='noctra-episode-edit';edit.textContent='Editar';
-       edit.setAttribute('aria-label','Editar '+episodeTitle);
-       edit.onclick=()=>editEpisode(m,name,items);
-       row.append(edit);
+   function fillSeason(key,focus=false){
+     selected=key;tabs.querySelectorAll('button').forEach(button=>{
+       const active=button.dataset.season===key;
+       button.classList.toggle('is-current',active);
+       button.setAttribute('aria-selected',String(active));
+       button.tabIndex=active?0:-1;
+       if(active)list.setAttribute('aria-labelledby',button.id);
+     });
+     if(focus)tabs.querySelector('[aria-selected="true"]')?.focus();
+     const seasonItems=[...group.get(key)].sort((a,b)=>{
+       const ea=episodeOf(a),eb=episodeOf(b);
+       if(ea!==null&&eb!==null&&ea!==eb)return ea-eb;
+       if(ea!==null&&eb===null)return -1;
+       if(ea===null&&eb!==null)return 1;
+       return String(a.path||'').localeCompare(String(b.path||''),'es',{numeric:true})||
+         String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true});
+     });
+     currentHeading.textContent=labelFor(key)+' · '+seasonItems.length+
+       (seasonItems.length===1?' episodio':' episodios');
+     list.replaceChildren();
+     for(const m of seasonItems){
+       const row=document.createElement('div');row.className='episode-item noctra-episode-entry';
+       const main=document.createElement('button');main.type='button';
+       main.className='noctra-episode-play';
+       const n=episodeOf(m),number=n!==null?'E'+String(n).padStart(2,'0'):'EPISODIO';
+       const episodeTitle=m.episodeTitle||m.title;
+       const still=posterURL(m.episodeStill);
+       main.innerHTML=(still?'<img class="noctra-episode-still" src="'+esc(still)+'" alt="" loading="lazy">':
+         '<span class="noctra-episode-play-icon">▶</span>')+
+         '<div class="noctra-episode-text"><small class="noctra-episode-number">'+esc(number)+'</small>'+
+         '<strong>'+esc(episodeTitle)+'</strong>'+
+         (m.episodeDescription?'<p>'+esc(m.episodeDescription)+'</p>':
+            '<small class="noctra-episode-filename">'+esc(m.title)+'</small>')+
+         '</div><span class="noctra-episode-watch">▶</span>';
+       main.onclick=()=>{episodeDialog.close();if(m.cloud)window.noctraCloud.play(m);else playDirect(m);};
+       row.append(main);
+       if(isAdmin()&&m.cloud){
+         const edit=document.createElement('button');edit.type='button';
+         edit.className='noctra-episode-edit';edit.textContent='Editar';
+         edit.setAttribute('aria-label','Editar '+episodeTitle);
+         edit.onclick=()=>editEpisode(m,name,items,key);
+         row.append(edit);
+       }
+       list.append(row);
      }
-     episodeDialog.querySelector('.episode-list').append(row);
+     list.scrollTop=0;
    }
+   keys.forEach((key,i)=>{
+     const tab=document.createElement('button');tab.type='button';
+     tab.className='noctra-season-tab';tab.dataset.season=key;
+     tab.id='noctra-season-tab-'+i;
+     tab.setAttribute('role','tab');tab.setAttribute('aria-controls','noctra-season-episode-list');
+     tab.textContent=labelFor(key)+' ('+group.get(key).length+')';
+     tab.onclick=()=>fillSeason(key);
+     tab.onkeydown=e=>{
+       if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft'&&e.key!=='Home'&&e.key!=='End')return;
+       e.preventDefault();const at=keys.indexOf(key);
+       const next=e.key==='Home'?0:e.key==='End'?keys.length-1:
+         (at+(e.key==='ArrowRight'?1:-1)+keys.length)%keys.length;
+       fillSeason(keys[next],true);
+     };
+     tabs.append(tab);
+   });
+   fillSeason(selected);
    if(!episodeDialog.open)episodeDialog.showModal();
  }
 
