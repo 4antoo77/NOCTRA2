@@ -46,7 +46,7 @@ Metadatos de [The Movie Database](https://www.themoviedb.org). This product uses
 
 ## Imágenes nítidas y episodios
 
-La pantalla principal utiliza los fondos panorámicos de TMDB en tamaño original cuando están disponibles y selecciona imágenes de menor tamaño para móviles mediante `srcset`. Las imágenes verticales de las miniaturas del carrusel utilizan mayor resolución, pero **no se amplía una portada de 500 píxeles para llenar la pantalla**. Las películas que no tengan fondo disponible muestran el fondo neutro existente.
+La pantalla principal utiliza los fondos panorámicos de TMDB en tamaño original cuando están disponibles y selecciona imágenes de menor tamaño para móviles mediante `srcset`. Las imágenes verticales de las miniaturas del carrusel utilizan mayor resolución, pero **no se amplía una portada de 500 píxeles para llenar la pantalla**. Las películas sin imagen panorámica utilizan su portada como imagen vertical proporcionada, sin estirarla sobre toda la pantalla.
 
 En las series, NOCTRA2 detecta el número de temporada y capítulo a partir de formatos habituales como `S01E02`, `T1E2`, `1x02` y `Temporada 1 / Capítulo 2`. Cuando encuentra una ficha de la serie y un número de episodio válido, consulta TMDB para completar nombre, sinopsis y fotograma. Si TMDB no tiene la traducción española, intenta la información en inglés. Si no puede determinar el episodio de forma fiable, conserva el nombre del archivo. Un administrador puede abrir una serie y pulsar **Editar** junto a cualquier episodio publicado; el ajuste queda protegido ante futuras sincronizaciones.
 
