@@ -142,24 +142,38 @@
    });
    function close(){open=false;panel.hidden=true;}
    function show(){refresh();message('');open=true;panel.hidden=false;get('.antoo-av-options-close').focus();}
-   function clickCapture(e){
+   // AVPlayerUI usa clics del mouse. Algunos WebKit táctiles no emiten
+   // el click sintético sobre sus controles SVG: atendemos pointerup/touchend.
+   // Al llegar también el click lo suprimimos para no abrir y cerrar dos veces.
+   let lastTouchAction=0;
+   function captureGear(e){
      const origin=e.target;
      if(!(origin instanceof Element))return;
      const gear=origin.closest('.avplayer-ui-control-settings');
      if(!gear||!host.contains(gear))return;
+     if(e.type==='pointerup'&&e.pointerType!=='touch')return;
+     if(e.type==='touchend'&&typeof PointerEvent==='function')return;
+     const now=Date.now();
+     const duplicate=now-lastTouchAction<650;
      e.preventDefault();e.stopImmediatePropagation();e.stopPropagation();
-     // Disable libmedia's unfinished Settings tabs, retaining its original gear icon.
+     if(duplicate)return;
+     if(e.type!=='click')lastTouchAction=now;
      try{player.ui?.set?.('showSettings',false);}catch{}
      if(open)close();else show();
    }
-   host.addEventListener('click',clickCapture,true);
+   host.addEventListener('click',captureGear,true);
+   host.addEventListener('pointerup',captureGear,true);
+   host.addEventListener('touchend',captureGear,{capture:true,passive:false});
    get('.antoo-av-options-close').addEventListener('click',close);
    get('.antoo-av-options-shade').addEventListener('click',close);
    const keyHandler=e=>{if(open&&e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}};
    document.addEventListener('keydown',keyHandler,true);
    return {
      refresh,open:show,
-     destroy(){close();host.removeEventListener('click',clickCapture,true);
+     destroy(){close();
+       host.removeEventListener('click',captureGear,true);
+       host.removeEventListener('pointerup',captureGear,true);
+       host.removeEventListener('touchend',captureGear,true);
        document.removeEventListener('keydown',keyHandler,true);panel.remove();}
    };
  }
