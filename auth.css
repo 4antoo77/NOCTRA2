@@ -201,3 +201,29 @@ body.abyss-noctra #antoo-profile-dialog .antoo-profile-jokes{max-width:100%}
 #auth-loading[hidden]{display:none!important}
 #auth-loading .auth-spinner{width:30px;height:30px;border:3px solid #bca1ff3d;border-top-color:#bca1ff;border-radius:50%;animation:antooAuthSpin .75s linear infinite}
 @keyframes antooAuthSpin{to{transform:rotate(360deg)}}
+
+#suggest-open{min-height:40px;padding:9px 13px;white-space:nowrap;font-size:11px}
+#suggestion-dialog{width:min(560px,94vw);max-height:90dvh;overflow:auto}
+#suggestion-dialog>form{display:grid;gap:2px}
+#suggestion-dialog .suggestion-intro{margin:-8px 0 16px;color:#aaa0b8;font-size:13px;line-height:1.6}
+#suggestion-dialog label{display:grid;gap:8px;font-size:11px;color:#ccc1d8}
+#suggestion-dialog .suggestion-status{min-height:18px;margin:8px 0;color:#cdb5f2;font-size:12px;line-height:1.5}
+.suggestion-history{border-top:1px solid #ffffff16;margin-top:20px;padding-top:16px}
+.suggestion-history h3{margin:0 0 10px;font-size:14px;font-weight:600}
+#my-suggestions{display:grid;gap:8px;color:#a99db6;font-size:12px}
+.suggestion-history-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 12px;background:#ffffff06;border:1px solid #ffffff12;border-radius:9px}
+.suggestion-history-row strong{overflow-wrap:anywhere;font-size:12px}
+.suggestion-history-row small{grid-column:1/-1}
+.suggestion-status-tag{display:inline-flex;align-items:center;justify-content:center;width:max-content;max-width:100%;padding:4px 8px;border:1px solid #bda4f344;border-radius:99px;background:#a27dd51c;color:#dfd0f4;font-size:10px}
+#noctra-admin-dialog .admin-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
+#noctra-admin-dialog .suggestion-admin-row{align-items:flex-start}
+#noctra-admin-dialog .suggestion-admin-detail{display:grid;gap:7px;flex:1;min-width:0}
+#noctra-admin-dialog .suggestion-admin-detail p{margin:2px 0;color:#c9bfd4;font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+#noctra-admin-dialog .suggestion-admin-row .admin-actions{display:flex;gap:7px;flex-wrap:wrap}
+#noctra-admin-dialog .suggestion-admin-row .admin-actions button{min-height:38px;padding:8px 10px;border:1px solid #ffffff22;border-radius:8px;background:#ffffff08;color:#e8d9ff;font-size:11px}
+@media(max-width:700px){
+  #suggest-open{min-height:38px;padding:8px 10px;font-size:10px}
+  #noctra-admin-dialog .admin-nav{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #noctra-admin-dialog .suggestion-admin-row .admin-actions{width:100%}
+  #noctra-admin-dialog .suggestion-admin-row .admin-actions button{flex:1 1 auto}
+}
