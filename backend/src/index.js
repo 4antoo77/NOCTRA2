@@ -447,16 +447,26 @@ async function syncEpisodeMetadata(db,env,limit=2){
   for(const batch of [...batches.values()].slice(0,Math.max(1,Math.min(limit,3)))){
     const data=await tmdbGet(env,'tv/'+batch.tvId+'/season/'+batch.season);
     if(data instanceof Response){errors++;continue;}
+    // TMDB sometimes has no Spanish translation for a specific episode.
+    // Fall back to original/English metadata rather than inventing a synopsis.
+    let international=null;
+    if((data.episodes||[]).some(x=>!x.overview||!x.name)){
+      const alternate=await tmdbGet(env,'tv/'+batch.tvId+'/season/'+batch.season,{language:'en-US'});
+      if(!(alternate instanceof Response))international=new Map((alternate.episodes||[]).map(x=>[Number(x.episode_number),x]));
+    }
     const episodes=new Map((data.episodes||[]).map(x=>[Number(x.episode_number),x]));
     const stmts=[];
     for(const file of batch.files){
       const ep=episodes.get(file.episode);
       if(!ep)continue; // No TMDB entry: retain original filename and retry later.
+      const other=international?.get(file.episode);
       stmts.push(db.prepare(
         "INSERT INTO episode_metadata(file_id,series_id,season_no,episode_no,title,description,still,manual,updated_at) VALUES(?,?,?,?,?,?,?,0,?) ON CONFLICT(file_id) DO NOTHING"
       ).bind(file.fileId,batch.tvId,file.season,file.episode,
-        String(ep.name||'').slice(0,150),String(ep.overview||'').slice(0,1200),
-        typeof ep.still_path==='string'&&/^\/[a-zA-Z0-9_.-]+$/.test(ep.still_path)?TMDB_STILL+ep.still_path:'',
+        String(ep.name||other?.name||'').slice(0,150),
+        String(ep.overview||other?.overview||'').slice(0,1200),
+        typeof ep.still_path==='string'&&/^\/[a-zA-Z0-9_.-]+$/.test(ep.still_path)?TMDB_STILL+ep.still_path:
+          typeof other?.still_path==='string'&&/^\/[a-zA-Z0-9_.-]+$/.test(other.still_path)?TMDB_STILL+other.still_path:'',
         now()));
     }
     if(stmts.length){await db.batch(stmts);synced+=stmts.length;}
