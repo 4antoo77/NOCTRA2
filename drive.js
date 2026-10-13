@@ -78,6 +78,7 @@
      b.className='movie-card';
      const poster=episodes.find(m=>posterURL(m.poster));
      const displayName=episodes.find(m=>m.seriesTitle)?.seriesTitle||name;
+     b.setAttribute('aria-label','Abrir serie '+displayName);
      b.innerHTML='<div class="poster"><img src="'+esc(poster?posterURL(poster.poster):'assets/city.svg')+'" alt="" loading="lazy"><span class="card-tag">SERIE · '+episodes.length+' EPISODIOS</span><div class="poster-text">'+esc(displayName)+'<small>SERIE</small></div></div><div class="card-info"><strong>'+esc(displayName)+'</strong><span>↗</span></div>';
      b.onclick=()=>openEpisodes(name,episodes);
      grid.append(b);
