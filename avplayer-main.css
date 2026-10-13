@@ -276,3 +276,21 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer
 body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-control{
  box-sizing:border-box!important;max-width:100%!important;
 }
+
+/* Aviso breve al hacer doble toque para retroceder/avanzar 10 segundos.
+   Es un indicador, no un nuevo botón del reproductor. */
+#frame-container .antoo-av-seek-feedback[hidden]{display:none!important}
+#frame-container .antoo-av-seek-feedback{
+ position:absolute!important;top:50%!important;left:24%;
+ transform:translate(-50%,-50%)!important;
+ width:auto!important;height:auto!important;max-width:46%!important;
+ min-width:70px;min-height:38px;padding:9px 12px;
+ z-index:40!important;border-radius:100px;
+ background:rgba(10,9,18,.77);border:1px solid rgba(255,255,255,.35);
+ color:#fff;box-shadow:0 4px 22px rgba(0,0,0,.48);
+ font:700 clamp(15px,3.6vw,21px)/1.2 system-ui,sans-serif;
+ text-shadow:0 1px 3px #000;white-space:nowrap;text-align:center;
+ pointer-events:none!important;user-select:none!important;
+}
+#frame-container .antoo-av-seek-feedback.antoo-seek-right{left:76%}
+#frame-container .avplayer-ui-player{touch-action:manipulation}
