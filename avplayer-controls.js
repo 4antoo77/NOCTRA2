@@ -10,9 +10,12 @@
    const optionsOpen=()=>!!frame.querySelector('.antoo-av-options:not([hidden])');
    function visible(){
      if(disposed)return;
+     const wasHidden=hidden;
      hidden=false;
      frame.classList.remove('antoo-av-controls-hidden');
-     try{player.ui?.set?.('showBar',true);}catch{}
+     // No hacer un render Yox por cada movimiento de mouse.
+     if(wasHidden||player.ui?.get?.('showBar')!==true)
+       try{player.ui?.set?.('showBar',true);}catch{}
    }
    function hide(){
      if(disposed||!playing()||optionsOpen()||held)return;
