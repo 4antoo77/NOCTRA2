@@ -147,3 +147,108 @@ body.noctra-tv .noctra-meta-editor .noctra-meta-results{max-height:45vh}
  #admin-metadata-slot .noctra-meta-picker-option{font-size:14px;min-height:47px}
  #admin-metadata-slot .noctra-meta-picker-options{max-height:250px}
 }
+
+/* Cleaner metadata workflow: one search and optional manual edit. */
+#admin-metadata-slot .noctra-meta-advanced {
+ min-width:0;border:1px solid #ffffff28;border-radius:13px;
+ background:#ffffff08;overflow:hidden;
+}
+#admin-metadata-slot .noctra-meta-advanced summary {
+ display:block;list-style:none;position:relative;cursor:pointer;
+ padding:14px 40px 14px 15px;font-weight:650;font-size:13px;
+ color:#e9e7f3;
+}
+#admin-metadata-slot .noctra-meta-advanced summary::-webkit-details-marker{display:none}
+#admin-metadata-slot .noctra-meta-advanced summary:after{
+ content:'⌄';position:absolute;right:17px;font-size:19px;top:11px;color:#dad4ed
+}
+#admin-metadata-slot .noctra-meta-advanced[open] summary:after{content:'⌃'}
+#admin-metadata-slot .noctra-meta-advanced:not([open])>.noctra-meta-form{display:none!important}
+#admin-metadata-slot .noctra-meta-advanced .noctra-meta-form{
+ padding:15px;border-top:1px solid #ffffff22
+}
+#admin-metadata-slot .noctra-meta-results{
+ max-height:390px
+}
+#admin-metadata-slot .noctra-meta-result{
+ min-height:84px;transition:background .15s,border-color .15s
+}
+#admin-metadata-slot .noctra-meta-result strong{font-size:13px}
+#admin-metadata-slot .noctra-meta-result small{font-size:12px}
+#admin-metadata-slot input[type="search"]::placeholder{color:#a8a5b6;opacity:1}
+#admin-metadata-slot .noctra-meta-actions button:focus-visible{outline:2px solid #c9b3ff}
+
+/* TMDB episode tiles: crisp still, per-episode name and synopsis. */
+#episodes-dialog .noctra-episode-catalog{
+ display:grid;gap:12px
+}
+#episodes-dialog .noctra-episode-entry{
+ display:flex;align-items:stretch;gap:7px;
+ border-radius:14px;padding:7px;border:1px solid #ffffff25;
+ background:#ffffff0a;min-height:86px
+}
+#episodes-dialog .noctra-episode-play{
+ flex:1 1 auto;min-width:0;min-height:72px;display:flex;
+ gap:13px;align-items:center;text-align:left;
+ background:transparent;color:#f8f8fc;border:0;
+ cursor:pointer;padding:7px 5px;border-radius:10px
+}
+#episodes-dialog .noctra-episode-play:hover{background:#ffffff11}
+#episodes-dialog .noctra-episode-play:focus-visible,
+#episodes-dialog .noctra-episode-edit:focus-visible{outline:2px solid #c5aaff}
+#episodes-dialog .noctra-episode-still{
+ display:block;width:138px;max-width:30%;height:79px;object-fit:cover;
+ border-radius:9px;flex-shrink:0;background:#24252d
+}
+#episodes-dialog .noctra-episode-play-icon{
+ width:50px;text-align:center;flex-shrink:0;color:#c6aaff
+}
+#episodes-dialog .noctra-episode-text{
+ display:grid;gap:5px;min-width:0;align-content:center
+}
+#episodes-dialog .noctra-episode-number{
+ color:#b8b5c7;font-size:11px;letter-spacing:.07em;font-weight:700
+}
+#episodes-dialog .noctra-episode-text strong{
+ display:block;color:#fff;font-size:14px;font-weight:700;
+ line-height:1.4;overflow-wrap:anywhere
+}
+#episodes-dialog .noctra-episode-text p{
+ font-size:12px;line-height:1.55;color:#c9c6d1;
+ margin:0;display:-webkit-box;-webkit-line-clamp:3;
+ -webkit-box-orient:vertical;overflow:hidden
+}
+#episodes-dialog .noctra-episode-filename{
+ color:#a9a7b2;font-size:11px;overflow-wrap:anywhere
+}
+#episodes-dialog .noctra-episode-watch{margin-left:auto;color:#e1d3ff}
+#episodes-dialog .noctra-episode-edit{
+ align-self:center;min-width:62px;padding:9px 10px;border-radius:9px;
+ color:#fff;background:#ffffff18;border:1px solid #ffffff29;cursor:pointer
+}
+#noctra-episode-edit{
+ width:min(540px,calc(100vw - 28px));max-height:90dvh;
+ background:#1e1f27;color:#fff;border:1px solid #ffffff40;border-radius:17px;
+ padding:24px;box-shadow:0 30px 100px #0009
+}
+#noctra-episode-edit::backdrop{background:#000b;backdrop-filter:blur(4px)}
+#noctra-episode-edit .noctra-episode-edit-form{display:grid;gap:16px}
+#noctra-episode-edit .noctra-episode-edit-form label{display:grid;gap:9px}
+#noctra-episode-edit input,#noctra-episode-edit textarea{
+ width:100%;box-sizing:border-box;padding:11px;min-height:44px;
+ color:#fff;background:#ffffff12;border:1px solid #ffffff37;border-radius:10px;
+ font:inherit
+}
+#noctra-episode-edit textarea{resize:vertical}
+#noctra-episode-edit .button-row{display:flex;gap:10px;flex-wrap:wrap}
+#noctra-episode-edit-error{color:#f4c8c8;min-height:1em}
+@media(max-width:650px){
+ #episodes-dialog .noctra-episode-entry{flex-wrap:wrap}
+ #episodes-dialog .noctra-episode-play{gap:10px;width:100%}
+ #episodes-dialog .noctra-episode-still{width:96px;height:65px;max-width:31%}
+ #episodes-dialog .noctra-episode-text strong{font-size:13px}
+ #episodes-dialog .noctra-episode-text p{-webkit-line-clamp:2}
+ #episodes-dialog .noctra-episode-edit{margin-left:auto}
+ #episodes-dialog .noctra-episode-watch{display:none}
+ #noctra-episode-edit{padding:16px}
+}
