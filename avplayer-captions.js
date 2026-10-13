@@ -24,10 +24,11 @@
    overlay.setAttribute('aria-live','off');
    overlay.setAttribute('aria-hidden','true');
    overlay.hidden=true;
-   let surface=null;
    function mount(){
-     const host=frame.querySelector('.avplayer-ui-player');
-     if(host&&host!==surface){surface=host;surface.appendChild(overlay);}
+     // libmedia crea ASS-box como hijo directo de frame, no dentro del canvas.
+     // Colocar el respaldo en el mismo contenedor impide que quede oculto
+     // detrás del vídeo al cambiar de tamaño o entrar en pantalla completa.
+     if(overlay.parentNode!==frame)frame.appendChild(overlay);
    }
    function install(){
      if(disposed)return;
@@ -48,10 +49,11 @@
            try{
              const text=cleanText(event);
              const end=Number(event?.End);
+             const endInSeconds=typeof event?.End==='bigint'||end>1000000?end/1000:end;
              if(text){
                rendered++;
                lastCue=text;
-               lastEnd=Number.isFinite(end)?(end>1e8?end/1000:end):Number(player.currentTime)/1000+4;
+               lastEnd=Number.isFinite(endInSeconds)?endInSeconds:Number(player.currentTime)/1000+4;
                // Mostrar el texto original del subtítulo en una capa DOM
                // independiente, por encima del canvas y fuera del footer.
                overlay.textContent=text;
