@@ -14,6 +14,9 @@
      (/Macintosh/i.test(ua)&&navigator.maxTouchPoints>1);
  };
  let playing=null,hostMode=false,usingNative=false;
+ let returnToInfo=null,returnAfterClose=null;
+ // Set by the movie/series selection before playback begins.
+ function setReturnInfo(callback){returnToInfo=typeof callback==='function'?callback:null;}
  let orientationState='idle',orientationGeneration=0;
  const nativeElement=()=>document.fullscreenElement||document.webkitFullscreenElement||null;
  const ourNativeFullscreen=()=>{
@@ -93,8 +96,12 @@
    event?.preventDefault?.();
    // Built-in Movi back arrow returns to NOCTRA2, not to browser history.
    // Works in host/iOS fullscreen, native fullscreen, and inline playback.
+   // Return to the same information page instead of closing into the catalog.
+   returnAfterClose=returnToInfo;
    try{player.exitFullscreen?.();}catch{}
-   if(dialog.open)dialog.close(); // Player 'close' listeners also stop playback.
+   if(dialog.open)dialog.close(); // Other close listeners stop and remove Movi.
+   else{const back=returnAfterClose;returnAfterClose=null;returnToInfo=null;
+     if(back)setTimeout(()=>{try{back();}catch(e){console.warn('NOCTRA2 back:',e);}},90);}
  }
  function attach(player){
    if(!player||player.tagName!=='MOVI-PLAYER')return;
@@ -138,6 +145,11 @@
    playing=null;
    endFullscreen();
    try{current?.setHostFullscreen?.(false);}catch{}
+   const back=returnAfterClose;
+   returnAfterClose=null;returnToInfo=null;
+   // Wait until the modal and any native fullscreen session have exited.
+   // Otherwise Safari may refuse to open the details/episode dialog.
+   if(back)setTimeout(()=>{try{back();}catch(e){console.warn('NOCTRA2 back:',e);}},130);
  });
  // Android back key and smart-TV remote back close the video too.
  document.addEventListener('keydown',event=>{
@@ -145,5 +157,5 @@
    if(event.target?.matches?.('input,textarea,[contenteditable="true"]'))return;
    event.preventDefault();event.stopPropagation();goBack(event,playing);
  },true);
- window.noctraPlayerFullscreen={attach};
+ window.noctraPlayerFullscreen={attach,setReturnInfo};
 })();
