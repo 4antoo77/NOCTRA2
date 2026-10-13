@@ -59,6 +59,7 @@
    if(!player||!frame||!dialog)return {destroy(){},status(){return 'Motor no disponible'}};
    let disposed=false,hook=null,decoderHook=null,rendered=0,decoded=0,lastEnd=0,mode='native',external=null;
    let nativeCues=[];
+   let hasTriedResync=false,recoveryState='',firstCheck=Date.now();
    const overlay=document.createElement('div');
    overlay.className='antoo-av-captions-mirror';
    overlay.setAttribute('aria-live','off');
@@ -193,9 +194,35 @@
      hook=null;
      unhookDecoder();
    }
+   // Recuperar una conexión de subtítulos estancada sin descargar ni
+   // modificar el archivo. Solo se intenta UNA vez por reproducción,
+   // y solo después de observar un rato sin recibir ningún diálogo.
+   async function attemptResync(){
+     if(disposed||hasTriedResync||mode!=='native'||decoded||rendered)return;
+     if(Date.now()-firstCheck<42000)return;
+     if(Number(player.getStatus?.())!==6)return;
+     const sr=player.subtitleRender;
+     if(!sr||sr.ended||!sr.currentPort)return;
+     if(typeof sr.leftPorts?.has==='function'&&!sr.leftPorts.has(sr.currentPort)){
+       recoveryState='Puerto de subtítulos no conectado.';
+       return;
+     }
+     const current=player.currentTime;
+     if(typeof current!=='bigint'||current<10000n||typeof player.seek!=='function')return;
+     hasTriedResync=true;
+     recoveryState='Reconectando la lectura de subtítulos…';
+     try{
+       await player.seek(current);
+       recoveryState='Lectura resincronizada; esperando paquetes de subtítulos.';
+     }catch(err){
+       recoveryState='No se pudo resincronizar: '+(err?.message||err);
+     }
+   }
    const interval=setInterval(()=>{
      if(disposed)return;
      install();
+     if(mode==='native'&&!hasTriedResync&&!decoded&&!rendered)
+       void attemptResync();
      if(mode==='external'){pollExternal();return;}
      if(mode!=='native'){hide();return;}
      displayDecoded();
@@ -234,10 +261,15 @@
        if(decoded)return 'Decodificados '+decoded+' subtítulos del MKV; visibles sin depender de ASS.';
        if(rendered)return 'Renderizados '+rendered+' diálogos del MKV.';
        const hasPort=Boolean(sr.currentPort);
+       const portOK=typeof sr.leftPorts?.has==='function'?sr.leftPorts.has(sr.currentPort):null;
        const q=Array.isArray(sr.queue)?sr.queue.length:'?';
-       return hasPort
-         ?'Decodificador conectado, sin diálogos recibidos (cola: '+q+', fin: '+!!sr.ended+').'
-         :'Pista seleccionada, esperando conexión de subtítulos del MKV.';
+       const pending=sr.pulling===true?'solicitando datos':sr.pulling===false?'en espera':'desconocido';
+       const running=typeof sr.loop?.isStarted==='function'?sr.loop.isStarted():'?';
+       const state='Cola: '+q+', fin: '+!!sr.ended+
+         ', puerto: '+(portOK===true?'conectado':portOK===false?'faltante':'no verificable')+
+         ', solicitud: '+pending+', lector activo: '+running+'.';
+       return hasPort?(recoveryState||'Decodificador conectado, sin diálogos recibidos.')+' '+state
+         :'Pista seleccionada, esperando conexión de subtítulos del MKV. '+state;
      },
      destroy(){
        disposed=true;clearInterval(interval);unhook();
