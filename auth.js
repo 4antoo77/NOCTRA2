@@ -156,6 +156,9 @@
         });
         activePlayer=el;
         $('frame-container').replaceChildren(el,notice);
+        // The optional mobile/TV orientation helper acts on Movi's own
+        // rotate attribute, leaving its controls, audio and subtitles intact.
+        window.noctraPlayerControls?.attach?.(el,fileId);
         el.src=signed.url;
 
         // Movi Player es el único reproductor. La preparación de este MKV
