@@ -87,3 +87,5 @@ html.noctra-fullscreen-lock #toast{
 }
 
 
+
+body.abyss-noctra dialog#player.noctra-fullscreen-host #player-recommendations,body.abyss-noctra dialog#player.noctra-fullscreen-native-active #player-recommendations{display:none!important}
