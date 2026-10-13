@@ -29,7 +29,7 @@
  function reset(opts={}){
    const previous=mode;
    ++requestId;mode='none';
-   dlg.classList.remove('noctra-fullscreen-host','antoo-fs-rotated');
+   dlg.classList.remove('noctra-fullscreen-host','noctra-fullscreen-native-active','antoo-fs-rotated');
    frame.classList.remove('noctra-fullscreen-native','antoo-fs-native-rotated');
    document.documentElement.classList.remove('noctra-fullscreen-lock');
    unlock();
@@ -78,7 +78,7 @@
        return;
      }
      if(ourFullscreen()){
-       mode='native';frame.classList.add('noctra-fullscreen-native');
+       mode='native';dlg.classList.add('noctra-fullscreen-native-active');frame.classList.add('noctra-fullscreen-native');
        try{player.setHostFullscreen?.(true);}catch{}
        lockOrientation();rotateFallback();
      }else hostFullscreen('manual');
@@ -116,7 +116,7 @@
        if(mode==='video'){reset();return;}
        suppressAuto=landscape();reset({exitNative:true});
      }else if(e.detail?.fullscreen===true&&ourFullscreen()){
-       mode='native';lockOrientation();rotateFallback();
+       mode='native';dlg.classList.add('noctra-fullscreen-native-active');lockOrientation();rotateFallback();
      }
    });
    try{
@@ -129,6 +129,7 @@
  function onNativeChange(){
    if(ourFullscreen()){
      if(mode!=='native')mode='native';
+     dlg.classList.add('noctra-fullscreen-native-active');
      frame.classList.add('noctra-fullscreen-native');
      lockOrientation();rotateFallback();
    }else if(mode==='native'){
