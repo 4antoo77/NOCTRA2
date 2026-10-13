@@ -245,6 +245,9 @@
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
      state.options?.refresh?.();
      state.requestResize?.();
+     // Conectar el respaldo ANTES de play para no perder el primer diálogo.
+     // El módulo espera a que libmedia cree subtitleRender durante play.
+     state.captions=window.antooAVCaptions?.create?.(player,frame,dialog)||null;
      // Pedir de forma explícita la inicialización del renderizador
      // integrado de subtítulos del MKV, además del audio y el video.
      await player.play({audio:true,video:true,subtitle:true});
@@ -253,9 +256,6 @@
      // Reactivar la pista elegida después del inicio para que libmedia
      // dibuje los subtítulos SRT/SSA ya detectados en el MKV.
      state.options?.syncSubtitleAfterStart?.();
-     // Conectarse al renderizador ya creado para mostrar los diálogos como
-     // texto normal si el renderizado ASS de libmedia falla en Safari.
-     state.captions=window.antooAVCaptions?.create?.(player,frame,dialog)||null;
      state.requestResize?.();
      state.controls?.show?.();
      if(hint)hint.textContent='Reproduciendo MKV original con AVPlayer. Idiomas y subtítulos: ⚙ Configuración.';
