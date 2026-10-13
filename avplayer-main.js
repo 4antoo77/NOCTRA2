@@ -223,7 +223,7 @@
    };
    return true;
  }
- async function start({url,frame,dialog,hint,title}){
+ async function start({url,frame,dialog,hint,title,resumeAt=0,media=null}){
    if(!/^https:\/\//.test(String(url)))throw Error('El enlace de reproducción no es válido.');
    if(!frame||!dialog)throw Error('No existe el contenedor del reproductor.');
    stop();
@@ -295,6 +295,10 @@
      await player.play({audio:true,video:true,subtitle:true});
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
      // El renderizador interno se crea durante play, no en load.
+     if(Number.isFinite(Number(resumeAt))&&Number(resumeAt)>5000){
+       await player.seek(BigInt(Math.round(Number(resumeAt))));
+     }
+     window.noctraWatchState?.attach?.(player,{media,resumeAt});
      // Reactivar la pista elegida después del inicio para que libmedia
      // dibuje los subtítulos SRT/SSA ya detectados en el MKV.
      state.options?.syncSubtitleAfterStart?.();

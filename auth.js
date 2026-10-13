@@ -85,6 +85,7 @@
       }
       let fav;try{fav=new Set(JSON.parse(localStorage.getItem('noctra2.favorites')||'[]'));}catch{fav=new Set();}
       cloud=data.movies.map(m=>({...m,saved:fav.has(m.fileId)}));
+      window.noctraWatchState?.render?.();
       if(typeof window.noctraShowLibrary==='function')window.noctraShowLibrary();
       else {window.serverMovies=[...cloud];if(typeof render==='function')render();}
       catalogNotice(cloud.length?'':'El servidor devolvió 0 títulos. No vuelvas a publicar ni importar un catálogo vacío. Usa «Volver a cargar catálogo» para comprobarlo.');
@@ -92,7 +93,7 @@
       window.antooRefreshHomeCarousel?.();
       return cloud;
     },
-    async play(m){
+    async play(m,playOptions={}){
       const fileId=m.fileId||(typeof driveId==='function'?driveId(m.drive):null)||
         (typeof m.id==='string'&&m.id.startsWith('gdrive-')?m.id.slice(7):null);
       if(!fileId){if(typeof toast==='function')toast('No se encontró el archivo de Google Drive.');return;}
@@ -121,7 +122,7 @@
           }
           try{
             const ready=await window.antooAVPlayerMain.start({
-              url:signed.url,frame:$('frame-container'),dialog,hint,title:m.title
+              url:signed.url,frame:$('frame-container'),dialog,hint,title:m.title,resumeAt:playOptions.resumeAt||0,media:m
             });
             if(playId!==playRequest||!dialog.open)return;
             if(ready)return;
@@ -251,7 +252,7 @@
     modal.append(close,head,heading,list);modal.showModal();
   }
   function userbar(){const box=document.createElement('div');box.className='noctra-userbar';const name=document.createElement('button');name.type='button';name.className='antoo-profile-trigger';name.append(avatarNode(me.username),document.createTextNode(me.username));name.onclick=openProfile;box.append(name);if(me.role==='admin'){const b=document.createElement('button');b.textContent='Administrar';b.onclick=()=>openAdmin();box.append(b);}const exit=document.createElement('button');exit.textContent='Salir';exit.onclick=cloudApi.logout;box.append(exit);document.querySelector('.header-right').append(box);}
-  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-carousel-fix33');await script('drive.js?v=20261013-routes29');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
+  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-watch-progress1');await script('drive.js?v=20261013-watch-progress1');await script('watch-state.js?v=20261013-continue-watch1');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
     document.body.classList.toggle('noctra-admin',me.role==='admin');
     if(me.role!=='admin'){
       document.querySelectorAll('[data-add], #editor, #import, #export, #import-file').forEach(el=>{el.hidden=true;el.disabled=true;});

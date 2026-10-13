@@ -226,6 +226,7 @@
             '<small class="noctra-episode-filename">'+esc(m.title)+'</small>')+
          '</div><span class="noctra-episode-watch">▶</span>';
        main.onclick=()=>{
+         window.noctraWatchState?.setQueue?.(seasonItems,m,name,key);
          window.antooRoutes?.episode?.(m,name,items,key);
          window.noctraPlayerFullscreen?.setReturnInfo?.(()=>openEpisodes(name,items,key));
          episodeDialog.close();
