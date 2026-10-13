@@ -224,7 +224,11 @@
          (m.episodeDescription?'<p>'+esc(m.episodeDescription)+'</p>':
             '<small class="noctra-episode-filename">'+esc(m.title)+'</small>')+
          '</div><span class="noctra-episode-watch">▶</span>';
-       main.onclick=()=>{episodeDialog.close();if(m.cloud)window.noctraCloud.play(m);else playDirect(m);};
+       main.onclick=()=>{
+         window.noctraPlayerFullscreen?.setReturnInfo?.(()=>openEpisodes(name,items,key));
+         episodeDialog.close();
+         if(m.cloud)window.noctraCloud.play(m);else playDirect(m);
+       };
        row.append(main);
        if(isAdmin()&&m.cloud){
          const edit=document.createElement('button');edit.type='button';
@@ -274,7 +278,7 @@
  }catch(e){status(e.name==='AbortError'?'Exploración cancelada. Se conserva el catálogo anterior.':e.message);}finally{scanning=false;$('#sync-drive').textContent='↻ Actualizar';}}
  $('#sync-drive').onclick=()=>{if(!isAdmin())return;scanning?aborter.abort():scan();};
  // Folder lists stay in memory: never publish a snapshot of private Drive contents.
- const originalDetail=openDetail;openDetail=function(m){originalDetail(m);if(m.cloud){$('#play-movie').onclick=()=>{$('#details').close();window.noctraCloud.play(m);};$('#save-movie').onclick=()=>{window.noctraCloud.saveFavorite(m);$('#save-movie').textContent=m.saved?'✓ En mi lista':'＋ Mi lista';};$('#detail-content .detail-bottom').innerHTML='<span class="hint">Película de tu catálogo compartido</span>';return;}if(!m.connected)return;$('#play-movie').onclick=()=>{$('#details').close();playDirect(m);};$('#save-movie').onclick=()=>{m.saved=!m.saved;storeSet('noctra.drive.favorites',JSON.stringify(library.filter(x=>x.saved).map(x=>x.fileId)));$('#save-movie').textContent=m.saved?'✓ En mi lista':'＋ Mi lista';showLibrary();};$('#detail-content .notice').textContent=m.height?`Archivo original: ${resolutionLabel(m)}. No se generan versiones adicionales.`:'Se reproducirá el archivo original. El reproductor comprobará sus pistas y resolución.';$('#detail-content .detail-bottom').innerHTML=`<span class="hint">${esc(m.path)} · ${(m.size/1e9).toFixed(2)} GB</span>`;};
+ const originalDetail=openDetail;openDetail=function(m){originalDetail(m);if(m.cloud){$('#play-movie').onclick=()=>{window.noctraPlayerFullscreen?.setReturnInfo?.(()=>openDetail(m));$('#details').close();window.noctraCloud.play(m);};$('#save-movie').onclick=()=>{window.noctraCloud.saveFavorite(m);$('#save-movie').textContent=m.saved?'✓ En mi lista':'＋ Mi lista';};$('#detail-content .detail-bottom').innerHTML='<span class="hint">Película de tu catálogo compartido</span>';return;}if(!m.connected)return;$('#play-movie').onclick=()=>{window.noctraPlayerFullscreen?.setReturnInfo?.(()=>openDetail(m));$('#details').close();playDirect(m);};$('#save-movie').onclick=()=>{m.saved=!m.saved;storeSet('noctra.drive.favorites',JSON.stringify(library.filter(x=>x.saved).map(x=>x.fileId)));$('#save-movie').textContent=m.saved?'✓ En mi lista':'＋ Mi lista';showLibrary();};$('#detail-content .notice').textContent=m.height?`Archivo original: ${resolutionLabel(m)}. No se generan versiones adicionales.`:'Se reproducirá el archivo original. El reproductor comprobará sus pistas y resolución.';$('#detail-content .detail-bottom').innerHTML=`<span class="hint">${esc(m.path)} · ${(m.size/1e9).toFixed(2)} GB</span>`;};
  const iframePlay=playMovie;playMovie=function(m){playDirect(m);};
   function fallbackToDrive(m,reason){
     $('#frame-container').textContent=reason||'No se pudo reproducir este archivo. Comprueba el formato y la conexión.';
