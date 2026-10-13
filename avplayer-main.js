@@ -50,6 +50,8 @@
  function stop(){
    serial++;
    const previous=session;session=null;
+   try{previous?.player?.setVolume?.(0);}catch{}
+   try{previous?.player?.pause?.();}catch{}
    cleanup(previous);
  }
  // Usa el control original de libmedia, pero procesa las pulsaciones táctiles
@@ -263,6 +265,7 @@
      dialog.classList.remove('antoo-avplayer-active');
      throw e;
    }
+   window.noctraPlayerFullscreen?.mountBackButton?.();
    const fullscreenListener=()=>{
      const active=(document.fullscreenElement||document.webkitFullscreenElement)===frame;
      document.documentElement.classList.toggle('antoo-avplayer-fullscreen',active);

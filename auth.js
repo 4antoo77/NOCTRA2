@@ -62,6 +62,14 @@
     }
     $('frame-container').replaceChildren();
   });
+  function silenceMedia(node){if(!node)return;try{node.muted=true;node.volume=0;node.setVolume?.(0);node.pause?.();node.stop?.();}catch{}}
+  window.addEventListener('pagehide',()=>{
+    const frame=$('frame-container');
+    silenceMedia(activePlayer);silenceMedia(activePlayer?.player);
+    try{window.antooAVPlayerMain?.stop?.();}catch{}
+    for(const node of frame?.querySelectorAll('audio,video')||[])silenceMedia(node);
+    for(const node of activePlayer?.shadowRoot?.querySelectorAll('audio,video')||[])silenceMedia(node);
+  },{capture:true});
   function msg(s){error.textContent=s;}
   async function request(path,opts={}){
     if(!validApi)throw Error('Falta configurar la URL del Worker en config.js.');

@@ -307,6 +307,14 @@
  $('#player .hint').textContent=verified.length===1?'Se reproduce la calidad original del archivo; no hay otras versiones verificadas.':'Selecciona una versión disponible en los ajustes del reproductor.';
  }catch(e){if(serial===playSerial){fallbackToDrive(m,'No se pudo iniciar la reproducción directa ('+(e?.message||'error desconocido')+').');}}}
  $('#player').addEventListener('close',()=>{playSerial++;player?.pause();player?.remove();player=null;});
+ window.addEventListener('pagehide',()=>{
+   playSerial++;
+   const current=player;
+   if(!current)return;
+   for(const node of [current,current.player,...(current.shadowRoot?.querySelectorAll('audio,video')||[])].filter(Boolean)){
+     try{node.muted=true;node.volume=0;node.setVolume?.(0);node.pause?.();node.stop?.();}catch{}
+   }
+ },{capture:true});
  // Try to renew only through an explicit user click; never save OAuth tokens.
  setInterval(()=>{if(token&&!authorized()){token='';status('La sesión de Google caducó. Renueva el acceso para seguir leyendo Drive.');player?.pause();}},30000);
  // Mover los controles Google al diálogo privado de administración.

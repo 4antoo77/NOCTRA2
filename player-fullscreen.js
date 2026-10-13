@@ -14,6 +14,24 @@
  let player=null,mode='none',requestId=0,rotationId=0,locked=false;
  let suppressAuto=false,returnToInfo=null,returnAfterClose=null;
  function setReturnInfo(fn){returnToInfo=typeof fn==='function'?fn:null;}
+ function backToInfo(){
+   returnAfterClose=returnToInfo;
+   try{player?.exitFullscreen?.();}catch{}
+   try{Promise.resolve(document.exitFullscreen?.()||document.webkitExitFullscreen?.()).catch(()=>{});}catch{}
+   if(dlg.open)dlg.close();
+ }
+ function mountBackButton(){
+   let button=frame.querySelector(':scope > .antoo-player-back');
+   if(!button){
+     button=document.createElement('button');
+     button.type='button';button.className='antoo-player-back';
+     button.setAttribute('aria-label','Regresar a la información');
+     button.innerHTML='<span aria-hidden="true">‹</span><span>Regresar</span>';
+     button.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();backToInfo();});
+     frame.append(button);
+   }
+   return button;
+ }
  const onFullscreen=()=>mode!=='none';
  function unlock(){
    ++rotationId;
@@ -124,7 +142,7 @@
  function attach(instance){
    if(!instance||instance.tagName!=='MOVI-PLAYER')return;
    reset({exitNative:true});
-   player=instance;suppressAuto=false;
+   player=instance;suppressAuto=false;mountBackButton();
    instance.setAttribute('showtitle','');
    instance.setAttribute('titlemode','both back');
    instance.addEventListener('back',e=>goBack(e,instance));
@@ -177,5 +195,5 @@
      suppressAuto=landscape();reset({exitNative:true});
    }else goBack(e,player);
  },true);
- window.noctraPlayerFullscreen={attach,setReturnInfo};
+ window.noctraPlayerFullscreen={attach,setReturnInfo,mountBackButton,backToInfo};
 })();
