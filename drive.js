@@ -214,6 +214,7 @@
        const row=document.createElement('div');row.className='episode-item noctra-episode-entry';
        const main=document.createElement('button');main.type='button';
        main.className='noctra-episode-play';
+       main.dataset.episodeRoute=window.antooRoutes?.episodePath?.(m,name,items,key)||'';
        const n=episodeOf(m),number=n!==null?'E'+String(n).padStart(2,'0'):'EPISODIO';
        const episodeTitle=m.episodeTitle||m.title;
        const still=posterURL(m.episodeStill);
@@ -225,6 +226,7 @@
             '<small class="noctra-episode-filename">'+esc(m.title)+'</small>')+
          '</div><span class="noctra-episode-watch">▶</span>';
        main.onclick=()=>{
+         window.antooRoutes?.episode?.(m,name,items,key);
          window.noctraPlayerFullscreen?.setReturnInfo?.(()=>openEpisodes(name,items,key));
          episodeDialog.close();
          if(m.cloud)window.noctraCloud.play(m);else playDirect(m);
@@ -247,19 +249,22 @@
      tab.id='noctra-season-tab-'+i;
      tab.setAttribute('role','tab');tab.setAttribute('aria-controls','noctra-season-episode-list');
      tab.textContent=labelFor(key);
-     tab.onclick=()=>fillSeason(key);
+     tab.onclick=()=>{fillSeason(key);window.antooRoutes?.season?.(name,items,key);};
      tab.onkeydown=e=>{
        if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft'&&e.key!=='Home'&&e.key!=='End')return;
        e.preventDefault();e.stopPropagation();const at=keys.indexOf(key);
        const next=e.key==='Home'?0:e.key==='End'?keys.length-1:
          (at+(e.key==='ArrowRight'?1:-1)+keys.length)%keys.length;
-       fillSeason(keys[next],true);
+       fillSeason(keys[next],true);window.antooRoutes?.season?.(name,items,keys[next]);
      };
      tabs.append(tab);
    });
    fillSeason(selected);
    if(!episodeDialog.open)episodeDialog.showModal();
+   if(preferredSeason!==null)window.antooRoutes?.season?.(name,items,selected);
+   else window.antooRoutes?.series?.(name,items);
  }
+ window.noctraOpenEpisodes=openEpisodes;
 
  tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{
    category=b.dataset.kind;
@@ -270,6 +275,7 @@
      x.setAttribute('aria-pressed',String(selected));
    });
    showLibrary();
+   window.antooRoutes?.section?.('library',category);
  });
  async function scan(){if(!isAdmin())return;if(scanning)return;if(!authorized()){status('Conecta Google Drive para actualizar.');return;}scanning=true;$('#sync-drive').textContent='Cancelar';$('#sync-drive').disabled=false;aborter=new AbortController();const signal=aborter.signal,found=[],queue=[{id:config.root,path:[]}],visited=new Set();let scanned=0;
  try{await api('files/'+config.root,{fields:'id,name,mimeType',supportsAllDrives:'true'},signal);
