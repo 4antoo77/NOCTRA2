@@ -1,197 +1,181 @@
-/* NOCTRA2 | Movi Player: landscape in fullscreen where supported, and back
- * navigation using Movi's OWN title-bar arrow. No extra movie controls.
- * Safari iOS does not generally expose orientation locking; do not rotate
- * the whole player sideways to pretend that the device itself has turned.
+/* ANTOO PELIS: fullscreen for Movi Player on phones/tablets.
+ * Uses ONLY Movi's existing fullscreen and back controls.
+ * Rotation alone can fill the page viewport; true OS fullscreen/rotation
+ * depends on the browser. No extra video controls are added.
  */
 (()=>{
  'use strict';
  const dialog=document.getElementById('player');
  const frame=document.getElementById('frame-container');
  if(!dialog||!frame)return;
- const isIOS=()=>{
-   const ua=navigator.userAgent||'';
-   return /iPad|iPhone|iPod/i.test(ua)||
-     (/Macintosh/i.test(ua)&&navigator.maxTouchPoints>1);
- };
- let playing=null,hostMode=false,usingNative=false;
- let fullscreenAttempt=0,autoLandscape=false;
- let returnToInfo=null,returnAfterClose=null;
- // Set by the movie/series selection before playback begins.
+
+ const mobile=()=>/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||
+   (/Macintosh/i.test(navigator.userAgent)&&navigator.maxTouchPoints>1)||
+   (matchMedia('(pointer: coarse)').matches&&Math.min(innerWidth,innerHeight)<1000);
+ const landscape=()=>matchMedia('(orientation: landscape)').matches;
+ const actualFullscreen=()=>document.fullscreenElement||document.webkitFullscreenElement||null;
+ const ourFullscreen=()=>{const el=actualFullscreen();return !!el&&(el===frame||el===playing||frame.contains(el));};
+
+ let playing=null;
+ let mode='none'; // none, auto (turned phone), manual (Movi fullscreen button)
+ let native=false, nativePending=false, pendingId=0, lockId=0, locked=false;
+ let suppressAuto=false;
+ let returnToInfo=null, backAfterClose=null;
+
  function setReturnInfo(callback){returnToInfo=typeof callback==='function'?callback:null;}
- let orientationState='idle',orientationGeneration=0;
- const nativeElement=()=>document.fullscreenElement||document.webkitFullscreenElement||null;
- const ourNativeFullscreen=()=>{
-   const element=nativeElement();
-   return !!element&&(element===frame||element===playing||
-     (typeof frame.contains==='function'&&frame.contains(element)));
- };
- function unlockLandscape(){
-   ++orientationGeneration;
-   const wasLocked=orientationState==='locked';
-   orientationState='idle';
-   if(wasLocked)try{screen.orientation?.unlock?.();}catch{}
+ function unlock(){
+   ++lockId;
+   if(locked){locked=false;try{screen.orientation?.unlock?.();}catch{}}
+ }
+ function refreshOrientation(){
+   const portrait=!landscape();
+   // If orientation locking isn't allowed, rotating the fallback player
+   // presents landscape video and its ORIGINAL controls, not an extra button.
+   dialog.classList.toggle('noctra-fullscreen-rotated',
+     mode==='manual'&&!native&&mobile()&&portrait);
+   frame.classList.toggle('noctra-native-rotated',
+     mode==='manual'&&native&&mobile()&&portrait&&!locked);
  }
  function lockLandscape(){
-   // Mobile browsers generally require fullscreen before locking orientation.
-   if(orientationState!=='idle'||typeof screen==='undefined'||
-      typeof screen.orientation?.lock!=='function')return;
-   orientationState='pending';
-   const generation=orientationGeneration;
-   let result;
-   try{result=screen.orientation.lock('landscape');}
-   catch{orientationState='idle';return;}
-   Promise.resolve(result).then(()=>{
-     if(generation!==orientationGeneration){
-       // A previous fullscreen has closed. Avoid undoing a newer lock.
-       if(!dialog.open&&!nativeElement())try{screen.orientation?.unlock?.();}catch{}
-       return;
-     }
-     orientationState='locked';
-   }).catch(()=>{
-     if(generation===orientationGeneration)orientationState='idle';
-   });
- }
- function clearHost(){
-   dialog.classList.remove('noctra-fullscreen-host');
-   frame.classList.remove('noctra-fullscreen-native');
-   document.documentElement.classList.remove('noctra-fullscreen-lock');
-   hostMode=false;usingNative=false;
- }
- function endFullscreen(){
-   ++fullscreenAttempt;
-   const native=ourNativeFullscreen();
-   const current=playing;
-   clearHost();unlockLandscape();
-   if(native){
-     try{Promise.resolve(document.exitFullscreen?.()).catch(()=>{});}catch{}
+   if(!mobile()||!ourFullscreen())return;
+   const gen=++lockId;
+   if(typeof screen?.orientation?.lock!=='function'){
+     refreshOrientation();
+     return;
    }
-   try{current?.setHostFullscreen?.(false);}catch{}
+   try{
+     Promise.resolve(screen.orientation.lock('landscape')).then(()=>{
+       if(gen!==lockId)return;
+       locked=true;refreshOrientation();
+     }).catch(()=>{if(gen===lockId){locked=false;refreshOrientation();}});
+   }catch{if(gen===lockId){locked=false;refreshOrientation();}}
  }
- function fallback(){
+ function showHost(nextMode){
    if(!playing||!dialog.open)return;
-   hostMode=true;usingNative=false;
+   mode=nextMode;native=false;nativePending=false;
    dialog.classList.add('noctra-fullscreen-host');
    document.documentElement.classList.add('noctra-fullscreen-lock');
-   playing.setHostFullscreen?.(true);
-   lockLandscape();
+   refreshOrientation();
+   try{playing.setHostFullscreen?.(true);}catch{}
  }
- function requestHostFullscreen(){
-   const attempt=++fullscreenAttempt;
-   // Native fullscreen + lock where available; true orientation is OS-controlled.
-   if(document.fullscreenEnabled&&typeof frame.requestFullscreen==='function'){
-     let pending;
-     try{pending=frame.requestFullscreen({navigationUI:'hide'});}
-     catch{fallback();return;}
-     Promise.resolve(pending).then(()=>{
-       if(attempt!==fullscreenAttempt)return;
-       if(!playing||!dialog.open){
-         if(nativeElement()===frame)Promise.resolve(document.exitFullscreen?.()).catch(()=>{});
-         return;
-       }
-       hostMode=true;usingNative=true;
-       frame.classList.add('noctra-fullscreen-native');
-       playing.setHostFullscreen?.(true);
-       lockLandscape();
-     }).catch(()=>{if(attempt===fullscreenAttempt)fallback();});
-   }else fallback();
- }
- function isLandscape(){return window.matchMedia?.('(orientation: landscape)')?.matches || window.innerWidth>window.innerHeight;}
- function syncRotation(){
-   if(!playing||!dialog.open)return;
-   if(isLandscape()){
-     // Orientation events have no user activation: native requestFullscreen()
-     // would be rejected. Use a fullscreen-sized modal player instead.
-     if(!hostMode&&!ourNativeFullscreen()){
-       autoLandscape=true;
-       fallback();
-     }
-   }else if(autoLandscape){
-     autoLandscape=false;
-     if(hostMode&&!usingNative){
-       clearHost();unlockLandscape();
-       try{playing?.setHostFullscreen?.(false);}catch{}
-     }
+ function restore({exitNative=false}={}){
+   const current=playing, wasNative=native;
+   ++pendingId;nativePending=false;native=false;mode='none';
+   dialog.classList.remove('noctra-fullscreen-host','noctra-fullscreen-rotated');
+   frame.classList.remove('noctra-fullscreen-native','noctra-native-rotated');
+   document.documentElement.classList.remove('noctra-fullscreen-lock');
+   unlock();
+   try{current?.setHostFullscreen?.(false);}catch{}
+   if(exitNative&&wasNative&&ourFullscreen()){
+     try{Promise.resolve(document.exitFullscreen?.()).catch(()=>{});}catch{}
    }
  }
- window.addEventListener('orientationchange',syncRotation);
- window.addEventListener('resize',syncRotation);
- function goBack(event,player){
-   if(playing!==player)return;
-   event?.preventDefault?.();
-   // Built-in Movi back arrow returns to NOCTRA2, not to browser history.
-   // Works in host/iOS fullscreen, native fullscreen, and inline playback.
-   // Return to the same information page instead of closing into the catalog.
-   returnAfterClose=returnToInfo;
-   try{player.exitFullscreen?.();}catch{}
-   if(dialog.open)dialog.close(); // Other close listeners stop and remove Movi.
-   else{const back=returnAfterClose;returnAfterClose=null;returnToInfo=null;
-     if(back)setTimeout(()=>{try{back();}catch(e){console.warn('NOCTRA2 back:',e);}},90);}
+ function enterManual(){
+   if(!playing||!dialog.open)return;
+   suppressAuto=false;
+   mode='manual';
+   const id=++pendingId;
+   const request=frame.requestFullscreen||frame.webkitRequestFullscreen;
+   if(!request){showHost('manual');return;}
+   nativePending=true;
+   let promise;
+   // Keep this call synchronous with Movi's original fullscreen-button click.
+   try{promise=request.call(frame,{navigationUI:'hide'});}
+   catch{nativePending=false;showHost('manual');return;}
+   Promise.resolve(promise).then(()=>{
+     if(id!==pendingId)return;
+     nativePending=false;
+     if(!playing||!dialog.open){
+       if(ourFullscreen())Promise.resolve(document.exitFullscreen?.()).catch(()=>{});
+       return;
+     }
+     if(ourFullscreen()){
+       native=true;mode='manual';
+       frame.classList.add('noctra-fullscreen-native');
+       try{playing.setHostFullscreen?.(true);}catch{}
+       lockLandscape();refreshOrientation();
+     }else showHost('manual');
+   }).catch(()=>{if(id===pendingId){nativePending=false;showHost('manual');}});
  }
- function attach(player){
-   if(!player||player.tagName!=='MOVI-PLAYER')return;
-   playing=player;
-   autoLandscape=false;
-   clearHost();unlockLandscape();
-   syncRotation();
-   player.setAttribute('showtitle','');
-   player.setAttribute('titlemode','both back');
-   player.addEventListener('back',event=>goBack(event,player));
-   // On Android/desktop Movi handles fullscreen itself. Orientation lock
-   // is attempted AFTER it enters fullscreen so browsers allow the request.
-   player.addEventListener('fullscreenchange',event=>{
-     if(playing!==player)return;
-     if(event.detail?.fullscreen===true){lockLandscape();return;}
-     if(event.detail?.fullscreen===false){
-       if(hostMode){
-         const exit=usingNative&&nativeElement()===frame;
-         clearHost();unlockLandscape();
-         if(exit)Promise.resolve(document.exitFullscreen?.()).catch(()=>{});
-       }else unlockLandscape();
+ function syncRotation(){
+   if(!playing||!dialog.open||!mobile())return;
+   if(!landscape()){
+     suppressAuto=false;
+     if(mode==='auto'&&!native&&!nativePending)restore();
+   }else if(mode==='none'&&!ourFullscreen()&&!suppressAuto){
+     // Physical rotation does not carry user activation, so a native
+     // requestFullscreen() would fail. Fill the dialog viewport instead.
+     showHost('auto');
+   }
+   if(mode!=='none')refreshOrientation();
+ }
+ function back(event,element){
+   if(element!==playing)return;
+   event?.preventDefault?.();
+   backAfterClose=returnToInfo;
+   try{element.exitFullscreen?.();}catch{}
+   if(dialog.open)dialog.close();
+ }
+ function attach(element){
+   if(!element||element.tagName!=='MOVI-PLAYER')return;
+   restore();
+   playing=element;
+   suppressAuto=false;
+   element.setAttribute('showtitle','');
+   element.setAttribute('titlemode','both back');
+   element.addEventListener('back',event=>back(event,element));
+   element.addEventListener('movi-fullscreen-request',event=>{
+     if(playing!==element||!mobile()||!event.cancelable)return;
+     event.preventDefault();
+     enterManual();
+   });
+   element.addEventListener('fullscreenchange',event=>{
+     if(playing!==element)return;
+     if(event.detail?.fullscreen===false&&mode!=='none'&&!nativePending){
+       suppressAuto=landscape();
+       restore({exitNative:true});
+     }else if(event.detail?.fullscreen===true&&ourFullscreen()){
+       native=true;lockLandscape();refreshOrientation();
      }
    });
-   // On mobile, fullscreen the entire video container and request a real
-   // landscape orientation lock during the user-initiated fullscreen action.
-   // If the browser refuses, fill the available viewport without rotating UI.
-   player.addEventListener('movi-fullscreen-request',event=>{
-     if(!isIOS())return;
-     if(playing!==player||!event.cancelable)return;
-     event.preventDefault();requestHostFullscreen();
-   });
+   syncRotation();
  }
- function onNativeChange(){
-   if(nativeElement()){if(ourNativeFullscreen())lockLandscape();return;}
-   if(usingNative){
-     const current=playing;
-     clearHost();unlockLandscape();
-     current?.setHostFullscreen?.(false);
-   }else unlockLandscape();
+ function onFullscreenChange(){
+   if(!playing)return;
+   if(ourFullscreen()){
+     native=true;
+     frame.classList.add('noctra-fullscreen-native');
+     lockLandscape();refreshOrientation();
+   }else if(native&&!nativePending){
+     // The user exited the native browser fullscreen; keep the film open.
+     suppressAuto=landscape();
+     restore();
+   }
  }
- document.addEventListener('fullscreenchange',onNativeChange);
- document.addEventListener('webkitfullscreenchange',onNativeChange);
+ document.addEventListener('fullscreenchange',onFullscreenChange);
+ document.addEventListener('webkitfullscreenchange',onFullscreenChange);
+ window.addEventListener('orientationchange',syncRotation);
+ window.addEventListener('resize',syncRotation);
+ window.visualViewport?.addEventListener('resize',syncRotation);
  dialog.addEventListener('close',()=>{
-   const current=playing;
-   playing=null;
-   autoLandscape=false;
-   endFullscreen();
-   try{current?.setHostFullscreen?.(false);}catch{}
-   const back=returnAfterClose||returnToInfo;
-   returnAfterClose=null;returnToInfo=null;
-   // Wait until the modal and any native fullscreen session have exited.
-   // Otherwise Safari may refuse to open the details/episode dialog.
-   if(back)setTimeout(()=>{try{back();}catch(e){console.warn('NOCTRA2 back:',e);}},130);
+   const go=backAfterClose||returnToInfo;
+   restore({exitNative:true});
+   playing=null;backAfterClose=null;returnToInfo=null;
+   if(go)setTimeout(()=>{try{go();}catch(e){console.warn('ANTOO PELIS back:',e);}},190);
  });
- // Android back key and smart-TV remote back close the video too.
- document.addEventListener('keydown',event=>{
-   if(!dialog.open||!playing||!['BrowserBack','Backspace','Escape'].includes(event.key))return;
-   if(event.target?.matches?.('input,textarea,[contenteditable="true"]'))return;
-   event.preventDefault();event.stopPropagation();goBack(event,playing);
- },true);
- // Closing via Escape, Android's dialog cancellation or the visible X should
- // return to the selected film/season information, not the movie grid.
  dialog.addEventListener('cancel',event=>{
    if(!playing)return;
-   event.preventDefault();
-   goBack(event,playing);
+   event.preventDefault();back(event,playing);
  });
+ document.addEventListener('keydown',event=>{
+   if(!dialog.open||!playing||!['Backspace','BrowserBack','Escape'].includes(event.key))return;
+   if(event.target?.matches?.('input,textarea,[contenteditable="true"]'))return;
+   // Escape while fullscreen should exit fullscreen first, not leave the film.
+   if(event.key==='Escape'&&(mode!=='none'||ourFullscreen())){
+     event.preventDefault();event.stopPropagation();
+     suppressAuto=landscape();restore({exitNative:true});return;
+   }
+   event.preventDefault();event.stopPropagation();back(event,playing);
+ },true);
  window.noctraPlayerFullscreen={attach,setReturnInfo};
 })();
