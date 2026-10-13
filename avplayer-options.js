@@ -85,6 +85,7 @@
    // renderizador de texto haya dejado de mostrar cues. Para reactivarlo,
    // reiniciar el motor de ASS/SRT además de confirmar el stream ID.
    async function activateSubtitle(id){
+     window.antooAVCaptions?.clear?.(player);
      if(!Number.isFinite(id)||id<0)
        throw Error('No hay una pista válida para activar.');
      const actual=selectedSubtitleId();
@@ -245,6 +246,7 @@
    audio.addEventListener('change',()=>change('el audio',audio,()=>player.selectAudio(Number(audio.value))));
    subs.addEventListener('change',()=>change('los subtítulos',subs,async()=>{
      if(subs.value==='off'){
+       window.antooAVCaptions?.clear?.(player);
        subtitleOff=true;
        player.setSubtitleEnable?.(false);
        return;
