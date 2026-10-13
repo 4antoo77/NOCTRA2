@@ -123,6 +123,7 @@ html.noctra-fullscreen-lock #toast{
 /* Back-to-details control stays inside the fullscreen frame on mobile. */
 #frame-container>.antoo-player-back{
  display:none;position:absolute!important;z-index:20000!important;
+ opacity:1;visibility:visible;transition:opacity .22s ease,visibility .22s ease;
  top:max(14px,env(safe-area-inset-top,0px));left:max(14px,env(safe-area-inset-left,0px));
  align-items:center;gap:7px;min-height:42px;padding:8px 13px;
  border:1px solid #ffffff45;border-radius:999px;background:#111a;color:#fff;
@@ -136,3 +137,7 @@ body.abyss-noctra dialog#player.antoo-avplayer-immersive #frame-container>.antoo
 body.abyss-noctra #frame-container:fullscreen>.antoo-player-back,
 body.abyss-noctra #frame-container:-webkit-full-screen>.antoo-player-back{display:inline-flex!important}
 #frame-container>.antoo-player-back:focus-visible{outline:3px solid #c7adff;outline-offset:3px}
+
+#frame-container>.antoo-player-back.antoo-player-back-hidden{
+ opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+}
