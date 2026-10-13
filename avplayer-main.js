@@ -54,7 +54,7 @@
  // el navegador no permite requestFullscreen sobre un canvas o div.
  function installTouchFullscreen(state){
    const {frame,dialog}=state;
-   let lastTouch=0,lastVolume=1,mode='none';
+   let lastTouch=0,lastTarget=null,lastVolume=1,mode='none';
    const inLandscape=()=>matchMedia('(orientation:landscape)').matches;
    function setHost(){
      mode='host';
@@ -95,13 +95,14 @@
      const control=target.closest('.avplayer-ui-control-fullscreen, .avplayer-ui-control-play, .avplayer-ui-volume-icon');
      if(!control||!frame.contains(control))return;
      if(e.type==='pointerup'&&e.pointerType!=='touch')return;
-     if(e.type==='touchend'&&typeof PointerEvent==='function')return;
-     // Solo interceptamos click si fue generado por un toque reciente.
-     if(e.type==='click'&&Date.now()-lastTouch>=850)return;
+     const now=Date.now();
+     // pointerup y touchend pueden llegar para el mismo dedo. Capturamos
+     // ambos y deduplicamos por control; otro botón puede tocarse enseguida.
+     if(e.type==='click'&&!(now-lastTouch<850&&lastTarget===control))return;
      e.preventDefault();e.stopImmediatePropagation();e.stopPropagation();
      if(e.type==='click')return;
-     if(Date.now()-lastTouch<650)return;
-     lastTouch=Date.now();
+     if(now-lastTouch<450&&lastTarget===control)return;
+     lastTouch=now;lastTarget=control;
      if(control.matches('.avplayer-ui-control-fullscreen')){toggle();return;}
      if(control.matches('.avplayer-ui-control-play')){
        try{
