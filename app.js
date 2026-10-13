@@ -244,7 +244,7 @@ function openDetail(m){if(!m)return;window.antooRoutes?.detail?.(m);active=m;$('
 function playMovie(m){
   const id=m.fileId||(typeof driveId==='function'?driveId(m.drive):null);
   const cloud=window.noctraCloud?.movies?.find(x=>x.fileId===id);
-  if(cloud)return window.noctraCloud.play(cloud);
+  if(cloud)return window.noctraCloud.play({...cloud,variants:Array.isArray(m.variants)?m.variants:[]});
   toast('Para reproducir con Movi Player, publica primero esta película en Administrar → Publicar catálogo actual.');
 }
 $('#player').addEventListener('close',()=>{$('#frame-container').innerHTML='';});
