@@ -95,7 +95,12 @@ const noctraSpotlight=(()=>{
    return url&&url.startsWith('https://image.tmdb.org/t/p/w500/')?
      url.replace('/t/p/w500/','/t/p/w780/'):url;
  };
- const cinematicBackdrop=m=>posterURL(m.backdrop);
+ // TMDB sometimes has a reduced-size backdrop URL saved by an older release.
+ // Fetch the original image rather than enlarging a thumbnail on the screen.
+ const cinematicBackdrop=m=>{
+   const url=posterURL(m.backdrop);
+   return url.replace(/^https:\/\/image\.tmdb\.org\/t\/p\/(?:w300|w500|w780|w1280)\//,'https://image.tmdb.org/t/p/original/');
+ };
  const movieKey=m=>String(m.fileId||m.id||m.title);
  function stop(){if(interval){clearInterval(interval);interval=null;}}
  function start(){
@@ -136,11 +141,9 @@ const noctraSpotlight=(()=>{
    description.textContent=m.description?.trim()||'Disponible en tu catálogo. Selecciona Reproducir para disfrutarla.';
    counter.textContent=String(i+1).padStart(2,'0')+' / '+String(chosen.length).padStart(2,'0');
    if(art){
-     if(art.startsWith('https://image.tmdb.org/t/p/original/')){
-       const root=art.replace('/t/p/original/','/t/p/');
-       backdrop.srcset=root+'w780/ 780w, '+root+'w1280/ 1280w, '+art+' 1920w';
-       backdrop.sizes='100vw';
-     }else{backdrop.removeAttribute('srcset');backdrop.removeAttribute('sizes');}
+     // The original is the sharpest source. srcset with a guessed 1920w size
+     // could previously select a lower-resolution rendition on large screens.
+     backdrop.removeAttribute('srcset');backdrop.removeAttribute('sizes');
      backdrop.hidden=false;if(backdrop.src!==art)backdrop.src=art;
    }else{
      backdrop.removeAttribute('src');backdrop.removeAttribute('srcset');backdrop.hidden=true;
@@ -199,6 +202,10 @@ const noctraSpotlight=(()=>{
    // Prefer actual poster art when there are enough posters for a full row.
    const withArt=distinct.filter(poster);
    const eligible=withArt.length>=6?withArt:distinct;
+   // Favor real cinematic backdrops for the six visible slides. Small portrait
+   // posters remain eligible only when HD panoramas are unavailable.
+   const widePool=eligible.filter(cinematicBackdrop);
+   const fallbackPool=eligible.filter(m=>!cinematicBackdrop(m));
    const current=day.key+'|'+eligible.map(m=>[movieKey(m),m.title,m.poster,m.backdrop,m.description].join('~')).join('|');
    if(signature===current)return;
    signature=current;dayKey=day.key;stop();
@@ -208,10 +215,16 @@ const noctraSpotlight=(()=>{
      description.textContent='Explora el catálogo de NOCTRA2 y disfruta de tus películas favoritas.';
      return;
    }
-   const base=seededShuffle(eligible,hash('noctra|'+eligible.map(movieKey).join('|')));
-   const offset=base.length>6?((day.number*6)%base.length):0;
-   chosen=[];
-   for(let j=0;j<Math.min(6,base.length);j++)chosen.push(base[(offset+j)%base.length]);
+   const pickDaily=(pool,count,salt)=>{
+     if(!count||!pool.length)return [];
+     const shuffled=seededShuffle(pool,hash('noctra|'+salt+'|'+pool.map(movieKey).join('|')));
+     const offset=shuffled.length>count?(day.number*count)%shuffled.length:0;
+     return Array.from({length:count},(_,i)=>shuffled[(offset+i)%shuffled.length]);
+   };
+   const wanted=Math.min(6,eligible.length);
+   const hdCount=Math.min(wanted,widePool.length);
+   chosen=[...pickDaily(widePool,hdCount,'backdrops'),
+     ...pickDaily(fallbackPool,wanted-hdCount,'posters')];
    chosen=seededShuffle(chosen,hash('noctra-day|'+day.key));
    carousel.hidden=false;play.hidden=false;info.hidden=false;
    hero.classList.add('is-abyss-feature');
