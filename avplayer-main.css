@@ -1,0 +1,104 @@
+/* ANTOO PELIS | Libmedia AVPlayer en el catálogo.
+   Se reutiliza el panel de pistas ya probado en prueba-reproductor.html. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container,
+body.abyss-noctra dialog#player.antoo-avplayer-active[open] #frame-container{
+ position:relative!important;display:block!important;
+ box-sizing:border-box!important;width:100%!important;
+ height:min(56.25vw,68dvh)!important;min-height:235px!important;
+ max-height:68dvh!important;aspect-ratio:16/9!important;
+ overflow:hidden!important;background:#000!important;border:0!important;
+ border-radius:9px!important;isolation:isolate;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container>.avplayer-ui-container,
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container>#avplayer-ui-container{
+ width:100%!important;height:100%!important;min-height:0!important;
+}
+/* Al activar pantalla completa, el cuadro vuelve a las dimensiones reales del dispositivo. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:fullscreen,
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:-webkit-full-screen{
+ position:relative!important;inset:0!important;width:100vw!important;
+ height:100dvh!important;min-height:0!important;max-height:none!important;
+ aspect-ratio:auto!important;border-radius:0!important;
+ padding:0!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:fullscreen>.avplayer-ui-container,
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:-webkit-full-screen>.avplayer-ui-container{
+ width:100%!important;height:100%!important;
+}
+@media(max-width:700px){
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container{
+  width:100%!important;height:max(230px,56vw)!important;
+  min-height:230px!important;max-height:72dvh!important;
+  border-radius:0!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:fullscreen,
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:-webkit-full-screen{
+  width:100vw!important;height:100dvh!important;min-height:0!important;max-height:none!important;
+ }
+}
+/* Panel de configuración real para las pistas detectadas en el MKV. */
+#frame-container .antoo-av-options[hidden]{display:none!important}
+#frame-container .antoo-av-options{
+ position:absolute!important;inset:0;z-index:1000;
+ width:100%!important;height:100%!important;
+ display:grid;place-items:center;overflow:hidden;
+ color:#f9f7ff;font:14px/1.4 system-ui,sans-serif;
+}
+#frame-container .antoo-av-options-shade{
+ position:absolute;inset:0;background:#000b;cursor:pointer;
+}
+#frame-container .antoo-av-options-content{
+ position:relative;z-index:1;
+ width:min(92%,560px);max-height:92%;
+ min-width:0;display:flex;flex-direction:column;overflow:hidden;
+ border-radius:16px;background:#171320;
+ border:1px solid #8c78ad88;box-shadow:0 20px 75px #000c;
+}
+#frame-container .antoo-av-options-head{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:14px;padding:12px 18px;border-bottom:1px solid #ffffff29;
+}
+#frame-container .antoo-av-options-head h2{font-size:17px;font-weight:720;margin:0}
+#frame-container .antoo-av-options-close{
+ font:700 18px/1 system-ui;min-height:36px;min-width:36px;padding:6px;
+ background:#ffffff18;color:#fff;border:0;border-radius:9px;
+}
+#frame-container .antoo-av-options-main{
+ padding:15px 19px;overflow-y:auto;overscroll-behavior:contain;
+}
+#frame-container .antoo-av-options-main>label{
+ font-size:13px;font-weight:650;display:block;margin:11px 0 6px;color:#ebe1fb;
+}
+#frame-container .antoo-av-options-main>select{
+ display:block;box-sizing:border-box;width:100%!important;max-width:none!important;
+ height:42px;min-height:42px;padding:7px 10px;
+ border:1px solid #806e9f;color:#fff;background:#292138;
+ font:14px system-ui;border-radius:9px;
+}
+#frame-container .antoo-av-options-main>select:disabled{opacity:.7}
+#frame-container .antoo-av-options-main .antoo-av-sub-file{
+ display:block;cursor:pointer;font-weight:500;color:#d7c5fa;font-size:12px;
+}
+#frame-container .antoo-av-sub-file input{display:block;margin-top:7px;max-width:100%;font:12px system-ui}
+#frame-container .antoo-av-quality-note{
+ font:12px/1.5 system-ui;max-width:100%;color:#baafd0;margin:7px 0 12px;
+}
+#frame-container .antoo-av-settings-status{
+ font:12px/1.4 system-ui;color:#dbcaff;margin:10px 0;min-height:14px;
+}
+#frame-container .avplayer-ui-footer-right{
+ display:flex!important;align-items:center!important;gap:9px!important;
+}
+#frame-container .avplayer-ui-footer-right>.avplayer-ui-control-item{
+ flex:0 0 auto!important;margin:0!important;white-space:nowrap;
+}
+#frame-container .avplayer-ui-footer{
+ padding-left:9px!important;padding-right:9px!important;
+}
+@media(max-width:700px){
+ #frame-container .antoo-av-options-content{width:96%;max-height:94%}
+ #frame-container .antoo-av-options-main{padding:10px 13px}
+ #frame-container .antoo-av-options-head{padding:8px 12px}
+ #frame-container .avplayer-ui-footer-right{gap:5px!important}
+}
+
