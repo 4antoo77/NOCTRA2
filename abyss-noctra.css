@@ -397,10 +397,3 @@ body.abyss-noctra .player-rec-item>small{display:none!important}
 body.abyss-noctra .noctra-continue-info>strong,
 body.abyss-noctra .noctra-continue-info>span:not(.noctra-continue-track){display:none!important}
 
-
-/* Logotipo ANTOO PELIS */
-body.abyss-noctra .brand{display:flex;align-items:center;flex:0 0 auto;letter-spacing:0;padding:0}
-body.abyss-noctra .brand-logo{display:block;width:48px;height:48px;object-fit:cover;object-position:center;border:1px solid #ffffff52;border-radius:13px;box-shadow:0 5px 20px #0008}
-body.abyss-noctra #noctra-login .login-brand{font-size:0;letter-spacing:0}
-body.abyss-noctra #noctra-login .login-logo{display:block;width:clamp(110px,25vw,144px);height:auto;aspect-ratio:1;object-fit:cover;border:1px solid #ffffff45;border-radius:24px;margin:0 auto 14px;box-shadow:0 14px 40px #0008}
-@media(max-width:700px){body.abyss-noctra .brand-logo{width:42px;height:42px;border-radius:11px}}
