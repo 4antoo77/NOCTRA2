@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "ANTOO PELIS",
+  "short_name": "ANTOO PELIS",
+  "description": "ANTOO FAN DE PATY BURGOS",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a090f",
+  "theme_color": "#0a090f",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/antoopelis-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
