@@ -125,7 +125,7 @@
  function installCloseHandlers(){
  for(const id of ['details','episodes-dialog']){
    const dlg=document.getElementById(id);
-   if(!dlg||dlg.dataset.antooRoutesCloseBound)return;
+   if(!dlg||dlg.dataset.antooRoutesCloseBound)continue;
    dlg.dataset.antooRoutesCloseBound='yes';
    dlg.addEventListener('close',()=>{
      setTimeout(()=>{
