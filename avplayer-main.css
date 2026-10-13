@@ -326,3 +326,31 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer
  color:#fff;
  text-shadow:0 1px 3px #000,0 2px 6px #000;
 }
+
+/* Respaldo de subtítulos MKV: usa los diálogos de SRT/SSA decodificados
+   por libmedia, pero los dibuja en una capa HTML compatible con WebKit. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player>.antoo-av-captions-mirror[hidden]{
+ display:none!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player>.antoo-av-captions-mirror{
+ position:absolute!important;z-index:35!important;
+ left:4%!important;right:4%!important;
+ top:auto!important;bottom:max(8%,58px)!important;
+ width:92%!important;max-height:40%!important;
+ margin:0!important;padding:0 8px!important;
+ display:block!important;box-sizing:border-box!important;
+ color:white!important;text-align:center!important;
+ font:700 clamp(15px,2.5vw,28px)/1.35 system-ui,-apple-system,BlinkMacSystemFont,"Arial",sans-serif!important;
+ text-shadow:0 2px 3px #000,0 0 5px #000,0 0 10px #000!important;
+ white-space:pre-line!important;overflow-wrap:anywhere!important;
+ pointer-events:none!important;user-select:none!important;
+ -webkit-text-stroke:.25px #000;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-controls-hidden .avplayer-ui-player>.antoo-av-captions-mirror{
+ bottom:8%!important;
+}
+/* Solo se oculta el renderizado ASS anterior cuando el respaldo recibió
+   un diálogo real: si no lo recibe, AVPlayer permanece intacto. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-captions-mirrored .avplayer-ui-player .ASS-box{
+ visibility:hidden!important;
+}
