@@ -304,8 +304,9 @@
      await player.play({audio:true,video:true,subtitle:true});
      if(request!==serial||!dialog.open){if(session===state)stop();return false;}
      // El renderizador interno se crea durante play, no en load.
-     if(Number.isFinite(Number(resumeAt))&&Number(resumeAt)>5000){
-       await player.seek(BigInt(Math.round(Number(resumeAt))));
+     const resumeMilliseconds=Math.max(0,Number(resumeAt)||0)*1000;
+     if(Number.isFinite(resumeMilliseconds)&&resumeMilliseconds>0){
+       await player.seek(BigInt(Math.round(resumeMilliseconds)));
      }
      window.noctraWatchState?.attach?.(player,{media,resumeAt});
      // Reactivar la pista elegida después del inicio para que libmedia

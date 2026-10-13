@@ -111,6 +111,8 @@
       const fileId=m.fileId||(typeof driveId==='function'?driveId(m.drive):null)||
         (typeof m.id==='string'&&m.id.startsWith('gdrive-')?m.id.slice(7):null);
       if(!fileId){if(typeof toast==='function')toast('No se encontró el archivo de Google Drive.');return;}
+      const explicitResume=Number(playOptions.resumeAt)||0;
+      const resumeAt=explicitResume>0?explicitResume:(Number(window.noctraWatchState?.getResumeAt?.(m))||0);
       const playId=++playRequest;
       window.antooAVPlayerMain?.stop?.();
       const dialog=$('player'),hint=dialog.querySelector('.hint');
@@ -136,7 +138,7 @@
           }
           try{
             const ready=await window.antooAVPlayerMain.start({
-              url:signed.url,frame:$('frame-container'),dialog,hint,title:m.title,resumeAt:playOptions.resumeAt||0,media:m
+              url:signed.url,frame:$('frame-container'),dialog,hint,title:m.title,resumeAt,media:m
             });
             if(playId!==playRequest||!dialog.open)return;
             if(ready)return;
@@ -167,10 +169,17 @@
         el.setAttribute('title',m.title||'ANTOO PELIS');
         el.setAttribute('showtitle','');el.setAttribute('titlemode','both back');
         el.style.cssText='display:block;width:100%;height:100%;min-height:230px;background:#000';
-        el.addEventListener('loadedmetadata',()=>{
+        el.addEventListener('loadedmetadata',async()=>{
           if(playId!==playRequest)return;
           const mediaPlayer=el.player||el;
-          window.noctraWatchState?.attach?.(mediaPlayer,{media:m,resumeAt:playOptions.resumeAt||0,timeScale:1000});
+          if(resumeAt>0){
+            try{
+              if(typeof mediaPlayer.seek==='function')await mediaPlayer.seek(resumeAt);
+              else el.currentTime=resumeAt;
+            }catch(e){console.warn('ANTOO PELIS: no se pudo reanudar con el reproductor alternativo.',e);}
+            if(playId!==playRequest)return;
+          }
+          window.noctraWatchState?.attach?.(mediaPlayer,{media:m,resumeAt,timeScale:1});
           const tracks=el.player?.getAudioTracks?.()||[];
           if(tracks.length>1){
             hint.textContent='Hay '+tracks.length+' pistas de audio en el archivo. Cámbialas en los controles de Movi Player.';
@@ -270,7 +279,7 @@
     modal.append(close,head,heading,list);modal.showModal();
   }
   function userbar(){const box=document.createElement('div');box.className='noctra-userbar';const name=document.createElement('button');name.type='button';name.className='antoo-profile-trigger';name.append(avatarNode(me.username),document.createTextNode(me.username));name.onclick=openProfile;box.append(name);if(me.role==='admin'){const b=document.createElement('button');b.textContent='Administrar';b.onclick=()=>openAdmin();box.append(b);}const exit=document.createElement('button');exit.textContent='Salir';exit.onclick=cloudApi.logout;box.append(exit);document.querySelector('.header-right').append(box);}
-  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;$('auth-loading').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-item-progress2');await script('drive.js?v=20261013-item-progress2');await script('watch-state.js?v=20261013-item-progress2');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
+  async function activate(user){me=user;setAvatar(me.username,me.avatarUrl||'');form.reset();$('noctra-login').hidden=true;$('auth-loading').hidden=true;document.body.classList.remove('auth-locked');if(!loaded){await script('app.js?v=20261013-item-progress2');await script('drive.js?v=20261013-item-progress2');await script('watch-state.js?v=20261013-resume1');await script('responsive.js?v=20261013-mobile-refresh34');loaded=true;userbar();
     document.body.classList.toggle('noctra-admin',me.role==='admin');
     if(me.role!=='admin'){
       document.querySelectorAll('[data-add], #editor, #import, #export, #import-file').forEach(el=>{el.hidden=true;el.disabled=true;});

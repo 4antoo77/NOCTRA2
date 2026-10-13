@@ -34,6 +34,7 @@
  function progressEntry(fileId){
    return read().find(x=>String(x.fileId)===String(fileId));
  }
+ function getResumeAt(media){return Number(progressEntry(media?.fileId)?.position)||0;}
  function progressElement(media,className='noctra-item-progress'){
    const entry=progressEntry(media?.fileId);
    if(!entry)return null;
@@ -82,7 +83,7 @@
    if(!active)return;
    save();
    const p=active.player;let position=0,duration=0,status=0;
-   try{position=Number(p.currentTime)/1000;duration=Number(p.getDuration?.())/1000;status=Number(p.getStatus?.());}catch{}
+   try{position=Number(p.currentTime)/active.timeScale;duration=Number(p.getDuration?.())/active.timeScale;status=Number(p.getStatus?.());}catch{}
    const hasNext=!!queue&&String(queue.items[queue.index]?.fileId)===String(active.media.fileId)&&queue.index+1<queue.items.length;
    if(!hasNext||!overlay)return;
    const remaining=duration-position;
@@ -95,7 +96,6 @@
  }
  function attach(player,{media,resumeAt=0,timeScale=1000}={}){
    detach();if(!player||!media?.fileId)return;
-   const saved=read().find(x=>String(x.fileId)===String(media.fileId));
    active={player,media,timeScale:Number(timeScale)||1000,completed:false};lastSaved=0;
    sendEvent('play',media);
    if(!queue||String(queue.items[queue.index]?.fileId)!==String(media.fileId))queue=null;
@@ -103,7 +103,6 @@
    overlay.innerHTML='<span></span><strong>Siguiente episodio</strong><span aria-hidden="true">▶</span>';
    overlay.onclick=next;
    $('frame-container')?.append(overlay);
-   if(Number(resumeAt)>0&&saved){write(read().filter(x=>String(x.fileId)!==String(media.fileId)));render();}
    timer=setInterval(update,1000);
  }
  function detach(player){
@@ -112,7 +111,7 @@
    clearOverlay();
  }
  window.addEventListener('pagehide',()=>save(true));
- window.noctraWatchState={render,decorateCards,progressElement,setQueue,attach,detach,syncFromServer,reportError(media,code='PLAYER_ERROR'){sendEvent('error',media,code);},resume(media){
+ window.noctraWatchState={render,decorateCards,progressElement,getResumeAt,setQueue,attach,detach,syncFromServer,reportError(media,code='PLAYER_ERROR'){sendEvent('error',media,code);},resume(media){
    const item=read().find(x=>String(x.fileId)===String(media?.fileId));
    if(media)window.noctraCloud?.play(media,{resumeAt:Number(item?.position)||0});
  }};
