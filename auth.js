@@ -6,7 +6,19 @@
   const form=document.getElementById('noctra-login-form'),setup=document.getElementById('noctra-setup');
   const error=document.getElementById('login-error');
   const $=id=>document.getElementById(id);
-  let token=sessionStorage.getItem('noctra2.token')||'',me=null,loaded=false,cloud=[];
+  const rememberedKey='noctra2.remembered-token';
+  const rememberInput=$('login-remember');
+  const readStorage=(store,key)=>{try{return store.getItem(key)||'';}catch{return '';}};
+  const clearSession=()=>{try{sessionStorage.removeItem('noctra2.token');localStorage.removeItem(rememberedKey);}catch{}};
+  let token=readStorage(sessionStorage,'noctra2.token')||readStorage(localStorage,rememberedKey),me=null,loaded=false,cloud=[];
+  if(rememberInput)rememberInput.checked=!!readStorage(localStorage,rememberedKey);
+  function saveSession(value,remember){
+    clearSession();token=value;
+    try{(remember?localStorage:sessionStorage).setItem(remember?rememberedKey:'noctra2.token',value);}catch{
+      // Browsers in private mode may forbid persistent storage.
+      try{sessionStorage.setItem('noctra2.token',value);}catch{}
+    }
+  }
   // This is read-only recovery. It never republishes or overwrites Drive data.
   function catalogNotice(message=''){
     const catalog=$('catalog');if(!catalog)return;
@@ -177,7 +189,7 @@
       }
     },
     saveFavorite(m){m.saved=!m.saved;let x=[];try{x=JSON.parse(localStorage.getItem('noctra2.favorites')||'[]');}catch{}const s=new Set(x);m.saved?s.add(m.fileId):s.delete(m.fileId);localStorage.setItem('noctra2.favorites',JSON.stringify([...s]));if(typeof render==='function')render();},
-    async logout(){try{await request('/api/logout',{method:'POST'});}catch{}sessionStorage.removeItem('noctra2.token');token='';location.reload();}
+    async logout(){try{await request('/api/logout',{method:'POST'});}catch{}clearSession();token='';location.reload();}
   };
   window.noctraCloud=cloudApi;
   function script(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('No se pudo cargar '+src));document.body.append(s);});}
@@ -198,8 +210,8 @@
     // Automatic TMDB processing starts on admin login; no per-title clicks.
     if(me.role==='admin')void window.noctraMetadataAdmin?.autoStart?.(cloudApi,request);
   }}
-  async function init(){if(!validApi){msg('Configura primero Cloudflare: abre config.js y reemplaza TU-WORKER.');return;}try{const s=await request('/api/status');setup.hidden=!!s.ready;form.hidden=!s.ready;if(token && s.ready){const v=await request('/api/me');await activate(v.user);}}catch(e){msg(e.message);if(me)catalogNotice('No se pudo completar el inicio del catálogo: '+e.message);}}
-  form.addEventListener('submit',async e=>{e.preventDefault();msg('');$('login-submit').disabled=true;try{const d=await request('/api/login',{method:'POST',body:{username:$('login-username').value.trim(),password:$('login-password').value}});token=d.token;sessionStorage.setItem('noctra2.token',token);await activate(d.user);}catch(e){msg(e.message);}finally{$('login-submit').disabled=false;}});
+  async function init(){if(!validApi){msg('Configura primero Cloudflare: abre config.js y reemplaza TU-WORKER.');return;}try{const s=await request('/api/status');setup.hidden=!!s.ready;form.hidden=!s.ready;if(token && s.ready){try{const v=await request('/api/me');await activate(v.user);}catch(e){if(/401|403|caduc|expir|inválid|invalid|autorizad|sesión/i.test(e.message)){clearSession();token='';msg('Tu sesión terminó. Inicia sesión de nuevo.');}else throw e;}}}catch(e){msg(e.message);if(me)catalogNotice('No se pudo completar el inicio del catálogo: '+e.message);}}
+  form.addEventListener('submit',async e=>{e.preventDefault();msg('');$('login-submit').disabled=true;try{const d=await request('/api/login',{method:'POST',body:{username:$('login-username').value.trim(),password:$('login-password').value}});saveSession(d.token,!!rememberInput?.checked);await activate(d.user);}catch(e){msg(e.message);}finally{$('login-submit').disabled=false;}});
   setup.addEventListener('submit',async e=>{e.preventDefault();msg('');$('setup-submit').disabled=true;try{await request('/api/setup',{method:'POST',body:{bootstrapSecret:$('setup-secret').value,username:$('setup-username').value.trim(),password:$('setup-password').value}});$('setup-secret').value='';$('setup-password').value='';setup.hidden=true;form.hidden=false;msg('Administrador creado. Inicia sesión.');}catch(e){msg(e.message);}finally{$('setup-submit').disabled=false;}});
   async function openAdmin(){
     if(me?.role!=='admin')return;
