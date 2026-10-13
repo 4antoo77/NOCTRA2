@@ -183,8 +183,7 @@
      '<div class="noctra-series-overview">'+(poster?'<img src="'+esc(poster)+'" alt="" loading="lazy">':'')+
      '<div>'+(meta?'<p class="noctra-series-meta">'+meta+'</p>':'')+
      (featured.description?'<p>'+esc(featured.description)+'</p>':'')+'</div></div>'+
-     '<div class="noctra-season-heading"><h3>Temporadas</h3><span>'+items.length+
-     (items.length===1?' episodio':' episodios')+'</span></div>'+
+     '<div class="noctra-season-heading"><h3>Temporadas</h3></div>'+
      '<div class="noctra-season-tabs" role="tablist" aria-label="Temporadas de '+esc(displayName)+'"></div>'+
      '<div class="noctra-season-current" role="status"></div>'+
      '<div class="episode-list noctra-episode-catalog" id="noctra-season-episode-list" role="tabpanel"></div>';
@@ -209,8 +208,7 @@
        return String(a.path||'').localeCompare(String(b.path||''),'es',{numeric:true})||
          String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true});
      });
-     currentHeading.textContent=labelFor(key)+' · '+seasonItems.length+
-       (seasonItems.length===1?' episodio':' episodios');
+     currentHeading.textContent=labelFor(key);
      list.replaceChildren();
      for(const m of seasonItems){
        const row=document.createElement('div');row.className='episode-item noctra-episode-entry';
@@ -244,7 +242,7 @@
      tab.className='noctra-season-tab';tab.dataset.season=key;
      tab.id='noctra-season-tab-'+i;
      tab.setAttribute('role','tab');tab.setAttribute('aria-controls','noctra-season-episode-list');
-     tab.textContent=labelFor(key)+' ('+group.get(key).length+')';
+     tab.textContent=labelFor(key);
      tab.onclick=()=>fillSeason(key);
      tab.onkeydown=e=>{
        if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft'&&e.key!=='Home'&&e.key!=='End')return;
