@@ -86,12 +86,12 @@
     if(!response.ok)throw Error(data.error||'Error de conexión ('+response.status+').');return data;
   }
   function titleFamily(value){
-    return String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase()
-      .replace(/\\b(?:19|20)\\d{2}\\b/g,' ')
-      .replace(/\\b(?:2160p?|1440p?|1080p?|720p?|480p?|360p?|4k|uhd|hdr|bluray|web-dl|webrip|hdtv)\\b/g,' ')
-      .replace(/\\b(?:parte|part|pt|volumen|volume|vol|capitulo|chapter)\\s*(?:n(?:um(?:ero)?)?\\s*)?(?:[ivxlcdm]+|\\d+)\\b/g,' ')
-      .replace(/\\s+(?:[ivxlcdm]+|\\d{1,2})$/,' ')
-      .replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ');
+    return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+      .replace(/\b(?:19|20)\d{2}\b/g,' ')
+      .replace(/\b(?:2160p?|1440p?|1080p?|720p?|480p?|360p?|4k|uhd|hdr|bluray|web-dl|webrip|hdtv)\b/g,' ')
+      .replace(/\b(?:parte|part|pt|volumen|volume|vol|capitulo|chapter)\s*(?:n(?:um(?:ero)?)?\s*)?(?:[ivxlcdm]+|\d+)\b/g,' ')
+      .replace(/\s+(?:[ivxlcdm]+|\d{1,2})$/,' ')
+      .replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
   }
   function playerCatalog(){
     const rows=[...cloud];
