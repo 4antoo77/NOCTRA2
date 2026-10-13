@@ -104,10 +104,10 @@
     });
   }
   function recommendationNormalize(value){
-    return String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLocaleLowerCase('es')
-      .replace(/\\bspider[\\s-]*man\\b/g,'spiderman')
-      .replace(/\\b(?:19|20)\\d{2}\\b/g,' ')
-      .replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ');
+    return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es')
+      .replace(/\bspider[\s-]*man\b/g,'spiderman')
+      .replace(/\b(?:19|20)\d{2}\b/g,' ')
+      .replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
   }
   function recommendationScore(current,item){
     const currentId=String(current?.fileId||'');
