@@ -4,8 +4,9 @@
  'use strict';
  // Códecs de texto compatibles con el renderizador de subtítulos de libmedia.
  // Los subtítulos gráficos PGS/DVD/DVB presentes en algunos MKV no lo son.
- // FFmpeg: AV_CODEC_ID_SRT = 0x17008 (94216), distinto de SUBRIP (94225).
- const textSubtitleCodecs=new Set([94210,94212,94213,94216,94225,94226,94230,94232]);
+ // Son los 7 decodificadores de subtítulos realmente implementados
+ // en libmedia (SRT 94216 NO tiene decodificador; SubRip es 94225).
+ const textSubtitleCodecs=new Set([94210,94212,94213,94225,94226,94230,94232]);
  function textSubtitleSupported(stream){
    const id=Number((stream.codecparProxy||stream.codecpar||{}).codecId);
    return !Number.isFinite(id)||textSubtitleCodecs.has(id);
@@ -101,6 +102,7 @@
        player.setSubtitleEnable(false);
        player.setSubtitleEnable(true);
      }
+     window.antooAVCaptions?.useNative?.(player);
    }
    function syncSubtitleAfterStart(){
      const selected=selectedSubtitleId();
@@ -195,7 +197,8 @@
      subs.replaceChildren();
      const no=document.createElement('option');
      no.value='off';no.textContent='Desactivados';
-     no.selected=subtitleOff||selected<0;
+     const externalName=window.antooAVCaptions?.externalName?.(player)||'';
+     no.selected=subtitleOff||(!externalName&&selected<0);
      subs.appendChild(no);
      let supportedCount=0;
      sets.subtitle.forEach((track,i)=>{
@@ -208,9 +211,14 @@
        opt.selected=!subtitleOff&&supported&&Number(track.id)===selected;
        subs.appendChild(opt);
      });
-     // Mantener el selector desactivado si solo hay pistas de subtítulos
-     // gráficos que libmedia no decodifica; SRT externo sigue disponible.
-     subs.disabled=supportedCount===0;
+     if(externalName){
+       const opt=document.createElement('option');
+       opt.value='external';opt.textContent='Archivo externo · '+externalName;
+       opt.selected=!subtitleOff;subs.appendChild(opt);
+     }
+     // Incluso si todas las pistas MKV son gráficas, se puede activar
+     // un archivo externo que se muestra sin libmedia.
+     subs.disabled=supportedCount===0&&!externalName;
      const subHelp=get('#antoo-av-subtitle-help');
      if(subHelp){
        subHelp.textContent=!sets.subtitle.length
@@ -219,8 +227,8 @@
            ?'Los subtítulos integrados parecen ser gráficos (por ejemplo PGS). Este reproductor solo decodifica subtítulos de texto; puedes cargar un SRT o VTT externo.'
            :'Selecciona la pista de texto deseada. Si la película no tiene diálogo subtitulado en ese momento, espera a que aparezca.';
        const renderStatus=window.antooAVCaptions?.status?.(player);
-       if(renderStatus&&sets.subtitle.length){
-         subHelp.textContent+=' Estado del motor: '+renderStatus;
+       if(renderStatus){
+         subHelp.textContent+=' Estado: '+renderStatus;
        }
      }
      populate(video,sets.video,player.getSelectedVideoStreamId?.(),'Video no disponible');
@@ -247,9 +255,16 @@
    audio.addEventListener('change',()=>change('el audio',audio,()=>player.selectAudio(Number(audio.value))));
    subs.addEventListener('change',()=>change('los subtítulos',subs,async()=>{
      if(subs.value==='off'){
-       window.antooAVCaptions?.clear?.(player);
+       window.antooAVCaptions?.setEnabled?.(player,false);
        subtitleOff=true;
        player.setSubtitleEnable?.(false);
+       return;
+     }
+     if(subs.value==='external'){
+       if(!window.antooAVCaptions?.selectExternal?.(player))
+         throw Error('No hay archivo de subtítulos externo cargado.');
+       player.setSubtitleEnable?.(false);
+       subtitleOff=false;
        return;
      }
      const id=Number(subs.value);
@@ -269,16 +284,14 @@
      if(!selected)return;
      if(selected.size>15*1024*1024){message('El archivo de subtítulos es demasiado grande (máximo 15 MB).');file.value='';return;}
      try{
-       if(typeof player.loadExternalSubtitle!=='function')throw Error('No se admiten subtítulos externos en este motor.');
-       const before=new Set((player.getStreams?.()||[]).map(s=>Number(s.id)));
-       await player.loadExternalSubtitle({title:selected.name.replace(/\.[^.]+$/,''),source:selected});
-       refresh();
-       const added=sets.subtitle.find(s=>!before.has(Number(s.id)));
-       if(!added)throw Error('El archivo no creó una pista de subtítulos compatible.');
-       await activateSubtitle(Number(added.id));
+       // Independiente de libmedia: evita el caso en que su
+       // decodificador interno no se inicializó por pistas PGS.
+       const count=await window.antooAVCaptions?.loadFile?.(player,selected);
+       if(!count)throw Error('No se pudo leer el contenido de este subtítulo.');
+       player.setSubtitleEnable?.(false);
        subtitleOff=false;
        refresh();
-       message('Subtítulos externos cargados y activados: '+selected.name);
+       message('Subtítulos visibles: '+selected.name+' · '+count+' diálogos.');
      }catch(e){message('No se pudieron cargar los subtítulos: '+(e?.message||e));}
      file.value='';
    });
