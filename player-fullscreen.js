@@ -56,24 +56,16 @@
  new MutationObserver(wakeBackButton).observe(dlg,{attributes:true,attributeFilter:['class']});
  const onFullscreen=()=>mode!=='none';
  function unlock(){
-   ++rotationId;
-   if(locked){locked=false;try{screen.orientation?.unlock?.();}catch{}}
+   ++rotationId;locked=false;
+   try{screen.orientation?.unlock?.();}catch{}
  }
  function rotateFallback(){
-   const portrait=!landscape();
-   dlg.classList.toggle('antoo-fs-rotated',mode==='manual'&&portrait&&mobile);
-   frame.classList.toggle('antoo-fs-native-rotated',mode==='native'&&portrait&&mobile&&!locked);
+   dlg.classList.remove('antoo-fs-rotated');
+   frame.classList.remove('antoo-fs-native-rotated');
  }
  function lockOrientation(){
-   if(!ourFullscreen()||!mobile)return;
-   const id=++rotationId;
-   if(typeof screen.orientation?.lock!=='function'){rotateFallback();return;}
-   try{
-     Promise.resolve(screen.orientation.lock('landscape')).then(()=>{
-       if(id!==rotationId)return;
-       locked=true;rotateFallback();
-     },()=>{if(id===rotationId){locked=false;rotateFallback();}});
-   }catch{if(id===rotationId){locked=false;rotateFallback();}}
+   // Fullscreen keeps the phone's current orientation.
+   unlock();
  }
  function reset(opts={}){
    const previous=mode;
@@ -111,19 +103,9 @@
    if(!player||!dlg.open)return;
    suppressAuto=false;
    const id=++requestId;
-   // iPhone's only genuinely native fullscreen target is an HTMLVideoElement.
-   // Movi sometimes uses it for MP4; MKV/WebCodecs often renders to canvas.
-   if(ios){
-     const video=activeNativeVideo();
-     if(video){
-       try{
-         video.webkitEnterFullscreen();
-         mode='video';
-         try{player.setHostFullscreen?.(true);}catch{}
-         return;
-       }catch{}
-     }
-   }
+   // Keep iPhone playback in the page so native video fullscreen cannot rotate
+   // the device or replace Movi's controls.
+   if(ios){hostFullscreen('manual');return;}
    const request=frame.requestFullscreen||frame.webkitRequestFullscreen;
    if(!request){hostFullscreen('manual');return;}
    let result;
@@ -145,13 +127,9 @@
  }
  function syncRotation(){
    if(!mobile||!dlg.open||!player)return;
-   if(landscape()){
-     if(mode==='none'&&!ourFullscreen()&&!suppressAuto)hostFullscreen('auto');
-   }else{
-     suppressAuto=false;
-     if(mode==='auto')reset();
-   }
-   if(onFullscreen())rotateFallback();
+   // Resizing after a physical rotation is natural; never rotate content or
+   // enter/exit fullscreen automatically.
+   rotateFallback();
  }
  function goBack(e,instance){
    if(instance!==player)return;
