@@ -38,3 +38,23 @@
 body.noctra-tv .noctra-meta-editor{font-size:17px}
 body.noctra-tv .noctra-meta-result strong{font-size:18px}
 body.noctra-tv .noctra-meta-editor .noctra-meta-results{max-height:45vh}
+
+/* Automatic metadata completion progress and review-only filter. */
+#admin-metadata-slot .noctra-meta-progress {
+ display:block;padding:14px 17px;margin:0;
+ border-radius:13px;border:1px solid #ffffff36;
+ background:linear-gradient(125deg,#ffffff1a,#ffffff0b);
+ color:#f5f5fa;line-height:1.6;font-weight:650;font-size:13px
+}
+#admin-metadata-slot .noctra-meta-review-switch {
+ display:flex;flex-direction:row-reverse;justify-content:flex-end;
+ align-items:center;gap:10px;cursor:pointer;margin:4px 0
+}
+#admin-metadata-slot .noctra-meta-review-switch input {
+ flex:0 0 auto;width:19px!important;height:19px;min-height:19px;
+ accent-color:#d7daef
+}
+@media(max-width:700px) {
+ #admin-metadata-slot .noctra-meta-progress{font-size:12px}
+ #admin-metadata-slot .noctra-meta-review-switch{font-size:12px}
+}
