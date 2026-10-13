@@ -4,7 +4,8 @@
  'use strict';
  // Códecs de texto compatibles con el renderizador de subtítulos de libmedia.
  // Los subtítulos gráficos PGS/DVD/DVB presentes en algunos MKV no lo son.
- const textSubtitleCodecs=new Set([94210,94212,94213,94225,94226,94230,94232]);
+ // FFmpeg: AV_CODEC_ID_SRT = 0x17008 (94216), distinto de SUBRIP (94225).
+ const textSubtitleCodecs=new Set([94210,94212,94213,94216,94225,94226,94230,94232]);
  function textSubtitleSupported(stream){
    const id=Number((stream.codecparProxy||stream.codecpar||{}).codecId);
    return !Number.isFinite(id)||textSubtitleCodecs.has(id);
