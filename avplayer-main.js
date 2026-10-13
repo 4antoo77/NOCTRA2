@@ -33,8 +33,7 @@
    document.removeEventListener('fullscreenchange',sessionToStop.fullscreenListener);
    document.removeEventListener('webkitfullscreenchange',sessionToStop.fullscreenListener);
    document.documentElement.classList.remove('antoo-avplayer-fullscreen');
-   sessionToStop.dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-landscape','antoo-avplayer-portrait',
-     'antoo-avplayer-sensor-right','antoo-avplayer-sensor-left');
+   sessionToStop.dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-landscape','antoo-avplayer-portrait');
    try{
      if((document.fullscreenElement||document.webkitFullscreenElement)===sessionToStop.frame)
        Promise.resolve(document.exitFullscreen?.()||document.webkitExitFullscreen?.()).catch(()=>{});
@@ -59,13 +58,8 @@
    let resizeFrame=0,resizeLater=0,resizeEnd=0,observer=null;
    let previousDimensions='';
    const inLandscape=()=>matchMedia('(orientation:landscape)').matches;
-   let physical=null;
-   const sensors=window.antooPhysicalOrientation?.create?.(direction=>{
-     physical=direction;
-     syncOrientation();
-   })||null;
-   // El video no se gira con CSS. Solo se adapta al espacio real disponible
-   // según el sensor/orientación comunicada por el navegador.
+   // Se adapta a la orientación de pantalla del navegador,
+   // sin acceder al acelerómetro ni girar artificialmente el vídeo.
    // Libmedia escucha resize con retraso; actualizamos su canvas al cambiar
    // el tamaño efectivo del contenedor.
    function updatePlayerSize(force=false){
@@ -94,13 +88,6 @@
      const landscape=inLandscape();
      dialog.classList.toggle('antoo-avplayer-landscape',fullscreen&&landscape);
      dialog.classList.toggle('antoo-avplayer-portrait',fullscreen&&!landscape);
-     // El navegador puede permanecer vertical por el bloqueo de iOS.
-     // Solo se rota el área visual cuando el acelerómetro detecta que
-     // el usuario sostiene el teléfono realmente horizontal.
-     dialog.classList.toggle('antoo-avplayer-sensor-right',
-       fullscreen&&!landscape&&physical==='landscape-right');
-     dialog.classList.toggle('antoo-avplayer-sensor-left',
-       fullscreen&&!landscape&&physical==='landscape-left');
      schedulePlayerSize();
    }
    function setHost(){
@@ -111,10 +98,7 @@
    }
    function exitHost(){
      mode='none';
-     sensors?.stop?.();
-     physical=null;
-     dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-landscape',
-       'antoo-avplayer-portrait','antoo-avplayer-sensor-right','antoo-avplayer-sensor-left');
+     dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-landscape','antoo-avplayer-portrait');
      document.documentElement.classList.remove('antoo-avplayer-fullscreen');
      syncOrientation();
    }
@@ -124,9 +108,6 @@
        return;
      }
      if(mode==='host'){exitHost();return;}
-     // Requiere el toque actual para permitir la solicitud de sensores
-     // en Safari de iPhone. No se añade ningún otro botón.
-     sensors?.start?.();
      // Utilizamos la pantalla completa del contenedor cuando se permita,
      // sin forzar la orientación mediante el modo de video propio de iOS.
      const request=frame.requestFullscreen||frame.webkitRequestFullscreen;
@@ -171,11 +152,7 @@
    const onNative=()=>{
      const active=(document.fullscreenElement||document.webkitFullscreenElement)===frame;
      if(active)mode='native';
-     else if(mode==='native'){
-       mode='none';
-       sensors?.stop?.();
-       physical=null;
-     }
+     else if(mode==='native')mode='none';
      syncOrientation();
    };
    frame.addEventListener('pointerup',onTap,true);
@@ -196,8 +173,6 @@
    state.requestResize=schedulePlayerSize;
    return ()=>{
      state.requestResize=null;
-     sensors?.stop?.();
-     physical=null;
      if(resizeFrame)cancelAnimationFrame(resizeFrame);
      clearTimeout(resizeLater);clearTimeout(resizeEnd);
      observer?.disconnect();
@@ -209,8 +184,7 @@
      window.visualViewport?.removeEventListener('resize',onOrientation);
      document.removeEventListener('fullscreenchange',onNative);
      document.removeEventListener('webkitfullscreenchange',onNative);
-     dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-landscape','antoo-avplayer-portrait',
-       'antoo-avplayer-sensor-right','antoo-avplayer-sensor-left');
+     dialog.classList.remove('antoo-avplayer-immersive','antoo-avplayer-landscape','antoo-avplayer-portrait');
      document.documentElement.classList.remove('antoo-avplayer-fullscreen');
    };
  }
