@@ -41,7 +41,8 @@ $$('#filters [data-genre]').forEach(b=>b.addEventListener('click',()=>{
  render();
 }));
 function render(){
- noctraSpotlight.update();
+ // Carousel metadata/image problems must never hide the actual video catalog.
+ try{noctraSpotlight.update();}catch(e){console.warn('NOCTRA2 spotlight render failed:',e);}
  const local=window.noctraCloud?.user?.role==='admin'?movies:[];
  const totalMovies=new Map([...(window.noctraCloud?.movies||[]),...local].filter(m=>!m.seriesName).map(m=>[m.fileId||m.id,m]));
  $('#count').textContent=totalMovies.size;
