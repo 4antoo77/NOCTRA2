@@ -114,6 +114,8 @@
       const explicitResume=Number(playOptions.resumeAt)||0;
       const resumeAt=explicitResume>0?explicitResume:(Number(window.noctraWatchState?.getResumeAt?.(m))||0);
       const playId=++playRequest;
+      const isMobilePlayback=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+        ||(navigator.maxTouchPoints>1&&matchMedia('(pointer:coarse)').matches);
       // Esperar a que la sesión anterior quede detenida evita dos motores activos
       // durante la carga de la siguiente película o episodio.
       try{await window.antooAVPlayerMain?.stop?.();}catch(e){console.warn('ANTOO PELIS: no se pudo detener AVPlayer antes de reproducir:',e);}
@@ -148,7 +150,12 @@
             return;
           }catch(newPlayerError){
             if(playId!==playRequest||!dialog.open)return;
-            console.warn('ANTOO PELIS: AVPlayer no pudo iniciar, usando reproductor de respaldo.',newPlayerError);
+            console.warn('ANTOO PELIS: AVPlayer no pudo iniciar después del reintento.',newPlayerError);
+            if(isMobilePlayback){
+              hint.textContent='AVPlayer no pudo iniciar este archivo después de reintentarlo. Puedes volver a cargarlo.';
+              $('frame-container').textContent='No se pudo iniciar el video en este teléfono. Usa «Volver a cargar el reproductor» para intentarlo otra vez.';
+              return;
+            }
             hint.textContent='Este archivo no inició con AVPlayer. Probando el reproductor alternativo…';
             $('frame-container').textContent='Cargando reproductor de respaldo…';
           }
