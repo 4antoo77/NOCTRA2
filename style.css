@@ -39,6 +39,20 @@ body.abyss-noctra #hero{
 #player-recommendations[hidden],#detail-recommendations[hidden]{display:none!important}
 #player-recommendations,#detail-recommendations{margin:16px 0 8px;padding:14px 16px;border:1px solid #ffffff17;border-radius:14px;background:linear-gradient(120deg,#171320,#100f16);color:#f7f3fc}
 #player-recommendations h3,#detail-recommendations h3{margin:0 0 11px;font-size:15px;font-weight:700}
+.player-rec-carousel{display:grid;grid-template-columns:36px minmax(0,1fr) 36px;gap:8px;align-items:center}
+.player-rec-arrow{width:34px;height:44px;border:1px solid #ffffff24;border-radius:10px;background:#ffffff0d;color:#fff;font:32px/1 system-ui,sans-serif;cursor:pointer}
+.player-rec-arrow:hover,.player-rec-arrow:focus-visible{background:#bca1ff2b;border-color:#bca1ff}
+.player-rec-list{display:flex;min-width:0;gap:10px;overflow-x:auto;padding:2px 1px 8px;scroll-snap-type:x mandatory;scrollbar-width:thin;overscroll-behavior-x:contain}
+.player-rec-item{flex:0 0 clamp(128px,18vw,170px);display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-height:60px;padding:9px;border:1px solid #ffffff20;border-radius:11px;background:#211d2b;color:#f7f3fc;text-align:left;cursor:pointer;scroll-snap-align:start}
+.player-rec-item:hover,.player-rec-item:focus-visible{border-color:#bca1ff;background:#2b2438}
+.player-rec-item img{width:100%;height:180px;object-fit:cover;border-radius:7px;background:#09080d}
+.player-rec-item span{font-size:12px;line-height:1.35;font-weight:650}
+.player-rec-item small{color:#c9b5ff;font-size:11px}
+@media(max-width:680px){.player-rec-carousel{display:block}.player-rec-arrow{display:none}.player-rec-list{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.player-rec-item{flex-basis:132px}.player-rec-item img{height:170px}}
+#detail-recommendations[hidden]{display:none!important}
+
+#player-recommendations,#detail-recommendations{margin:16px 0 8px;padding:14px 16px;border:1px solid #ffffff17;border-radius:14px;background:linear-gradient(120deg,#171320,#100f16);color:#f7f3fc}
+#player-recommendations h3,#detail-recommendations h3{margin:0 0 11px;font-size:15px;font-weight:700}
 .player-rec-list{display:flex;gap:10px;overflow-x:auto;padding:2px 1px 7px;scroll-snap-type:x proximity}
 .player-rec-item{flex:0 0 138px;display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-height:60px;padding:9px;border:1px solid #ffffff20;border-radius:11px;background:#211d2b;color:#f7f3fc;text-align:left;cursor:pointer;scroll-snap-align:start}
 .player-rec-item:hover,.player-rec-item:focus-visible{border-color:#bca1ff;background:#2b2438}
