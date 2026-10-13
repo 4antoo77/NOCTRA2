@@ -26,6 +26,10 @@
   }
   buttons.forEach(b=>b.addEventListener('click',()=>goto(b.dataset.mobilePage)));
   desktop.forEach(b=>b.addEventListener('click',()=>mark(b.dataset.page)));
+  // Mobile-only refresh button; a genuine reload, not just a catalog repaint.
+  document.getElementById('antoo-refresh')?.addEventListener('click',()=>{
+    window.location.reload();
+  });
   // Responsive navigation keeps the published catalog accessible.
   document.addEventListener('error',e=>{
     const image=e.target;
