@@ -129,7 +129,8 @@ const noctraSpotlight=(()=>{
    activeIndex=i;
    visualIndex=chosen.length+i;
    if(autoplay&&before===chosen.length-1&&i===0)visualIndex=chosen.length*2;
-   const m=chosen[i],art=cinematicBackdrop(m);
+   const m=chosen[i],wide=cinematicBackdrop(m),art=wide||sharpPoster(m);
+   backdrop.classList.toggle('noctra-poster-fallback',!wide&&Boolean(art));
    eyebrow.textContent=[m.year,m.genre].filter(Boolean).join(' · ').toUpperCase()||'PELÍCULA DESTACADA';
    title.textContent=m.title;
    description.textContent=m.description?.trim()||'Disponible en tu catálogo. Selecciona Reproducir para disfrutarla.';
