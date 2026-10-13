@@ -114,11 +114,8 @@
       const explicitResume=Number(playOptions.resumeAt)||0;
       const resumeAt=explicitResume>0?explicitResume:(Number(window.noctraWatchState?.getResumeAt?.(m))||0);
       const playId=++playRequest;
-      const isMobilePlayback=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-        ||(navigator.maxTouchPoints>1&&matchMedia('(pointer:coarse)').matches);
-      // Detener y destruir AVPlayer antes de limpiar el contenedor o iniciar otro motor.
-      // En móviles usamos Movi primero: algunos navegadores pueden iniciar el audio
-      // de AVPlayer mientras el lienzo de video todavía está negro.
+      // Esperar a que la sesión anterior quede detenida evita dos motores activos
+      // durante la carga de la siguiente película o episodio.
       try{await window.antooAVPlayerMain?.stop?.();}catch(e){console.warn('ANTOO PELIS: no se pudo detener AVPlayer antes de reproducir:',e);}
       if(playId!==playRequest)return;
       const dialog=$('player'),hint=dialog.querySelector('.hint');
@@ -128,7 +125,7 @@
       // Las pistas reales se eligen desde la configuración integrada (⚙).
       const row=$('quality').closest('label');
       if(row)row.hidden=true;
-      hint.textContent=isMobilePlayback?'Preparando la reproducción para tu teléfono. Espera unos momentos.':'Es normal que algunas películas tarden un poco en iniciar. Espera unos momentos.';
+      hint.textContent='Preparando el reproductor AVPlayer. Espera unos momentos.';
       $('frame-container').textContent='Cargando reproductor…';
       if(!dialog.open)dialog.showModal();
       $('retry').onclick=()=>cloudApi.play(m);
@@ -137,7 +134,7 @@
         if(playId!==playRequest||!dialog.open)return;
         // AVPlayer fue verificado con MKV, audio y subtítulos en la prueba.
         // Si falla al iniciar este título concreto, recuperar Movi Player.
-        if(!isMobilePlayback&&window.antooAVPlayerMain?.start){
+        if(window.antooAVPlayerMain?.start){
           if(activePlayer){
             try{activePlayer.pause?.();activePlayer.removeAttribute('src');activePlayer.remove();}catch{}
             activePlayer=null;
