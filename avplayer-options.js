@@ -81,17 +81,34 @@
      try{return Number(player.getSelectedSubtitleStreamId?.()??-1);}
      catch{return -1;}
    }
-   function activateSubtitle(id){
+   // Libmedia puede conservar la pista seleccionada después de que el
+   // renderizador de texto haya dejado de mostrar cues. Para reactivarlo,
+   // reiniciar el motor de ASS/SRT además de confirmar el stream ID.
+   async function activateSubtitle(id){
+     if(!Number.isFinite(id)||id<0)
+       throw Error('No hay una pista válida para activar.');
      const actual=selectedSubtitleId();
-     if(actual===id){
-       player.setSubtitleEnable?.(true);
-       return Promise.resolve();
+     if(actual!==id){
+       if(typeof player.selectSubtitle!=='function')
+         throw Error('El reproductor no permite cambiar la pista.');
+       await player.selectSubtitle(id);
      }
-     return Promise.resolve(player.selectSubtitle?.(id)).then(()=>{
-       if(selectedSubtitleId()!==id)
-         throw Error('Esta pista no se pudo activar con el decodificador actual.');
-       player.setSubtitleEnable?.(true);
-     });
+     if(selectedSubtitleId()!==id)
+       throw Error('El reproductor no ha seleccionado esta pista.');
+     if(typeof player.setSubtitleEnable==='function'){
+       player.setSubtitleEnable(false);
+       player.setSubtitleEnable(true);
+     }
+   }
+   function syncSubtitleAfterStart(){
+     const selected=selectedSubtitleId();
+     if(subtitleOff||selected<0)return;
+     const stream=(player.getStreams?.()||[]).find(track=>Number(track.id)===selected);
+     if(stream&&kind(stream)==='subtitle'&&textSubtitleSupported(stream)){
+       try{player.setSubtitleEnable?.(true);}
+       catch(err){console.warn('ANTOO subtítulos al iniciar:',err);}
+     }
+     refresh();
    }
    let format='original', resizeObserver=null, resizeFrame=0, resizeTail=0, resizeFrameLast=0;
    const stage=()=>host.querySelector('.avplayer-ui-player');
@@ -286,7 +303,7 @@
    const keyHandler=e=>{if(open&&e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}};
    document.addEventListener('keydown',keyHandler,true);
    return {
-     refresh,open:show,
+     refresh,open:show,syncSubtitleAfterStart,
      destroy(){close();
        host.removeEventListener('click',captureGear,true);
        host.removeEventListener('pointerup',captureGear,true);
