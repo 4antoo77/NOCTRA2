@@ -85,6 +85,67 @@
     let data={};try{data=await response.json();}catch{}
     if(!response.ok)throw Error(data.error||'Error de conexión ('+response.status+').');return data;
   }
+  function titleFamily(value){
+    return String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase()
+      .replace(/\\b(?:19|20)\\d{2}\\b/g,' ')
+      .replace(/\\b(?:2160p?|1440p?|1080p?|720p?|480p?|360p?|4k|uhd|hdr|bluray|web-dl|webrip|hdtv)\\b/g,' ')
+      .replace(/\\b(?:parte|part|pt|volumen|volume|vol|capitulo|chapter)\\s*(?:n(?:um(?:ero)?)?\\s*)?(?:[ivxlcdm]+|\\d+)\\b/g,' ')
+      .replace(/\\s+(?:[ivxlcdm]+|\\d{1,2})$/,' ')
+      .replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ');
+  }
+  function playerCatalog(){
+    const rows=[...cloud];
+    try{if(Array.isArray(movies))rows.push(...movies);}catch{}
+    const seen=new Set();
+    return rows.filter(item=>{
+      const id=String(item?.fileId||((typeof driveId==='function'&&item?.drive)?driveId(item.drive):'')||'');
+      if(!id||seen.has(id))return false;
+      seen.add(id);return true;
+    });
+  }
+  function renderPlayerRecommendations(current){
+    const section=$('player-recommendations');if(!section)return;
+    const currentId=String(current?.fileId||'');
+    const all=playerCatalog();
+    const family=titleFamily(current?.title);
+    const series=String(current?.seriesName||'').trim().toLocaleLowerCase('es');
+    const related=all.filter(item=>{
+      if(String(item.fileId||'')===currentId)return false;
+      if(series&&String(item.seriesName||'').trim().toLocaleLowerCase('es')===series)return true;
+      const other=titleFamily(item.title);
+      return family.length>=4&&family===other;
+    });
+    for(const variant of current?.variants||[]){
+      const id=typeof driveId==='function'?driveId(variant.url):null;
+      const found=id&&all.find(item=>String(item.fileId||'')===String(id));
+      if(found&&!related.some(item=>String(item.fileId)===String(found.fileId)))
+        related.unshift({...found,recommendationLabel:variant.label||'Otra versión'});
+    }
+    const unique=[],seen=new Set();
+    for(const item of related){
+      const id=String(item.fileId||'');if(!id||seen.has(id))continue;
+      seen.add(id);unique.push(item);
+    }
+    section.replaceChildren();
+    if(!unique.length){section.hidden=true;return;}
+    section.hidden=false;
+    const heading=document.createElement('h3');heading.textContent='Partes y versiones relacionadas';
+    const row=document.createElement('div');row.className='player-rec-list';
+    for(const item of unique.slice(0,6)){
+      const button=document.createElement('button');button.type='button';button.className='player-rec-item';
+      const poster=String(item.poster||'');
+      if(poster.startsWith('https://')){
+        const img=document.createElement('img');img.src=poster;img.alt='';img.loading='lazy';button.append(img);
+      }
+      const label=document.createElement('span');
+      label.textContent=String(item.recommendationLabel||item.episodeTitle||item.title||'Ver título');
+      const action=document.createElement('small');action.textContent='▶ Reproducir';
+      button.append(label,action);
+      button.addEventListener('click',()=>cloudApi.play(item));
+      row.append(button);
+    }
+    section.append(heading,row);
+  }
   const cloudApi={
     get user(){return me},get movies(){return cloud},get token(){return token},
     request,
@@ -122,6 +183,7 @@
       if(playId!==playRequest)return;
       const dialog=$('player'),hint=dialog.querySelector('.hint');
       $('player-title').textContent=m.title;
+      renderPlayerRecommendations(m);
       $('drive-open').href=m.drive||'https://drive.google.com/file/d/'+encodeURIComponent(fileId)+'/view';
       // El selector externo añadido en pruebas no era parte de Movi Player.
       // Las pistas reales se eligen desde la configuración integrada (⚙).
@@ -166,6 +228,38 @@
           activePlayer.remove();activePlayer=null;
         }
         const el=document.createElement('movi-player');
+        let lastAudibleVolume=1,previousMuted=null;
+        const moviApi=()=>el.player||el;
+        const getMoviVolume=()=>{try{return Number(moviApi().getVolume?.()??el.volume??1);}catch{return 1;}};
+        const getMoviMuted=()=>{try{return Boolean(moviApi().getMuted?.()??el.muted);}catch{return Boolean(el.muted);}};
+        const restoreMoviAudio=()=>{
+          const api=moviApi();
+          try{api.setMuted?.(false);}catch{}
+          try{el.muted=false;el.removeAttribute('muted');}catch{}
+          if(getMoviVolume()<=0){
+            try{api.setVolume?.(lastAudibleVolume||1);}catch{}
+            try{el.volume=lastAudibleVolume||1;}catch{}
+          }
+        };
+        el.addEventListener('volumechange',event=>{
+          const api=moviApi(),detail=event.detail||{};
+          const volume=Number(detail.volume??getMoviVolume());
+          const muted=Boolean(detail.muted??getMoviMuted());
+          if(volume>0&&!muted)lastAudibleVolume=volume;
+          if(previousMuted===true&&!muted&&volume<=0)queueMicrotask(restoreMoviAudio);
+          previousMuted=muted;
+        });
+        el.addEventListener('click',event=>{
+          const path=event.composedPath?.()||[];
+          const volumeTap=path.some(node=>{
+            if(!(node instanceof Element))return false;
+            const marker=[node.getAttribute('aria-label'),node.getAttribute('title'),
+              node.getAttribute('data-testid'),String(node.className||'')].join(' ');
+            return /volume|mute|audio|sonido|silencio|volumen/i.test(marker);
+          });
+          if(volumeTap&&(getMoviMuted()||getMoviVolume()<=0))setTimeout(restoreMoviAudio,0);
+        },true);
+
         ['controls','autoplay','playsinline','resume','fastseek','subtitlepicker'].forEach(a=>el.setAttribute(a,''));
         el.setAttribute('spinnerdelay','0');
         // Recupera la configuración original de Movi usada para el MKV.
@@ -173,7 +267,7 @@
         el.setAttribute('sw','auto');
         if(isMobilePlayback)el.setAttribute('renderer','canvas');
         el.setAttribute('theme','dark');
-        el.setAttribute('persist','volume speed audiolang subtitlelang');
+        el.setAttribute('persist','speed audiolang subtitlelang');
         el.setAttribute('persistkey','noctra2-cine');
         el.setAttribute('resumekey','noctra2-'+fileId);
         el.setAttribute('title',m.title||'ANTOO PELIS');
@@ -182,6 +276,9 @@
         el.addEventListener('loadedmetadata',async()=>{
           if(playId!==playRequest)return;
           const mediaPlayer=el.player||el;
+          const initialVolume=Number(mediaPlayer.getVolume?.()??el.volume??1);
+          if(initialVolume>0)lastAudibleVolume=initialVolume;
+          if(mediaPlayer.getMuted?.()||initialVolume<=0)restoreMoviAudio();
           if(resumeAt>0){
             try{
               if(typeof mediaPlayer.seek==='function')await mediaPlayer.seek(resumeAt);
