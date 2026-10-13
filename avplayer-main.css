@@ -102,3 +102,112 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container:-webkit-f
  #frame-container .avplayer-ui-footer-right{gap:5px!important}
 }
 
+
+/* AVPlayer: acciones táctiles compactas. Nunca ocultar el engranaje ni
+   la pantalla completa; audio/subtítulos/velocidad van en Configuración. */
+@media (max-width:700px){
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer{
+  box-sizing:border-box!important;width:100%!important;max-width:100%!important;
+  padding-left:6px!important;padding-right:6px!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-control{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  width:100%!important;min-width:0!important;gap:2px!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer-left{
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  flex:1 1 auto!important;min-width:0!important;overflow:hidden!important;gap:0!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer-right{
+  display:flex!important;align-items:center!important;justify-content:flex-end!important;
+  flex:0 0 88px!important;width:88px!important;min-width:88px!important;
+  max-width:88px!important;gap:2px!important;overflow:visible!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer-right>.avplayer-ui-control-item{
+  display:none!important;flex:0 0 auto!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer-right
+ >.avplayer-ui-control-item:has(.avplayer-ui-control-settings),
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer-right
+ >.avplayer-ui-control-item:has(.avplayer-ui-control-fullscreen){
+  display:flex!important;justify-content:center!important;align-items:center!important;
+  flex:0 0 43px!important;min-width:43px!important;width:43px!important;
+  max-width:43px!important;min-height:44px!important;height:44px!important;
+  position:relative!important;z-index:9!important;opacity:1!important;
+  pointer-events:auto!important;touch-action:manipulation!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer-right
+ >.avplayer-ui-control-item:has(.avplayer-ui-control-fullscreen){
+  order:99!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-control-settings,
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-control-fullscreen{
+  width:100%!important;height:100%!important;min-height:44px!important;
+  touch-action:manipulation!important;pointer-events:auto!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-control-settings svg,
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-control-fullscreen svg{
+  pointer-events:none!important;width:23px!important;height:23px!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer-left>.avplayer-ui-control-item{
+  min-width:34px!important;min-height:44px!important;flex-shrink:0!important;
+  touch-action:manipulation!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer-left>.avplayer-ui-control-item:has(.avplayer-ui-control-loop){
+  display:none!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-time-label{
+  font-size:10px!important;white-space:nowrap!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-time-div{
+  font-size:10px!important;
+ }
+}
+/* Immersive viewport fallback for WebKit touch devices that prohibit
+   fullscreen on libmedia's canvas. OS status bars remain browser-controlled. */
+html.antoo-avplayer-fullscreen,
+html.antoo-avplayer-fullscreen body{
+ overflow:hidden!important;overscroll-behavior:none!important;
+}
+html.antoo-avplayer-fullscreen #noctra-app>header,
+html.antoo-avplayer-fullscreen #noctra-app .noctra-mobile-nav{
+ visibility:hidden!important;pointer-events:none!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-immersive,
+body.abyss-noctra dialog#player.antoo-avplayer-immersive[open]{
+ position:fixed!important;inset:0!important;
+ top:0!important;left:0!important;right:0!important;bottom:0!important;
+ margin:0!important;padding:0!important;border:0!important;
+ border-radius:0!important;transform:none!important;
+ display:flex!important;flex-direction:column!important;
+ box-sizing:border-box!important;width:100vw!important;min-width:0!important;max-width:none!important;
+ height:100dvh!important;min-height:100dvh!important;max-height:none!important;
+ background:#000!important;overflow:hidden!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-immersive .dialog-top,
+body.abyss-noctra dialog#player.antoo-avplayer-immersive .player-tools,
+body.abyss-noctra dialog#player.antoo-avplayer-immersive>.hint,
+body.abyss-noctra dialog#player.antoo-avplayer-immersive>#retry{
+ display:none!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-immersive #frame-container{
+ display:block!important;flex:1 1 auto!important;box-sizing:border-box!important;
+ width:100%!important;height:100%!important;min-height:0!important;
+ max-height:none!important;max-width:none!important;aspect-ratio:auto!important;
+ padding:0!important;margin:0!important;border:0!important;border-radius:0!important;
+}
+@media(orientation:portrait){
+ body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-rotated,
+ body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-rotated[open]{
+  position:fixed!important;inset:auto!important;
+  top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+  width:100dvh!important;min-width:100dvh!important;max-width:none!important;
+  height:100vw!important;min-height:100vw!important;max-height:none!important;
+  transform:translate(-50%,-50%) rotate(90deg)!important;
+  transform-origin:center center!important;padding:0!important;
+ }
+ body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-rotated #frame-container{
+  padding-left:env(safe-area-inset-top,0px)!important;
+  padding-right:env(safe-area-inset-bottom,0px)!important;
+ }
+}
