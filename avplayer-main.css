@@ -196,19 +196,32 @@ body.abyss-noctra dialog#player.antoo-avplayer-immersive #frame-container{
  max-height:none!important;max-width:none!important;aspect-ratio:auto!important;
  padding:0!important;margin:0!important;border:0!important;border-radius:0!important;
 }
-@media(orientation:portrait){
- body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-rotated,
- body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-rotated[open]{
-  position:fixed!important;inset:auto!important;
-  top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
-  width:100dvh!important;min-width:100dvh!important;max-width:none!important;
-  height:100vw!important;min-height:100vw!important;max-height:none!important;
-  transform:translate(-50%,-50%) rotate(90deg)!important;
-  transform-origin:center center!important;padding:0!important;
- }
- body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-rotated #frame-container{
-  padding-left:env(safe-area-inset-top,0px)!important;
-  padding-right:env(safe-area-inset-bottom,0px)!important;
+/* Pantalla completa respeta la orientación FÍSICA del teléfono.
+   En vertical el área es vertical; en horizontal se adapta naturalmente.
+   Sin transform:rotate ni intercambio artificial de ancho y alto. */
+body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-portrait,
+body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-landscape,
+body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-portrait[open],
+body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-landscape[open]{
+ position:fixed!important;
+ inset:0!important;top:0!important;left:0!important;right:0!important;bottom:0!important;
+ box-sizing:border-box!important;
+ width:100vw!important;height:100dvh!important;
+ min-width:0!important;min-height:0!important;
+ max-width:none!important;max-height:none!important;
+ padding:0!important;margin:0!important;
+ transform:none!important;transform-origin:center center!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-portrait #frame-container,
+body.abyss-noctra dialog#player.antoo-avplayer-immersive.antoo-avplayer-landscape #frame-container{
+ width:100%!important;height:100%!important;
+ padding:0!important;
+ aspect-ratio:auto!important;min-height:0!important;max-height:none!important;
+}
+@media(orientation:landscape){
+ body.abyss-noctra dialog#player.antoo-avplayer-immersive #frame-container .avplayer-ui-footer{
+  padding-left:max(6px,env(safe-area-inset-left,0px))!important;
+  padding-right:max(6px,env(safe-area-inset-right,0px))!important;
  }
 }
 
