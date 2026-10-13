@@ -112,6 +112,7 @@
         el.setAttribute('persistkey','noctra2-cine');
         el.setAttribute('resumekey','noctra2-'+fileId);
         el.setAttribute('title',m.title||'NOCTRA2');
+        el.setAttribute('showtitle','');el.setAttribute('titlemode','both back');
         el.style.cssText='display:block;width:100%;height:100%;min-height:230px;background:#000';
         el.addEventListener('loadedmetadata',()=>{
           if(playId!==playRequest)return;
