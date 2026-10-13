@@ -294,3 +294,21 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer
 }
 #frame-container .antoo-av-seek-feedback.antoo-seek-right{left:76%}
 #frame-container .avplayer-ui-player{touch-action:manipulation}
+
+/* Ocultar por completo la línea de tiempo y los controles tras 3,2 s
+   sin actividad. libmedia deja la barra de progreso asomando por encima
+   incluso cuando data-bar-show=0; esta regla oculta el pie entero. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-controls-hidden .avplayer-ui-footer,
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-controls-hidden .avplayer-ui-progress-container,
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-controls-hidden .avplayer-ui-control{
+ opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-controls-hidden .avplayer-ui-footer{
+ transform:translateY(105%)!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-controls-hidden .avplayer-ui-player{
+ cursor:none!important;
+}
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-footer{
+ transition:opacity .2s ease,transform .2s ease,visibility .2s ease!important;
+}
