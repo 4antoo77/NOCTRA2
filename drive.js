@@ -153,6 +153,20 @@
    const simple=folder?/^\s*0*(\d{1,3})(?:\s|$)/.exec(title):null;
    return simple?Number(simple[1]):null;
  }
+ function uniqueSeasonItems(items){
+   const unique=new Map(),unmatched=[];
+   const quality=m=>(Number(Boolean(m.episodeTitle))*1e12)+(Number(m.height)||0)*1e6+(Number(m.size)||0);
+   for(const m of items){
+     const episode=episodeOf(m);
+     if(episode===null){unmatched.push(m);continue;}
+     const filename=String(m.title||'').replace(/\.(mkv|mp4|avi|mov|webm|m4v|ts)$/i,'')
+       .replace(/[._-]+/g,' ').replace(/\s+/g,' ').trim().toLocaleLowerCase('es');
+     const key=String(episode)+'|'+filename;
+     const previous=unique.get(key);
+     if(!previous||quality(m)>quality(previous))unique.set(key,m);
+   }
+   return [...unique.values(),...unmatched];
+ }
  function openEpisodes(name,items,preferredSeason=null){
    const featured=items.find(m=>m.description||m.poster)||items[0]||{};
    const displayName=featured.seriesTitle||name;
@@ -200,14 +214,14 @@
        if(active)list.setAttribute('aria-labelledby',button.id);
      });
      if(focus)tabs.querySelector('[aria-selected="true"]')?.focus();
-     const seasonItems=[...group.get(key)].sort((a,b)=>{
+     const seasonItems=uniqueSeasonItems([...group.get(key)].sort((a,b)=>{
        const ea=episodeOf(a),eb=episodeOf(b);
        if(ea!==null&&eb!==null&&ea!==eb)return ea-eb;
        if(ea!==null&&eb===null)return -1;
        if(ea===null&&eb!==null)return 1;
        return String(a.path||'').localeCompare(String(b.path||''),'es',{numeric:true})||
          String(a.title||'').localeCompare(String(b.title||''),'es',{numeric:true});
-     });
+     }));
      currentHeading.textContent=labelFor(key);
      list.replaceChildren();
      for(const m of seasonItems){
