@@ -313,26 +313,26 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer
  transition:opacity .2s ease,transform .2s ease,visibility .2s ease!important;
 }
 
-/* Subtítulos internos de libmedia: asegurar que el renderizador ASS/SRT
-   quede por encima del canvas de video y siga visible a pantalla completa. */
-body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player .ASS-box,
-body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player>svg{
+/* libmedia inserta ASS-box y svg directamente dentro de #frame-container.
+   Colocar estas capas sobre AVPlayerUI tanto en escritorio como en móvil. */
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container >.ASS-box,
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container >svg{
  position:absolute!important;
  z-index:4!important;
  pointer-events:none!important;
  visibility:visible;
 }
-body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player .ASS-dialogue{
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container >.ASS-box .ASS-dialogue{
  color:#fff;
  text-shadow:0 1px 3px #000,0 2px 6px #000;
 }
 
 /* Respaldo de subtítulos MKV: usa los diálogos de SRT/SSA decodificados
    por libmedia, pero los dibuja en una capa HTML compatible con WebKit. */
-body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player>.antoo-av-captions-mirror[hidden]{
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container >.antoo-av-captions-mirror[hidden]{
  display:none!important;
 }
-body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer-ui-player>.antoo-av-captions-mirror{
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container >.antoo-av-captions-mirror{
  position:absolute!important;z-index:35!important;
  left:4%!important;right:4%!important;
  top:auto!important;bottom:max(8%,58px)!important;
@@ -346,11 +346,11 @@ body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container .avplayer
  pointer-events:none!important;user-select:none!important;
  -webkit-text-stroke:.25px #000;
 }
-body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-controls-hidden .avplayer-ui-player>.antoo-av-captions-mirror{
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-controls-hidden >.antoo-av-captions-mirror{
  bottom:8%!important;
 }
 /* Solo se oculta el renderizado ASS anterior cuando el respaldo recibió
    un diálogo real: si no lo recibe, AVPlayer permanece intacto. */
-body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-captions-mirrored .avplayer-ui-player .ASS-box{
+body.abyss-noctra dialog#player.antoo-avplayer-active #frame-container.antoo-av-captions-mirrored >.ASS-box{
  visibility:hidden!important;
 }
