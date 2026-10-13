@@ -58,3 +58,25 @@ body.noctra-tv .noctra-meta-editor .noctra-meta-results{max-height:45vh}
  #admin-metadata-slot .noctra-meta-progress{font-size:12px}
  #admin-metadata-slot .noctra-meta-review-switch{font-size:12px}
 }
+
+/* Episode picker displays series artwork, summary and TMDB context. */
+#episodes-dialog .noctra-series-overview {
+ display:flex;gap:16px;align-items:flex-start;
+ margin:0 0 17px;padding:0 0 16px;border-bottom:1px solid #ffffff21;
+}
+#episodes-dialog .noctra-series-overview img {
+ width:95px;max-width:27%;aspect-ratio:2/3;object-fit:cover;
+ border-radius:10px;flex-shrink:0;border:1px solid #ffffff2a
+}
+#episodes-dialog .noctra-series-overview p {
+ font-size:13px;line-height:1.58;color:#dddde4;
+ overflow-wrap:anywhere;margin:0 0 8px
+}
+#episodes-dialog .noctra-series-overview .noctra-series-meta {
+ font-size:12px;font-weight:700;letter-spacing:.02em;color:#f3f3f6
+}
+@media(max-width:600px) {
+ #episodes-dialog .noctra-series-overview{gap:11px}
+ #episodes-dialog .noctra-series-overview img{width:70px}
+ #episodes-dialog .noctra-series-overview p{font-size:12px}
+}
