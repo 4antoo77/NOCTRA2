@@ -83,6 +83,12 @@
    },130);
    install();
    const instance={
+     clear(){
+       overlay.hidden=true;
+       overlay.textContent='';
+       lastCue='';lastEnd=0;
+       frame.classList.remove('antoo-av-captions-mirrored');
+     },
      status(){
        const sr=player.subtitleRender;
        if(!sr)return 'El motor de subtítulos no se ha iniciado.';
@@ -100,5 +106,5 @@
    sessions.set(player,instance);
    return instance;
  }
- window.antooAVCaptions={create,status(player){return sessions.get(player)?.status()||'';}};
+ window.antooAVCaptions={create,status(player){return sessions.get(player)?.status()||'';},clear(player){sessions.get(player)?.clear?.();}};
 })();
