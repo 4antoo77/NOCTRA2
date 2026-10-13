@@ -16,6 +16,73 @@ button:disabled{opacity:.6;cursor:progress}
 #status{color:#d2c1ff;white-space:pre-wrap;overflow-wrap:anywhere}
 .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 @media(max-width:700px){main{padding:14px}#screen{border-radius:0;margin-inline:-14px;width:calc(100% + 28px)}}
+
+/* Panel de configuración real para las pistas detectadas en el MKV. */
+#screen .antoo-av-options[hidden]{display:none!important}
+#screen .antoo-av-options{
+ position:absolute!important;inset:0;z-index:1000;
+ width:100%!important;height:100%!important;
+ display:grid;place-items:center;overflow:hidden;
+ color:#f9f7ff;font:14px/1.4 system-ui,sans-serif;
+}
+#screen .antoo-av-options-shade{
+ position:absolute;inset:0;background:#000b;cursor:pointer;
+}
+#screen .antoo-av-options-content{
+ position:relative;z-index:1;
+ width:min(92%,560px);max-height:92%;
+ min-width:0;display:flex;flex-direction:column;overflow:hidden;
+ border-radius:16px;background:#171320;
+ border:1px solid #8c78ad88;box-shadow:0 20px 75px #000c;
+}
+#screen .antoo-av-options-head{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:14px;padding:12px 18px;border-bottom:1px solid #ffffff29;
+}
+#screen .antoo-av-options-head h2{font-size:17px;font-weight:720;margin:0}
+#screen .antoo-av-options-close{
+ font:700 18px/1 system-ui;min-height:36px;min-width:36px;padding:6px;
+ background:#ffffff18;color:#fff;border:0;border-radius:9px;
+}
+#screen .antoo-av-options-main{
+ padding:15px 19px;overflow-y:auto;overscroll-behavior:contain;
+}
+#screen .antoo-av-options-main>label{
+ font-size:13px;font-weight:650;display:block;margin:11px 0 6px;color:#ebe1fb;
+}
+#screen .antoo-av-options-main>select{
+ display:block;box-sizing:border-box;width:100%!important;max-width:none!important;
+ height:42px;min-height:42px;padding:7px 10px;
+ border:1px solid #806e9f;color:#fff;background:#292138;
+ font:14px system-ui;border-radius:9px;
+}
+#screen .antoo-av-options-main>select:disabled{opacity:.7}
+#screen .antoo-av-options-main .antoo-av-sub-file{
+ display:block;cursor:pointer;font-weight:500;color:#d7c5fa;font-size:12px;
+}
+#screen .antoo-av-sub-file input{display:block;margin-top:7px;max-width:100%;font:12px system-ui}
+#screen .antoo-av-quality-note{
+ font:12px/1.5 system-ui;max-width:100%;color:#baafd0;margin:7px 0 12px;
+}
+#screen .antoo-av-settings-status{
+ font:12px/1.4 system-ui;color:#dbcaff;margin:10px 0;min-height:14px;
+}
+#screen .avplayer-ui-footer-right{
+ display:flex!important;align-items:center!important;gap:9px!important;
+}
+#screen .avplayer-ui-footer-right>.avplayer-ui-control-item{
+ flex:0 0 auto!important;margin:0!important;white-space:nowrap;
+}
+#screen .avplayer-ui-footer{
+ padding-left:9px!important;padding-right:9px!important;
+}
+@media(max-width:700px){
+ #screen .antoo-av-options-content{width:96%;max-height:94%}
+ #screen .antoo-av-options-main{padding:10px 13px}
+ #screen .antoo-av-options-head{padding:8px 12px}
+ #screen .avplayer-ui-footer-right{gap:5px!important}
+}
+
 </style></head><body><main>
 <a href="/">← Volver a ANTOO PELIS</a><h1>Prueba de reproductor MKV: libmedia AVPlayer</h1>
 <p>Versión de evaluación. No convierte ni copia archivos de Google Drive. Si no reproduce correctamente, vuelve a ANTOO PELIS; Movi Player sigue intacto. Requiere haber iniciado sesión antes.</p>
@@ -23,12 +90,12 @@ button:disabled{opacity:.6;cursor:progress}
 <div class="controls"><button type="button" id="start">Probar reproducción MKV</button><button type="button" id="full">Pantalla completa</button><button type="button" id="back">Salir del reproductor</button></div>
 <div id="screen" aria-label="Reproductor de prueba"></div><p role="status" id="status">Comprobando sesión…</p>
 <p>Este motor admite archivos Matroska y dispone de una ruta MSE para códecs compatibles. El modo de pantalla completa del sistema depende del navegador y del códec de cada MKV.</p>
-</main><script src="config.js"></script><script src="avplayer-es.js?v=20261013-spanish1"></script><script type="module">
+</main><script src="config.js"></script><script src="avplayer-es.js?v=20261013-spanish1"></script><script src="avplayer-options.js?v=20261013-stream-options2"></script><script type="module">
 const $=id=>document.getElementById(id);
 const root=String(window.NOCTRA2_CONFIG?.API_BASE||'').replace(/\/+$/,'');
 const token=sessionStorage.getItem('noctra2.token')||localStorage.getItem('noctra2.remembered-token')||'';
 const status=message=>{$('status').textContent=message;};
-let catalog=[],player=null;
+let catalog=[],player=null,optionsController=null;
 async function req(path,options={}){
  if(!token||!/^https:\/\//.test(root))throw Error('Inicia sesión en la página principal de ANTOO PELIS primero.');
  const response=await fetch(root+path,{
@@ -57,6 +124,7 @@ $('start').addEventListener('click',async()=>{
  if(!id)return status('Selecciona primero una película.');
  button.disabled=true;status('Preparando el nuevo motor de reproducción…');
  try{
+   optionsController?.destroy?.();optionsController=null;
    if(player){await Promise.resolve(player.stop?.()).catch(()=>{});player=null;}
    $('screen').replaceChildren();
    const signed=await req('/api/play/'+encodeURIComponent('gdrive-'+id),{method:'POST'});
@@ -90,10 +158,12 @@ $('start').addEventListener('click',async()=>{
      }
    };
    player=new Constructor(options);
+   optionsController=window.antooAvplayerOptions?.create?.(player,$('screen'))||null;
    if(!window.antooAvplayerSpanish?.apply?.(player)){
      console.warn('ANTOO PELIS: el paquete AVPlayerUI no permitió aplicar el idioma español.');
    }
    await player.load(signed.url);
+   optionsController?.refresh?.();
    await player.play();
    status('Prueba iniciada. Comprueba la imagen, audio, subtítulos y pantalla completa.');
  }catch(e){
@@ -112,6 +182,7 @@ $('full').addEventListener('click',async()=>{
 });
 $('back').addEventListener('click',async()=>{
  try{if(document.fullscreenElement)await document.exitFullscreen();screen.orientation?.unlock?.();}catch{}
+ optionsController?.destroy?.();optionsController=null;
  try{await player?.stop?.();}catch{}
  player=null;$('screen').replaceChildren();status('Reproductor detenido.');
 });
