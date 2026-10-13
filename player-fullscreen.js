@@ -20,6 +20,21 @@
    try{Promise.resolve(document.exitFullscreen?.()||document.webkitExitFullscreen?.()).catch(()=>{});}catch{}
    if(dlg.open)dlg.close();
  }
+ let backHideTimer=0;
+ function fullscreenActive(){
+   return mode!=='none'||ourFullscreen()||dlg.classList.contains('noctra-fullscreen-host')
+     ||dlg.classList.contains('antoo-avplayer-immersive');
+ }
+ function wakeBackButton(){
+   const button=frame.querySelector(':scope > .antoo-player-back');
+   if(!button)return;
+   clearTimeout(backHideTimer);
+   button.classList.remove('antoo-player-back-hidden');
+   if(!dlg.open||!fullscreenActive())return;
+   backHideTimer=setTimeout(()=>{
+     if(button.isConnected&&fullscreenActive())button.classList.add('antoo-player-back-hidden');
+   },2600);
+ }
  function mountBackButton(){
    let button=frame.querySelector(':scope > .antoo-player-back');
    if(!button){
@@ -30,8 +45,15 @@
      button.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();backToInfo();});
      frame.append(button);
    }
+   wakeBackButton();
    return button;
  }
+ frame.addEventListener('pointerdown',wakeBackButton,true);
+ frame.addEventListener('touchstart',wakeBackButton,{capture:true,passive:true});
+ frame.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')wakeBackButton();},{passive:true});
+ document.addEventListener('fullscreenchange',wakeBackButton);
+ document.addEventListener('webkitfullscreenchange',wakeBackButton);
+ new MutationObserver(wakeBackButton).observe(dlg,{attributes:true,attributeFilter:['class']});
  const onFullscreen=()=>mode!=='none';
  function unlock(){
    ++rotationId;
