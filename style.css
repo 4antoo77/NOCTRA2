@@ -17,11 +17,9 @@
 .noctra-loading-notice span{font-size:12px;color:#d6c8e6}
 @media(max-width:600px){.noctra-loading-notice{padding:12px 13px;width:min(83%,270px)}.noctra-loading-notice strong{font-size:13px}.noctra-loading-notice span{font-size:11px}}
 
-/* Inicio always owns the highlighted-movies carousel.
-   The library/series URLs must not leave the home hero hidden. */
-body.abyss-noctra.antoo-home-page #hero{
- display:flex!important;visibility:visible!important;
-}
-body.abyss-noctra.antoo-section-page #hero{
- display:none!important;
+/* Keep highlighted movies visible on Inicio, Peliculas, Series and Mi lista.
+   Override the old library-mode rule that concealed the hero. */
+body.abyss-noctra #hero{
+ display:flex!important;
+ visibility:visible!important;
 }
