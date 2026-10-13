@@ -51,14 +51,15 @@
     await moviLoader;
     if(!customElements.get('movi-player'))throw Error('El componente Movi Player no está disponible.');
   }
-  document.getElementById('player').addEventListener('close',()=>{
-    playRequest++;
+  document.getElementById('player').addEventListener('close',async()=>{
+    const closeRequest=++playRequest;
     const frame=$('frame-container');
     window.noctraWatchState?.detach?.();
     silenceMedia(activePlayer);silenceMedia(activePlayer?.player);
     for(const node of frame?.querySelectorAll('audio,video')||[])silenceMedia(node);
     for(const node of activePlayer?.shadowRoot?.querySelectorAll('audio,video')||[])silenceMedia(node);
-    window.antooAVPlayerMain?.stop?.();
+    try{await window.antooAVPlayerMain?.stop?.();}catch(e){console.warn('ANTOO PELIS: cierre del reproductor:',e);}
+    if(closeRequest!==playRequest)return;
     const qualityRow=$('quality')?.closest('label');
     if(qualityRow)qualityRow.hidden=false;
     if(activePlayer){
