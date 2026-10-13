@@ -42,6 +42,13 @@ if(v.password!==undefined){if(!passValid(v.password))return fail('La contraseña
 const itemId=(u)=>{const m=/\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u);const o=/[?&]id=([A-Za-z0-9_-]{10,})/.exec(u);return m?.[1]||o?.[1]||'';};
 function validateMovie(x){if(!x ||typeof x.title!=='string'||x.title.length<1||x.title.length>150)return null;const f=x.fileId||x.file_id||itemId(x.drive||'');if(!/^[a-zA-Z0-9_-]{10,150}$/.test(f))return null;const obj={id:'gdrive-'+f,title:x.title.trim(),genre:String(x.genre||'Otros').slice(0,50),year:String(x.year||'').slice(0,8),description:String(x.description||'').slice(0,750),poster:String(x.poster||'').slice(0,1000),fileId:f,seriesName:String(x.seriesName||x.series_name||'').slice(0,180),path:String(x.path||'').slice(0,500),height:Number(x.height)||0,size:Number(x.size)||0};if(obj.poster&&!/^https:\/\//i.test(obj.poster))obj.poster='';return obj;}
 const metadataKey=m=>m.seriesName?'tv:'+m.seriesName.toLocaleLowerCase('es').trim():'movie:'+m.fileId;
+const METADATA_MATCH_VERSION=2;
+// Review items found by an older matcher can automatically be retried once
+// after an improved matching algorithm is deployed.
+function staleMetadataReview(row){
+  if(row?.status!=='review')return false;
+  try{return Number(JSON.parse(row.payload_json||'{}').matchRev||0)<METADATA_MATCH_VERSION;}catch{return true;}
+}
 async function metadataTable(db){
   // Created automatically on first admin metadata request; no manual migration.
   await db.prepare("CREATE TABLE IF NOT EXISTS metadata_match (item_key TEXT PRIMARY KEY, status TEXT NOT NULL, tmdb_id INTEGER, payload_json TEXT NOT NULL DEFAULT '{}', checked_at INTEGER NOT NULL)").run();
@@ -147,34 +154,45 @@ function metadataQuery(title){
   let clean=source.replace(/\.(mkv|mp4|avi|mov|webm|m4v|ts)$/i,'')
     .replace(/[\[\(](?!\s*(?:19|20)\d{2}\s*[\]\)])[^\]\)]*[\]\)]/g,' ')
     .replace(/\b((?:19|20)\d{2}|2160p|1080p|720p|480p|web.?dl|webrip|bluray|brrip|dvdrip|hdr|x264|x265|h264|hevc|aac|dts|dual|latino|castellano|subtitulado|espanol|español|yify)\b/gi,' ')
-    .replace(/[._]/g,' ').replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/g,' ').trim();
+    .replace(/[._]/g,' ')
+    // Some video filenames end with a language marker, e.g. "(2026) L".
+    .replace(/\s+[A-Z](?:\s*)$/,'')
+    .replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/g,' ').trim();
   return {name:clean||source.trim(),year};
 }
 function metadataNorm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+
 function metadataYear(x,type){return String((type==='tv'?x.first_air_date:x.release_date)||'').slice(0,4);}
 function metadataMatch(source,year,type,results){
-  const norm=metadataNorm(source),eligible=[];
+  const norm=metadataNorm(source);
+  if(norm.length<3)return null;
+  const scored=new Map();
   for(const x of results){
-    if(x.adult)continue;
-    const name=type==='tv'?(x.name||''):(x.title||'');
-    const orig=type==='tv'?(x.original_name||''):(x.original_title||'');
-    const names=[name,orig].map(metadataNorm);
-    const exact=names.includes(norm);
+    if(x.adult||!Number.isSafeInteger(Number(x.id)))continue;
+    const titles=type==='tv'?[x.name||'',x.original_name||'']:[x.title||'',x.original_title||''];
+    const names=titles.map(metadataNorm).filter(Boolean);
     const release=metadataYear(x,type);
+    // The filename year is a strong disambiguator.
     if(year&&release&&Math.abs(Number(year)-Number(release))>1)continue;
-    // Fuzzy matching requires a known year and unique strong prefix;
-    // otherwise ambiguous/foreign titles are explicitly left for review.
-    const sameWords=names.some(n=>n&&n.split(' ').sort().join(' ')===norm.split(' ').sort().join(' '));
-    const confidence=exact?100:sameWords?90:0;
-    if(confidence<90)continue;
-    const yearBonus=year&&year===release?30:0;
-    eligible.push({item:x,score:confidence+yearBonus});
+    let confidence=0;
+    if(names.includes(norm))confidence=100;
+    else if(names.some(n=>n.split(' ').sort().join(' ')===norm.split(' ').sort().join(' ')))confidence=94;
+    // Localized files can include an extra translated subtitle after the official
+    // title. Accept a clear prefix ONLY when the release year matches exactly.
+    else if(year&&release===year&&names.some(n=>n.length>=8&&
+      ((norm.startsWith(n+' ')&&norm.length-n.length>=4)||
+       (n.startsWith(norm+' ')&&n.length-norm.length>=4))))confidence=88;
+    if(confidence<88)continue;
+    const score=confidence+(year&&release===year?30:0);
+    const old=scored.get(x.id);if(!old||old.score<score)scored.set(x.id,{item:x,score});
   }
-  eligible.sort((a,b)=>b.score-a.score);
-  if(!eligible.length)return null;
-  if(eligible.length>1&&eligible[0].score===eligible[1].score)return null;
-  return eligible[0].item;
+  const sorted=[...scored.values()].sort((a,b)=>b.score-a.score);
+  if(!sorted.length)return null;
+  // If multiple different movies are equally plausible, leave for review.
+  if(sorted.length>1&&sorted[0].score-sorted[1].score<8)return null;
+  return sorted[0].item;
 }
+
 function metadataPayloadFromTmdb(r,type){
   const name=type==='tv'?r.name:r.title;
   return {
@@ -215,7 +233,8 @@ async function metadataStatus(db,env){
     if(!m){counts.pending++;continue;}
     if(m.status==='auto')counts.completed++;
     else if(m.status==='manual')counts.manual++;
-    else if(m.status==='review')counts.review++;
+    else if(m.status==='review'&&!staleMetadataReview(m))counts.review++;
+    else if(staleMetadataReview(m))counts.pending++;
     else if(m.status==='retry'||m.status==='working')counts.working++;
     else counts.pending++;
   }
@@ -229,12 +248,14 @@ async function metadataSweep(db,env,limit=5){
   const pending=metadataTargets(all).filter(item=>{
     const row=statuses.get(item.key);
     if(!row)return true;
-    return (row.status==='retry'&&row.checked_at<now()-600)||(row.status==='working'&&row.checked_at<now()-240);
+    if(staleMetadataReview(row))return true;
+    return (row.status==='retry'&&row.checked_at<now()-600)||
+      (row.status==='working'&&row.checked_at<now()-240);
   });
   let processed=0,completed=0,review=0,errors=0;
   for(const item of pending.slice(0,Math.max(1,Math.min(6,limit)))){
     const claimed=await db.prepare(
-      "INSERT INTO metadata_match(item_key,status,checked_at) VALUES(?,'working',?) ON CONFLICT(item_key) DO UPDATE SET status='working',checked_at=excluded.checked_at WHERE metadata_match.status IN ('working','retry') AND metadata_match.checked_at < ?"
+      "INSERT INTO metadata_match(item_key,status,checked_at) VALUES(?,'working',?) ON CONFLICT(item_key) DO UPDATE SET status='working',checked_at=excluded.checked_at WHERE (metadata_match.status IN ('working','retry') AND metadata_match.checked_at < ?) OR (metadata_match.status='review' AND metadata_match.payload_json='{}')"
     ).bind(item.key,now(),now()-240).run();
     if(!claimed.meta?.changes)continue;
     let state='review',payload={},tmdbId=null;
@@ -242,7 +263,21 @@ async function metadataSweep(db,env,limit=5){
       const query=metadataQuery(item.name);
       const search=await tmdbGet(env,'search/'+item.type,{query:query.name,include_adult:'false',page:1});
       if(search instanceof Response)throw Error('TMDB unavailable');
-      const result=metadataMatch(query.name,item.year||query.year,item.type,(search.results||[]).slice(0,20));
+      let result=metadataMatch(query.name,item.year||query.year,item.type,(search.results||[]).slice(0,20));
+      // If the localized title with its subtitle fails, try its main name.
+      // Avoid guessing: each candidate still needs an exact-title or
+      // matching-year unambiguous name check.
+      if(!result && query.name.split(' ').length>=3){
+        const words=query.name.split(' ');
+        const shorter=words.slice(0,words.length-2).join(' ');
+        if(shorter.length>=8){
+          const fallback=await tmdbGet(env,'search/'+item.type,{query:shorter,include_adult:'false',page:1});
+          if(!(fallback instanceof Response)){
+            const combined=[...(search.results||[]),...(fallback.results||[])].slice(0,40);
+            result=metadataMatch(query.name,item.year||query.year,item.type,combined);
+          }
+        }
+      }
       if(result){
         const data=await tmdbGet(env,item.type+'/'+result.id);
         if(data instanceof Response)throw Error('TMDB details unavailable');
@@ -263,6 +298,7 @@ async function metadataSweep(db,env,limit=5){
         state='auto';completed++;
       }else{review++;}
     }catch{state='retry';errors++;}
+    if(state==='review')payload={matchRev:METADATA_MATCH_VERSION};
     await db.prepare('UPDATE metadata_match SET status=?,tmdb_id=?,payload_json=?,checked_at=? WHERE item_key=? AND status=?')
       .bind(state,tmdbId,JSON.stringify(payload),now(),item.key,'working').run();
     processed++;
