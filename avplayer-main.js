@@ -108,10 +108,8 @@
        return;
      }
      if(mode==='host'){exitHost();return;}
-     const video=frame.querySelector('video');
-     if(/iPhone|iPad|iPod/i.test(navigator.userAgent)&&video?.webkitEnterFullscreen){
-       try{video.webkitEnterFullscreen();return;}catch{}
-     }
+     // Utilizamos la pantalla completa del contenedor cuando se permita,
+     // sin forzar la orientación mediante el modo de video propio de iOS.
      const request=frame.requestFullscreen||frame.webkitRequestFullscreen;
      if(!request){setHost();return;}
      try{
