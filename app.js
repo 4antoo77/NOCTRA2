@@ -53,7 +53,8 @@ function render(){
  const unique=new Set();
  list=list.filter(m=>{const key=m.fileId||m.id;if(unique.has(key))return false;unique.add(key);return true;});
  if($('#sort').value==='az')list.sort((a,b)=>a.title.localeCompare(b.title,'es'));else list.sort((a,b)=>(b.added||0)-(a.added||0));
- $('#real-grid').innerHTML=list.map(m=>`<button class="movie-card" data-id="${esc(m.id)}"><div class="poster"><img src="${esc(posterURL(m.poster)||'assets/mountain.svg')}" alt="" loading="lazy">${!m.poster?`<div class="poster-text">${esc(m.title)}<small>TU COLECCIÓN</small></div>`:''}</div><div class="card-info"><strong>${esc(m.title)}</strong><span>${m.saved?'✓':'↗'}</span></div><p>${esc(m.genre||'Película')}${m.year?' · '+esc(m.year):''}</p></button>`).join('');
+ $('#real-grid').innerHTML=list.map(m=>`<button class="movie-card" data-id="${esc(m.id)}" data-file-id="${esc(m.fileId||'')}"><div class="poster"><img src="${esc(posterURL(m.poster)||'assets/mountain.svg')}" alt="" loading="lazy">${!m.poster?`<div class="poster-text">${esc(m.title)}<small>TU COLECCIÓN</small></div>`:''}</div><div class="card-info"><strong>${esc(m.title)}</strong><span>${m.saved?'✓':'↗'}</span></div><p>${esc(m.genre||'Película')}${m.year?' · '+esc(m.year):''}</p></button>`).join('');
+ window.noctraWatchState?.decorateCards?.();
  $('#real-grid').querySelectorAll('img').forEach(i=>i.onerror=()=>{i.onerror=null;i.src='assets/mountain.svg';});
  $('#real-grid').querySelectorAll('button').forEach(b=>b.onclick=()=>openDetail(list.find(m=>m.id===b.dataset.id)));
  $('#empty').hidden=list.length>0;

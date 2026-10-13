@@ -9,7 +9,7 @@
    27:'h264',173:'hevc',86018:'aac',86017:'mp3',86019:'ac3',
    86020:'dca',86028:'flac',86056:'eac3',86021:'vorbis',86076:'opus'
  };
- let loader=null,session=null,serial=0;
+ let loader=null,session=null,serial=0,stopping=Promise.resolve();
  function component(){
    if(!loader)loader=import(MOD).then(mod=>{
      const ctor=mod.default||mod.AVPlayerUI||mod.AVPlayer;
@@ -26,7 +26,7 @@
    if(!name)console.warn('ANTOO PELIS: decodificador no configurado',id);
    return name?WASM+'decode/'+name+'-simd.wasm':undefined;
  }
- function cleanup(sessionToStop){
+ async function cleanup(sessionToStop){
    if(!sessionToStop)return;
    sessionToStop.options?.destroy?.();
    sessionToStop.seekControls?.destroy?.();
@@ -44,15 +44,21 @@
    try{screen.orientation?.unlock?.();}catch{}
    sessionToStop.frame.classList.remove('antoo-avplayer-container');
    sessionToStop.dialog.classList.remove('antoo-avplayer-active');
-   try{sessionToStop.player?.stop?.();}catch{}
-   try{Promise.resolve(sessionToStop.player?.destroy?.()).catch(()=>{});}catch{}
+   try{await Promise.resolve(sessionToStop.player?.stop?.());}catch{}
+   try{await Promise.resolve(sessionToStop.player?.destroy?.());}catch{}
  }
  function stop(){
    serial++;
    const previous=session;session=null;
-   try{previous?.player?.setVolume?.(0);}catch{}
-   try{previous?.player?.pause?.();}catch{}
-   cleanup(previous);
+   if(!previous)return stopping;
+   stopping=(async()=>{
+     // libmedia exposes asynchronous player controls. Mute and pause in order,
+     // then stop and destroy only after the audio graph has applied both.
+     try{await Promise.resolve(previous.player?.setVolume?.(0));}catch{}
+     try{await Promise.resolve(previous.player?.pause?.());}catch{}
+     await cleanup(previous);
+   })();
+   return stopping;
  }
  // Usa el control original de libmedia, pero procesa las pulsaciones táctiles
  // antes del clic sintetizado. El modo de respaldo cubre el viewport cuando
@@ -228,7 +234,7 @@
  async function start({url,frame,dialog,hint,title,resumeAt=0,media=null}){
    if(!/^https:\/\//.test(String(url)))throw Error('El enlace de reproducción no es válido.');
    if(!frame||!dialog)throw Error('No existe el contenedor del reproductor.');
-   stop();
+   await stop();
    const request=serial;
    const Ctor=await component();
    if(request!==serial||!dialog.open)return false;

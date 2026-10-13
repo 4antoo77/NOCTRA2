@@ -232,6 +232,8 @@
          episodeDialog.close();
          if(m.cloud)window.noctraCloud.play(m);else playDirect(m);
        };
+       const progress=window.noctraWatchState?.progressElement?.(m,'noctra-episode-progress');
+       if(progress)main.querySelector('.noctra-episode-text')?.append(progress);
        row.append(main);
        if(isAdmin()&&m.cloud){
          const edit=document.createElement('button');edit.type='button';
@@ -306,7 +308,15 @@
  window.noctraPlayerFullscreen?.attach?.(el);
  $('#player .hint').textContent=verified.length===1?'Se reproduce la calidad original del archivo; no hay otras versiones verificadas.':'Selecciona una versión disponible en los ajustes del reproductor.';
  }catch(e){if(serial===playSerial){fallbackToDrive(m,'No se pudo iniciar la reproducción directa ('+(e?.message||'error desconocido')+').');}}}
- $('#player').addEventListener('close',()=>{playSerial++;player?.pause();player?.remove();player=null;});
+ $('#player').addEventListener('close',()=>{
+   playSerial++;
+   const current=player;
+   window.noctraWatchState?.detach?.(current?.player||current);
+   for(const node of [current,current?.player,...(current?.shadowRoot?.querySelectorAll('audio,video')||[])].filter(Boolean)){
+     try{node.muted=true;node.volume=0;node.setVolume?.(0);node.pause?.();node.stop?.();}catch{}
+   }
+   current?.remove?.();player=null;
+ });
  window.addEventListener('pagehide',()=>{
    playSerial++;
    const current=player;

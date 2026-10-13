@@ -24,24 +24,14 @@ body.abyss-noctra #hero{
  visibility:visible!important;
 }
 
-/* Continuar viendo · progreso del usuario */
-.noctra-continue{max-width:1500px;margin:0 auto;padding:26px clamp(16px,4vw,56px) 12px}
-.noctra-continue[hidden]{display:none!important}
-.noctra-continue-heading h2{margin:0 0 18px;font-size:clamp(22px,3vw,32px)}
-.noctra-continue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:14px}
-.noctra-continue-card{min-width:0}
-.noctra-continue-play{display:flex;align-items:stretch;width:100%;min-height:104px;padding:0;overflow:hidden;text-align:left;color:inherit;background:#17141f;border:1px solid #ffffff17;border-radius:12px;cursor:pointer}
-.noctra-continue-play>img{width:104px;min-height:104px;object-fit:cover;flex:0 0 104px}
-.noctra-continue-info{display:flex;flex:1;min-width:0;flex-direction:column;justify-content:center;gap:7px;padding:12px 14px}
-.noctra-continue-info>strong,.noctra-continue-info>span:not(.noctra-continue-track){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.noctra-continue-info>strong{font-size:14px}
-.noctra-continue-info>span:not(.noctra-continue-track){font-size:12px;color:#b9afc6}
-.noctra-continue-track{height:4px;overflow:hidden;background:#ffffff25;border-radius:4px}
-.noctra-continue-track>span{display:block;height:100%;background:#bb9aff;border-radius:inherit}
-.noctra-continue-resume{font-size:12px;font-weight:700;color:#d4c0ff}
-.noctra-continue-play:hover{border-color:#bd9cff88;transform:translateY(-1px)}
+/* Progreso del usuario en películas y episodios */
 .noctra-next-episode{position:absolute;z-index:40;right:16px;bottom:72px;display:flex;align-items:center;gap:12px;max-width:min(90%,360px);padding:12px 16px;color:#fff;background:#171320ed;border:1px solid #c6a9ff;border-radius:12px;text-align:left;box-shadow:0 8px 28px #0009;cursor:pointer}
 .noctra-next-episode[hidden]{display:none!important}
 .noctra-next-episode strong{font-size:13px}
 .noctra-next-episode span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#cbbce0}
-@media(max-width:600px){.noctra-continue-grid{grid-template-columns:1fr}.noctra-next-episode{right:10px;bottom:56px;max-width:calc(100% - 20px)}}
+@media(max-width:600px){.noctra-next-episode{right:10px;bottom:56px;max-width:calc(100% - 20px)}}
+
+/* Avance guardado directamente en cada tarjeta y episodio. */
+.noctra-card-progress{position:absolute;z-index:2;left:9px;right:9px;bottom:9px;height:4px;overflow:hidden;background:#ffffff65;border-radius:5px;box-shadow:0 1px 5px #0009}
+.noctra-item-progress>span{display:block;height:100%;background:#c6a4ff;border-radius:inherit;box-shadow:0 0 8px #bd9cffaa}
+.noctra-episode-progress{display:block;width:100%;height:4px;margin-top:9px;overflow:hidden;background:#ffffff25;border-radius:5px}

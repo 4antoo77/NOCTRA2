@@ -31,31 +31,29 @@
    void send('/api/watch/event',{method:'POST',body:{type,mediaId:mediaId(media),...(type==='error'?{errorCode}:{})}}).catch(e=>console.warn('ANTOO PELIS: no se pudo registrar la actividad.',e));
  }
  const escapeHTML=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function render(){
-   const section=$('noctra-continue'),grid=$('noctra-continue-grid');
-   if(!section||!grid)return;
-   const catalog=window.noctraCloud?.movies||[];
-   const byId=new Map(catalog.map(m=>[String(m.fileId),m]));
-   const entries=read().filter(x=>byId.has(String(x.fileId)))
-     .sort((a,b)=>Number(b.updated||0)-Number(a.updated||0)).slice(0,8);
-   grid.replaceChildren();section.hidden=!entries.length||!document.body.classList.contains('antoo-home-page');
-   for(const entry of entries){
-     const m=byId.get(String(entry.fileId));
-     const card=document.createElement('article');card.className='noctra-continue-card';
-     const button=document.createElement('button');button.type='button';button.className='noctra-continue-play';
-     button.setAttribute('aria-label','Continuar '+(m.episodeTitle||m.title));
-     if(m.poster){const img=document.createElement('img');img.src=typeof posterURL==='function'?posterURL(m.poster):m.poster;img.alt='';img.loading='lazy';button.append(img);}
-     const body=document.createElement('span');body.className='noctra-continue-info';
-     const heading=document.createElement('strong');heading.textContent=m.seriesName?(m.seriesTitle||m.seriesName):m.title;
-     const sub=document.createElement('span');sub.textContent=m.seriesName?(m.episodeTitle||m.title):'Película';
-     const progress=document.createElement('span');progress.className='noctra-continue-track';
-     const fill=document.createElement('span');fill.style.width=Math.max(2,Math.min(99,Number(entry.duration)>0?Number(entry.position)/Number(entry.duration)*100:2))+'%';progress.append(fill);
-     const resume=document.createElement('span');resume.className='noctra-continue-resume';resume.textContent='▶ Continuar';
-     body.append(heading,sub,progress,resume);button.append(body);
-     button.onclick=()=>window.noctraCloud?.play(m,{resumeAt:Math.max(0,Number(entry.position)||0)});
-     card.append(button);grid.append(card);
-   }
+ function progressEntry(fileId){
+   return read().find(x=>String(x.fileId)===String(fileId));
  }
+ function progressElement(media,className='noctra-item-progress'){
+   const entry=progressEntry(media?.fileId);
+   if(!entry)return null;
+   const duration=Number(entry.duration)||0,position=Number(entry.position)||0;
+   const percent=duration>0?Math.max(1,Math.min(100,position/duration*100)):2;
+   const track=document.createElement('span');track.className=className;
+   track.setAttribute('role','progressbar');track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax','100');
+   track.setAttribute('aria-valuenow',String(Math.round(percent)));
+   track.setAttribute('aria-label',duration>0?'Progreso: '+Math.round(percent)+'%':'Progreso guardado');
+   const fill=document.createElement('span');fill.style.width=percent+'%';track.append(fill);
+   return track;
+ }
+ function decorateCards(){
+   document.querySelectorAll('.movie-card[data-file-id]').forEach(card=>{
+     card.querySelector('.noctra-card-progress')?.remove();
+     const track=progressElement({fileId:card.dataset.fileId},'noctra-card-progress');
+     if(track)card.querySelector('.poster')?.append(track);
+   });
+ }
+ function render(){decorateCards();}
  function setQueue(items,current,name,season){
    const index=items.findIndex(m=>String(m.fileId)===String(current?.fileId));
    queue=index<0?null:{items,index,name,season};
@@ -114,8 +112,9 @@
    clearOverlay();
  }
  window.addEventListener('pagehide',()=>save(true));
- window.noctraWatchState={render,setQueue,attach,detach,syncFromServer,reportError(media,code='PLAYER_ERROR'){sendEvent('error',media,code);},resume(media){
+ window.noctraWatchState={render,decorateCards,progressElement,setQueue,attach,detach,syncFromServer,reportError(media,code='PLAYER_ERROR'){sendEvent('error',media,code);},resume(media){
    const item=read().find(x=>String(x.fileId)===String(media?.fileId));
    if(media)window.noctraCloud?.play(media,{resumeAt:Number(item?.position)||0});
  }};
+ decorateCards();
 })();
