@@ -226,11 +226,21 @@
    dialog.classList.add('antoo-avplayer-active');
    let player;
    try{
+     const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+       ||(navigator.maxTouchPoints>1&&matchMedia('(pointer:coarse)').matches);
      player=new Ctor({
        container:frame,
        fullscreenDom:frame,
        ui:{hasFolder:false,hasHeader:false,hasFooter:true},
-       getWasm:wasm
+       getWasm:wasm,
+       // libmedia: audioWorkletBufferLength usa bloques de 128 muestras.
+       // Sus valores predeterminados (20 móvil, 10 escritorio) pueden causar
+       // microcortes cuando la comunicación de audio sufre latencia.
+       audioWorkletBufferLength:isPhone?64:32,
+       // Archivos MKV bajo demanda de Google Drive: dar un poco más de margen
+       // a la carga inicial sin habilitar el modo de baja latencia en vivo.
+       preLoadTime:6,
+       lowLatency:false
      });
    }catch(e){
      frame.classList.remove('antoo-avplayer-container');
