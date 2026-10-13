@@ -103,18 +103,47 @@
       seen.add(id);return true;
     });
   }
+  function recommendationNormalize(value){
+    return String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLocaleLowerCase('es')
+      .replace(/\\bspider[\\s-]*man\\b/g,'spiderman')
+      .replace(/\\b(?:19|20)\\d{2}\\b/g,' ')
+      .replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ');
+  }
+  function recommendationScore(current,item){
+    const currentId=String(current?.fileId||'');
+    if(!item||String(item.fileId||'')===currentId)return 0;
+    const series=String(current?.seriesName||'').trim().toLocaleLowerCase('es');
+    const itemSeries=String(item.seriesName||'').trim().toLocaleLowerCase('es');
+    if(series&&itemSeries===series)return 100;
+    const family=recommendationNormalize(titleFamily(current?.title));
+    const itemFamily=recommendationNormalize(titleFamily(item.title));
+    if(family&&family===itemFamily)return 90;
+    const title=recommendationNormalize(item.title);
+    const searchable=recommendationNormalize([
+      item.title,item.originalTitle,item.seriesName,item.seriesTitle,
+      item.description,item.episodeTitle,item.episodeDescription
+    ].filter(Boolean).join(' '));
+    if(family&&searchable.includes(family))return title.includes(family)?78:65;
+    // Spider-Man may appear in crossover films whose title is unrelated.
+    // TMDB synopses often name the character even when the title does not.
+    if(family==='spiderman'&&searchable.includes('spiderman'))return title.includes('spiderman')?72:58;
+    // For other franchises, require two meaningful title words in common to
+    // avoid suggesting unrelated movies that share a generic word.
+    const stop=new Set(['the','and','for','with','from','part','movie','film']);
+    const words=[...new Set(recommendationNormalize(current?.title).split(' ')
+      .filter(word=>word.length>=4&&!stop.has(word)))];
+    const titleWords=new Set(title.split(' '));
+    const shared=words.filter(word=>titleWords.has(word));
+    return shared.length>=2?40+Math.min(shared.length,5):0;
+  }
   function renderPlayerRecommendations(current){
     const section=$('player-recommendations');if(!section)return;
-    const currentId=String(current?.fileId||'');
     const all=playerCatalog();
-    const family=titleFamily(current?.title);
-    const series=String(current?.seriesName||'').trim().toLocaleLowerCase('es');
-    const related=all.filter(item=>{
-      if(String(item.fileId||'')===currentId)return false;
-      if(series&&String(item.seriesName||'').trim().toLocaleLowerCase('es')===series)return true;
-      const other=titleFamily(item.title);
-      return family.length>=4&&family===other;
-    });
+    const related=all.map(item=>({item,score:recommendationScore(current,item)}))
+      .filter(entry=>entry.score>0)
+      .sort((a,b)=>b.score-a.score||
+        String(a.item.title||'').localeCompare(String(b.item.title||''),'es'))
+      .map(entry=>entry.item);
     for(const variant of current?.variants||[]){
       const id=typeof driveId==='function'?driveId(variant.url):null;
       const found=id&&all.find(item=>String(item.fileId||'')===String(id));
@@ -129,9 +158,9 @@
     section.replaceChildren();
     if(!unique.length){section.hidden=true;return;}
     section.hidden=false;
-    const heading=document.createElement('h3');heading.textContent='Partes y versiones relacionadas';
+    const heading=document.createElement('h3');heading.textContent='Más títulos relacionados';
     const row=document.createElement('div');row.className='player-rec-list';
-    for(const item of unique.slice(0,6)){
+    for(const item of unique){
       const button=document.createElement('button');button.type='button';button.className='player-rec-item';
       const poster=String(item.poster||'');
       if(poster.startsWith('https://')){
@@ -139,8 +168,10 @@
       }
       const label=document.createElement('span');
       label.textContent=String(item.recommendationLabel||item.episodeTitle||item.title||'Ver título');
+      const year=document.createElement('small');
+      year.textContent=item.year?String(item.year):'';
       const action=document.createElement('small');action.textContent='▶ Reproducir';
-      button.append(label,action);
+      button.append(label);if(year.textContent)button.append(year);button.append(action);
       button.addEventListener('click',()=>cloudApi.play(item));
       row.append(button);
     }
