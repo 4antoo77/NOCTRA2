@@ -246,7 +246,7 @@ function playMovie(m){
   toast('Para reproducir con Movi Player, publica primero esta película en Administrar → Publicar catálogo actual.');
 }
 $('#player').addEventListener('close',()=>{$('#frame-container').innerHTML='';});
-$('#settings').onclick=$('#help').onclick=()=>dialog('#settings-dialog');
+$('#settings').onclick=()=>dialog('#settings-dialog');
 $('#export').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,movies},null,2)],{type:'application/json'}));a.download='noctra-catalogo.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Copia del catálogo exportada.');};
 $('#import').onclick=()=>$('#import-file').click();
 $('#import-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(f.size>5e6)throw Error();const d=JSON.parse(await f.text());if(d.version!==1||!Array.isArray(d.movies)||d.movies.length>2000||!d.movies.every(validMovie))throw Error();let n=0;for(const m of d.movies){if(!movies.some(x=>driveId(x.drive)===driveId(m.drive))){movies.push({...m,id:crypto.randomUUID(),poster:posterURL(m.poster)});n++;}}const ok=persist();render();if(ok)toast(`${n} películas importadas.`);}catch{toast('Archivo no válido. Selecciona una copia JSON exportada por NOCTRA.');}finally{e.target.value='';}};
