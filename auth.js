@@ -219,38 +219,13 @@
       // Las pistas reales se eligen desde la configuración integrada (⚙).
       const row=$('quality').closest('label');
       if(row)row.hidden=true;
-      hint.textContent='Preparando el reproductor AVPlayer. Espera unos momentos.';
+      hint.textContent='Preparando Movi Player. Espera unos momentos.';
       $('frame-container').textContent='Cargando reproductor…';
       if(!dialog.open)dialog.showModal();
       $('retry').onclick=()=>cloudApi.play(m);
       try{
         const signed=await request('/api/play/'+encodeURIComponent('gdrive-'+fileId),{method:'POST'});
         if(playId!==playRequest||!dialog.open)return;
-        // AVPlayer fue verificado con MKV, audio y subtítulos en la prueba.
-        // Si falla al iniciar este título concreto, recuperar Movi Player.
-        // En móviles, Movi usa WebCodecs con aceleración disponible y expone
-        // las pistas de audio/subtítulos del MKV en sus controles integrados.
-        // AVPlayer conserva la ruta de escritorio y queda como respaldo móvil.
-        if(window.antooAVPlayerMain?.start&&!isMobilePlayback){
-          if(activePlayer){
-            try{activePlayer.pause?.();activePlayer.removeAttribute('src');activePlayer.remove();}catch{}
-            activePlayer=null;
-          }
-          try{
-            const ready=await window.antooAVPlayerMain.start({
-              url:signed.url,frame:$('frame-container'),dialog,hint,title:m.title,resumeAt,media:m
-            });
-            if(playId!==playRequest||!dialog.open)return;
-            if(ready)return;
-            return;
-          }catch(newPlayerError){
-            if(playId!==playRequest||!dialog.open)return;
-            console.warn('ANTOO PELIS: AVPlayer no pudo iniciar después del reintento.',newPlayerError);
-            // En móvil, si Movi Player también falla, se muestra el error final.
-            hint.textContent='Este archivo no inició con AVPlayer. Probando el reproductor alternativo…';
-            $('frame-container').textContent='Cargando reproductor de respaldo…';
-          }
-        }
         await loadMovi();
         if(playId!==playRequest)return;
         if(activePlayer){
@@ -351,30 +326,9 @@
           notice.hidden=true;
           hint.textContent='Reproduciendo con Movi Player.';
         });
-        let mobileFallbackStarted=false;
         el.addEventListener('error',()=>{
           if(playId!==playRequest)return;
           notice.hidden=true;
-          if(isMobilePlayback&&!mobileFallbackStarted&&window.antooAVPlayerMain?.start){
-            mobileFallbackStarted=true;
-            hint.textContent='Movi Player encontró un problema con este archivo. Probando AVPlayer…';
-            window.noctraWatchState?.detach?.();
-            try{el.pause?.();el.removeAttribute('src');el.remove();}catch{}
-            if(activePlayer===el)activePlayer=null;
-            void window.antooAVPlayerMain.start({
-              url:signed.url,frame:$('frame-container'),dialog,hint,title:m.title,resumeAt,media:m
-            }).then(ready=>{
-              if(playId!==playRequest||!dialog.open)return;
-              if(!ready)throw Error('AVPlayer no pudo iniciar.');
-            }).catch(error=>{
-              if(playId!==playRequest||!dialog.open)return;
-              console.warn('ANTOO PELIS: fallaron ambos reproductores móviles.',error);
-              window.noctraWatchState?.reportError?.(m,'MEDIA_FORMAT');
-              hint.textContent='Este archivo no pudo iniciarse en este teléfono. Revisa el formato y vuelve a intentarlo.';
-              $('frame-container').textContent='No se pudo reproducir este archivo con Movi Player ni AVPlayer.';
-            });
-            return;
-          }
           window.noctraWatchState?.reportError?.(m,'MEDIA_FORMAT');
           hint.textContent='Movi Player no pudo abrir este archivo. Comprueba el formato y la conexión.';
         });
