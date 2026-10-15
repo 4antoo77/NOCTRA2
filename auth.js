@@ -462,7 +462,7 @@
       </section>
       <section class="admin-panel" data-admin-panel="users" hidden>
         <div class="admin-panel-heading"><div><h3>Cuentas de acceso</h3><p>Crea usuarios con nombre y contraseña, sin correo electrónico.</p></div></div>
-        <div class="admin-user-create"><h4>Crear cuenta</h4><form id="new-user-form"><label>Nombre de usuario<input id="new-username" required minlength="3" maxlength="32" autocomplete="off" placeholder="Ejemplo: amigo1"></label><label>Contraseña temporal<input id="new-password" type="password" required minlength="12" autocomplete="new-password" placeholder="Mínimo 12 caracteres"></label><button class="primary" type="submit">＋ Crear usuario</button></form><p class="admin-error" id="admin-error" role="alert"></p></div>
+        <div class="admin-user-create"><h4>Crear cuenta</h4><form id="new-user-form"><label>Nombre de usuario<input id="new-username" required minlength="3" maxlength="32" autocomplete="off" placeholder="Ejemplo: amigo1"></label><label>Contraseña temporal<input id="new-password" type="password" required minlength="4" autocomplete="new-password" placeholder="Mínimo 4 caracteres"></label><button class="primary" type="submit">＋ Crear usuario</button></form><p class="admin-error" id="admin-error" role="alert"></p></div>
         <div class="admin-user-list"><h4>Usuarios existentes</h4><div id="admin-users"></div></div>
       </section>
       <section class="admin-panel" data-admin-panel="suggestions" hidden>
