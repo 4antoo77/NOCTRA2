@@ -397,3 +397,14 @@ body.abyss-noctra .player-rec-item>small{display:none!important}
 body.abyss-noctra .noctra-continue-info>strong,
 body.abyss-noctra .noctra-continue-info>span:not(.noctra-continue-track){display:none!important}
 
+
+
+/* Sección personal de ANTOO PELIS */
+body.abyss-noctra .paty-note{max-width:1400px;margin:20px auto 48px;padding:clamp(22px,4vw,42px);border:1px solid #ffffff20;border-radius:22px;background:linear-gradient(135deg,#241d2c,#15161c);box-shadow:0 18px 48px #0004}
+body.abyss-noctra .paty-note>.eyebrow{color:#c6a9ef;font-size:10px;letter-spacing:.18em;margin:0 0 10px}
+body.abyss-noctra .paty-note h2{font-size:clamp(22px,3vw,34px);line-height:1.2;margin:0 0 24px}
+body.abyss-noctra .paty-note ol{list-style:none;counter-reset:reasons;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0;padding:0}
+body.abyss-noctra .paty-note li{counter-increment:reasons;position:relative;min-height:84px;padding:18px 16px 18px 52px;border:1px solid #ffffff16;border-radius:14px;background:#ffffff08;color:#dedbe5;line-height:1.55}
+body.abyss-noctra .paty-note li:before{content:counter(reasons,decimal-leading-zero);position:absolute;left:16px;top:18px;color:#c8a7f2;font-weight:750;font-size:12px}
+@media(max-width:900px){body.abyss-noctra .paty-note ol{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){body.abyss-noctra .paty-note{margin:16px 14px 32px;padding:22px 16px;border-radius:18px}body.abyss-noctra .paty-note ol{grid-template-columns:1fr;gap:9px}body.abyss-noctra .paty-note li{min-height:0;padding:15px 14px 15px 46px}body.abyss-noctra .paty-note li:before{left:13px;top:15px}}
