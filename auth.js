@@ -373,14 +373,6 @@
     else photo.textContent=username.slice(0,1).toUpperCase();
     return photo;
   }
-  const jokes=[
-    'Porque cuando aparece, hasta el Wi-Fi se conecta solo.',
-    'Porque mi corazón hace más ruido que una laptop jugando a 20 FPS.',
-    'Porque ni Google sabe explicar este nivel de encule.',
-    'Porque parece que salió de un cuento de ogros, pero del que yo soy fan.',
-    'Porque me tiene más perdido que un control remoto entre los cojines.',
-    'Porque si Paty fuera una película, la pondría en favoritos mil veces.'
-  ];
   function openProfile(){
     if(!me)return;
     let modal=$('antoo-profile-dialog');
@@ -389,9 +381,7 @@
     const close=document.createElement('button');close.type='button';close.className='close antoo-profile-close';close.textContent='×';close.setAttribute('aria-label','Cerrar perfil');close.onclick=()=>modal.close();
     const head=document.createElement('div');head.className='antoo-profile-head';head.append(avatarNode(me.username,true));
     const name=document.createElement('h2');name.textContent=me.username;head.append(name);
-    const heading=document.createElement('h3');heading.textContent='RAZONES POR LAS QUE ESTOY ENCULADO DE PATY BURGOS';
-    const list=document.createElement('ul');list.className='antoo-profile-jokes';jokes.forEach(j=>{const item=document.createElement('li');item.textContent=j;list.append(item);});
-    modal.append(close,head,heading,list);modal.showModal();
+    modal.append(close,head);modal.showModal();
   }
   function setupSuggestionUI(){
     const dialog=$('suggestion-dialog'),form=$('suggestion-form'),open=$('suggest-open'),history=$('my-suggestions'),status=$('suggestion-status');
