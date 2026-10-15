@@ -8,7 +8,7 @@ const makeToken = () => { const a = crypto.getRandomValues(new Uint8Array(32)); 
 const b64url = data => btoa(String.fromCharCode(...data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const hex = data => [...new Uint8Array(data)].map(x=>x.toString(16).padStart(2,'0')).join('');
 const sha256 = async s => hex(await crypto.subtle.digest('SHA-256', enc.encode(s)));
-function passValid(p){return typeof p==='string' && p.length>=12 && p.length<=128;}
+function passValid(p){return typeof p==='string' && p.length>=4 && p.length<=128;}
 function userValid(u){return typeof u==='string' && /^[a-zA-Z][a-zA-Z0-9_-]{2,31}$/.test(u);}
 async function hashPassword(password, salt){
   const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);
