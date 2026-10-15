@@ -51,7 +51,7 @@ Para `BOOTSTRAP_SECRET`, escribe o pega una clave aleatoria larga (mínimo 24 ca
 
 Abre el archivo `site/config.js` y reemplaza el URL de prueba `https://TU-WORKER.workers.dev` por la URL **exacta** de tu Worker, sin barra final. Sube el cambio al repositorio de GitHub; GitHub Pages lo publicará.
 
-Abre ANTOO PELIS. Si es la primera vez, aparece el formulario **Crear administrador**: escribe el código de inicialización que guardaste en Cloudflare, el usuario administrador (ej. `administrador`) y una contraseña de al menos 12 caracteres. A partir de ahí, inicia sesión.
+Abre ANTOO PELIS. Si es la primera vez, aparece el formulario **Crear administrador**: escribe el código de inicialización que guardaste en Cloudflare, el usuario administrador (ej. `administrador`) y una contraseña de al menos 4 caracteres. A partir de ahí, inicia sesión.
 
 ## 4 — Crear las cuentas de tus amigos
 
