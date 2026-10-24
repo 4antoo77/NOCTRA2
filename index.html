@@ -220,6 +220,28 @@
       .flow-step{gap:6px;padding:8px 6px}
     }
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.project,.button,.site-nav a{transition:none}}
+    /* Acceso a ANTOO PELIS: integra el proyecto privado sin mover los otros. */
+    .project-pelis{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:32px;align-items:center;background:linear-gradient(120deg,#201a2d 0%,#181923 65%,#161d22 100%)}
+    .project-pelis:hover{border-color:#8f72b0}
+    .project-pelis .project-name{margin-bottom:10px}
+    .project-pelis .project-description{min-height:0;max-width:445px;margin:0 0 24px}
+    .project-pelis .status{border-color:#69577a;color:#e2d3f1}
+    .project-pelis .status::before{background:#c6a5fa}
+    .pelis-link{display:inline-flex;align-items:center;justify-content:space-between;gap:22px;padding:13px 17px;border-radius:10px;background:#d6b8ff;color:#17101e;font-weight:750;font-size:13px;text-decoration:none;transition:background .2s,transform .2s}
+    .pelis-link:hover{background:#ead8ff;transform:translateY(-1px)}
+    .pelis-link:focus-visible{outline:3px solid #fff;outline-offset:3px}
+    .pelis-preview{height:190px;border-radius:14px;border:1px solid #9272a044;overflow:hidden;background:radial-gradient(ellipse at 60% 80%,#583d703e,transparent 64%),#100d19;padding:18px;display:flex;flex-direction:column;gap:18px}
+    .pelis-preview-head{display:flex;justify-content:space-between;color:#eee5ff;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:750;letter-spacing:.12em}
+    .pelis-preview-head span:last-child{color:#866d9f}
+    .pelis-preview-strip{display:flex;gap:10px;flex:1;min-height:0}
+    .pelis-tile{display:block;width:25%;border-radius:6px;background:linear-gradient(150deg,#9779bd,#332444 67%,#100e17);border:1px solid #e8d5fa24}
+    .pelis-tile:nth-child(2){background:linear-gradient(150deg,#607b99,#23314a 70%,#0e121b)}
+    .pelis-tile:nth-child(3){background:linear-gradient(150deg,#9b6c84,#4b273b 70%,#14101b)}
+    .pelis-tile:nth-child(4){background:linear-gradient(150deg,#8f9a72,#3c4835 70%,#0e1613)}
+    .pelis-preview-caption{align-self:flex-end;font-size:9px;color:#a391b5;letter-spacing:.2em;font-weight:750}
+    .pelis-preview-caption span{color:#d5bbef;padding:0 6px}
+    @media(max-width:850px){.project-pelis{grid-template-columns:1fr}.pelis-preview{max-width:100%;height:160px}}
+    @media(max-width:650px){.project-pelis{gap:20px}.pelis-preview{height:140px}}
   </style>
 </head>
 <body>
@@ -290,6 +312,21 @@
         <p class="section-subtitle">Una selección de lo que estoy construyendo. Son proyectos en evolución, todavía no servicios públicos disponibles.</p>
       </div>
       <div class="projects">
+        <article class="project project-pelis">
+          <div class="pelis-info">
+            <div class="project-top"><span class="project-index">PROYECTO / ACCESO DISPONIBLE</span><span class="status">Privado</span></div>
+            <h3 class="project-name">ANTOO PELIS</h3>
+            <p class="project-description">Tu plataforma de películas y series, con acceso mediante tu propia cuenta.</p>
+            <a class="pelis-link" href="/antoopelis/" aria-label="Entrar a ANTOO PELIS">
+              Entrar a ANTOO PELIS <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <div class="pelis-preview" aria-hidden="true">
+            <div class="pelis-preview-head"><span>ANTOO PELIS</span><span>● ● ●</span></div>
+            <div class="pelis-preview-strip"><span class="pelis-tile"></span><span class="pelis-tile"></span><span class="pelis-tile"></span><span class="pelis-tile"></span></div>
+            <span class="pelis-preview-caption">PELÍCULAS <span>·</span> SERIES</span>
+          </div>
+        </article>
         <article class="project">
           <div class="project-top"><span class="project-index">PROYECTO / 001</span><span class="status">En desarrollo</span></div>
           <h3 class="project-name">ANTOO IPA</h3>
