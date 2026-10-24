@@ -5,12 +5,12 @@
  'use strict';
  const PREFIX='/antoopelis';
  const addPrefix=path=>path==='/'?PREFIX+'/':PREFIX+path;
- const currentPath=()=>location.pathname.startsWith(PREFIX+'/')?location.pathname.slice(PREFIX.length):'/';
+ const currentPath=()=>location.pathname.startsWith(PREFIX+'/')?location.pathname.slice(PREFIX.length)||'/':'/';
  const fallback=new URL(location.href).searchParams.get('__route');
  if(fallback){
    try{
      const dest=new URL(fallback,location.origin);
-     if(dest.origin===location.origin&&dest.pathname.startsWith('/'))
+     if(dest.origin===location.origin&&dest.pathname.startsWith(PREFIX+'/'))
        history.replaceState(history.state,'',dest.pathname+dest.search+dest.hash);
    }catch{}
  }
@@ -113,7 +113,10 @@
  }
  const api={
    get isRestoring(){return restoring;},
-   moviePath:movieBase,seriesPath:seriesBase,seasonPath,episodePath,
+   moviePath:m=>addPrefix(movieBase(m)),
+   seriesPath:(name,items)=>addPrefix(seriesBase(name,items)),
+   seasonPath:(name,items,key)=>addPrefix(seasonPath(name,items,key)),
+   episodePath:(m,name,items,key)=>addPrefix(episodePath(m,name,items,key)),
    section,
    detail(m){if(m&&!m.seriesName)navigate(movieBase(m));},
    series(name,items){navigate(seriesBase(name,items));},
