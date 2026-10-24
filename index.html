@@ -1,12 +1,76 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b0d18"><meta name="description" content="ANTOO: aplicaciones y proyectos digitales."><title>ANTOO | Portal</title>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0715">
+<meta name="description" content="ANTOO: un mismo lugar para todas nuestras aplicaciones y proyectos.">
+<meta property="og:title" content="ANTOO · Proyectos">
+<meta property="og:description" content="Explora los proyectos de ANTOO.">
+<meta property="og:type" content="website">
+<title>ANTOO — Proyectos</title>
 <style>
-:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 15% 0%,#32205d 0%,transparent 47%),radial-gradient(ellipse at 85% 80%,#113153 0%,transparent 45%),#090c17;color:#f8f7ff}header{max-width:1120px;margin:auto;padding:30px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ffffff16}.logo{font-weight:900;letter-spacing:.17em;font-size:20px}.tag{font-size:12px;letter-spacing:.15em;color:#c0b6d9}main{max-width:1120px;margin:0 auto;padding:90px 24px 130px}.eyebrow{color:#ba9dff;font-size:13px;letter-spacing:.22em;font-weight:700}h1{font-size:clamp(38px,7vw,84px);letter-spacing:-.06em;line-height:1.05;max-width:850px;margin:16px 0}p.lead{color:#b4afc9;font-size:clamp(17px,2vw,21px);max-width:620px;line-height:1.65}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:55px}.card{background:#ffffff0a;border:1px solid #ffffff24;padding:30px;border-radius:23px;min-height:250px;display:flex;flex-direction:column;gap:10px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s}.card:hover,.card:focus-visible{transform:translateY(-4px);border-color:#ad88ff}.card h2{font-size:24px;margin:6px 0}.card p{color:#bcb8cc;line-height:1.5;margin:0}.icon{font-size:31px}.go{margin-top:auto;color:#d9c7ff;font-weight:650}.muted{opacity:.6}.muted:hover{transform:none;border-color:#ffffff24}footer{text-align:center;padding:26px;color:#8c8a9a;font-size:13px}@media(max-width:650px){main{padding-top:65px}header{padding:23px}}
-</style></head><body>
-<header><a href="/" class="logo" style="text-decoration:none;color:inherit">ANTOO</a><span class="tag">PROYECTOS DIGITALES</span></header>
-<main><div class="eyebrow">BIENVENIDO A ANTOO</div><h1>Un espacio.<br>Muchas posibilidades.</h1><p class="lead">Un portal para presentar herramientas, proyectos y nuevas experiencias digitales.</p>
-<div class="grid">
-<div class="card muted"><span class="icon" aria-hidden="true">⬡</span><h2>ANTOO IPA</h2><p>Una herramienta de escritorio para gestionar aplicaciones en tus dispositivos.</p><span class="go">Próximamente</span></div>
-<div class="card muted"><span class="icon" aria-hidden="true">↓</span><h2>Herramientas</h2><p>Utilidades digitales y proyectos en desarrollo.</p><span class="go">Próximamente</span></div>
-</div></main><footer>© 2026 ANTOO. Todos los derechos reservados.</footer></body></html>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;min-height:100vh;background:#0b0715;color:#f5f0ff}
+body::before{content:"";pointer-events:none;position:fixed;inset:0;background:radial-gradient(70% 85% at 92% 3%,rgba(106,52,167,.17),transparent 66%),radial-gradient(53% 46% at 0% 95%,rgba(86,36,116,.10),transparent 80%)}
+a{color:inherit}
+.wrap{position:relative;max-width:1110px;margin:0 auto;padding:0 28px}
+header{height:88px;border-bottom:1px solid #ffffff17;display:flex;align-items:center;justify-content:space-between}
+.logo{text-decoration:none;display:flex;align-items:center;gap:13px;font-weight:850;font-size:19px;letter-spacing:.15em}
+.mark{height:36px;width:36px;border:1px solid #a16cff78;border-radius:11px;display:grid;place-items:center;color:#cdaaff;font-size:19px;font-weight:700;letter-spacing:0}
+.header-label{color:#9389a7;font-size:11px;letter-spacing:.16em;font-weight:700}
+main{padding-top:105px;padding-bottom:116px}
+.kicker{font-size:12px;font-weight:750;color:#bb91fa;letter-spacing:.22em;text-transform:uppercase}
+h1{font-size:clamp(48px,7.5vw,88px);letter-spacing:-.065em;line-height:1.03;margin:18px 0 23px;max-width:850px;font-weight:730}
+h1 span{color:#be9af3}
+.intro{font-size:clamp(16px,2.2vw,19px);max-width:560px;color:#b4aabf;line-height:1.7;margin:0}
+.projects{margin-top:88px}
+.section-head{display:flex;align-items:center;gap:20px;margin-bottom:20px}
+.section-head h2{font-size:13px;letter-spacing:.17em;font-weight:750;margin:0;text-transform:uppercase}
+.rule{height:1px;background:#ffffff1b;flex:1}
+.cards{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:17px}
+.card{display:flex;flex-direction:column;min-height:276px;border:1px solid #ffffff20;border-radius:19px;padding:28px;position:relative;overflow:hidden;background:#ffffff04}
+.card.primary{background:linear-gradient(128deg,rgba(73,38,116,.35),rgba(29,17,50,.65));border-color:#9564c751;text-decoration:none;transition:border-color .18s,transform .18s}
+.card.primary:hover,.card.primary:focus-visible{border-color:#c69dff;transform:translateY(-2px)}
+.card.primary:focus-visible{outline:2px solid #d3b0ff;outline-offset:3px}
+.symbol{font-size:25px;line-height:1;display:grid;place-items:center;height:43px;width:43px;border:1px solid #ffffff2a;border-radius:12px;color:#cdaaff}
+.card h3{font-weight:740;letter-spacing:-.035em;font-size:28px;margin:24px 0 8px}
+.card p{margin:0;color:#b7aec2;line-height:1.55;font-size:15px;max-width:360px}
+.card-bottom{margin-top:auto;padding-top:22px;font-weight:700;font-size:13px;color:#d5b1ff;display:flex;align-items:center;justify-content:space-between}
+.card.soon{background:#ffffff03}
+.soon .card-bottom{color:#8f849d}
+footer{border-top:1px solid #ffffff15;padding:27px 0 36px;color:#786f83;font-size:12px;display:flex;justify-content:space-between;gap:14px}
+@media(max-width:680px){.wrap{padding:0 21px}header{height:73px}main{padding-top:75px;padding-bottom:70px}.header-label{font-size:10px}.cards{grid-template-columns:1fr}.card{min-height:240px;padding:24px}.projects{margin-top:64px}footer{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.card.primary{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><a class="logo" href="/" aria-label="ANTOO, inicio"><span class="mark">A</span><span>ANTOO</span></a><span class="header-label">PROYECTOS DIGITALES</span></header>
+<main>
+<div class="kicker">ANTOO / Inicio</div>
+<h1>Todo comienza<br><span>aquí.</span></h1>
+<p class="intro">Un acceso directo a nuestras aplicaciones y proyectos. Un solo lugar, sin complicaciones.</p>
+<section class="projects" aria-labelledby="proyectos">
+<div class="section-head"><h2 id="proyectos">Proyectos</h2><span class="rule"></span></div>
+<div class="cards">
+<a class="card primary" href="/antoopelis/" aria-label="Abrir ANTOO PELIS">
+<span class="symbol" aria-hidden="true">▶</span>
+<h3>ANTOO PELIS</h3>
+<p>Películas y series en tu espacio privado. Accede con tu cuenta.</p>
+<span class="card-bottom"><span>Entrar a ANTOO PELIS</span><span aria-hidden="true">↗</span></span>
+</a>
+<div class="card soon">
+<span class="symbol" aria-hidden="true">⌘</span>
+<h3>ANTOO IPA</h3>
+<p>Herramientas para gestionar aplicaciones desde tu computadora.</p>
+<span class="card-bottom">PRÓXIMAMENTE</span>
+</div>
+</div>
+</section>
+</main>
+<footer><span>© 2026 ANTOO</span><span>antooserver.win</span></footer>
+</div>
+</body></html>
