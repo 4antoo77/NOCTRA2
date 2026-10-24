@@ -3,6 +3,9 @@
  */
 (()=>{
  'use strict';
+ const PREFIX='/antoopelis';
+ const addPrefix=path=>path==='/'?PREFIX+'/':PREFIX+path;
+ const currentPath=()=>location.pathname.startsWith(PREFIX+'/')?location.pathname.slice(PREFIX.length):'/';
  const fallback=new URL(location.href).searchParams.get('__route');
  if(fallback){
    try{
@@ -27,8 +30,8 @@
  const episodePath=(m,name,items,key)=>seasonPath(name,items,key)+
    '/episodio/'+slug(m.episodeTitle||m.title)+'--'+hash(m.fileId||m.id||m.title);
  function navigate(path,replace=false){
-   if(restoring||!path||path===location.pathname)return;
-   try{history[replace?'replaceState':'pushState']({antoo:true},'',path);}catch{}
+   if(restoring||!path||addPrefix(path)===location.pathname)return;
+   try{history[replace?'replaceState':'pushState']({antoo:true},'',addPrefix(path));}catch{}
  }
  const sections={home:'/',library:'/peliculas',list:'/mi-lista'};
  function section(page,media){
@@ -84,7 +87,7 @@
    if(!ready||restoring||document.body.classList.contains('auth-locked'))return;
    restoring=true;
    try{
-     const path=decodeURI(location.pathname);
+     const path=decodeURI(currentPath());
      const movieRoute=path.startsWith('/peliculas/');
      const seriesRoute=path.startsWith('/series/');
      closeDialogs();
@@ -132,9 +135,9 @@
        if(restoring||document.getElementById('player')?.open||
           document.getElementById('details')?.open||
           document.getElementById('episodes-dialog')?.open)return;
-       if(id==='details'&&location.pathname.startsWith('/peliculas/'))
+       if(id==='details'&&currentPath().startsWith('/peliculas/'))
          navigate('/peliculas');
-       if(id==='episodes-dialog'&&location.pathname.startsWith('/series/'))
+       if(id==='episodes-dialog'&&currentPath().startsWith('/series/'))
          navigate('/series');
      },80);
    });
