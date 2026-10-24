@@ -1,1 +1,24 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ANTOO | Redirigiendo</title></head><body style="background:#0a090f;color:white;font-family:system-ui;text-align:center;padding:40px">Redirigiendo…<script>(function(){var p=location.pathname;var old=/^\/(peliculas|series|mi-lista)(\/|$)/.test(p);var deep=p.startsWith('/antoopelis/');if(old||deep){var target=new URL('/antoopelis/',location.origin);target.searchParams.set('__route',(old?'/antoopelis':'')+p+location.search+location.hash);location.replace(target.href)}else location.replace('/')})();</script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ANTOO | Redirigiendo</title>
+</head>
+<body style="background:#090c17;color:#f8f7ff;font-family:system-ui;text-align:center;padding:40px">
+Redirigiendo…
+<script>
+(function(){
+  var path=location.pathname;
+  if(path.startsWith('/antoopelis/')){
+    var target=new URL('/antoopelis/',location.origin);
+    target.searchParams.set('__route',path+location.search+location.hash);
+    location.replace(target.href);
+  }else{
+    location.replace('/');
+  }
+})();
+</script>
+</body>
+</html>
