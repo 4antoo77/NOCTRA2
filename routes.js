@@ -105,7 +105,7 @@
          const tail=path.replace(/^\/series\/[^/]+/,'');
          const season=tail.match(/^\/temporada\/([^/]+)/)?.[1]||null;
          window.noctraOpenEpisodes(match.name,match.items,season);
-         if(tail.includes('/episodio/'))requestAnimationFrame(()=>markEpisode(path));
+         if(tail.includes('/episodio/'))requestAnimationFrame(()=>markEpisode(addPrefix(path)));
        }else if(typeof toast==='function')toast('Esa serie no está disponible en tu catálogo.');
      }
    }catch(e){console.warn('ANTOO PELIS route:',e);}
