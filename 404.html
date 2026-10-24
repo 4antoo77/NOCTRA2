@@ -11,9 +11,9 @@ Redirigiendo…
 <script>
 (function(){
   var path=location.pathname;
-  if(path.startsWith('/antoopelis/')){
+  if(path.startsWith('/antoopelis/') || /^\/(?:peliculas|series|mi-lista)(?:\/|$)/.test(path)){
     var target=new URL('/antoopelis/',location.origin);
-    target.searchParams.set('__route',path+location.search+location.hash);
+    target.searchParams.set('__route',(path.startsWith('/antoopelis/')?path:'/antoopelis'+path)+location.search+location.hash);
     location.replace(target.href);
   }else{
     location.replace('/');
