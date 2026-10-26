@@ -358,7 +358,7 @@ downloadButton.addEventListener('click',async(event)=>{
     const release=JSON.parse(new TextDecoder().decode(bytes));
     if(release.product!=='ANTOO IPA'||release.channel!=='stable') throw new Error('El manifiesto no corresponde a ANTOO IPA.');
     if(release.disabled) throw new Error(release.control_message||'La descarga está temporalmente deshabilitada.');
-    const asset=release.assets?.find(item=>/^ANTOO-IPA-Setup-\\d+\\.\\d+\\.\\d+-x64\\.exe$/.test(item.name||''));
+    const asset=release.assets?.find(item=>/^ANTOO-IPA-Setup-\d+\.\d+\.\d+-x64\.exe$/.test(item.name||''));
     if(!asset||typeof asset.browser_download_url!=='string') throw new Error('No se encontró el instalador publicado.');
     const target=new URL(asset.browser_download_url,location.origin);
     if(target.protocol!=='https:'||target.origin!==location.origin||!target.pathname.startsWith('/antoo-ipa/')) throw new Error('La dirección de descarga no es válida.');
