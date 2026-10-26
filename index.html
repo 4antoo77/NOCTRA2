@@ -294,7 +294,7 @@
           <div class="project-top"><span class="project-index">PROYECTO / 001</span><span class="status">Disponible</span></div>
           <h3 class="project-name">ANTOO IPA</h3>
           <p class="project-description">Descarga ANTOO IPA para Windows y gestiona la instalación de aplicaciones IPA en tu iPhone desde el escritorio.</p>
-          <a class="button button-primary" href="https://antooserver.win/antoo-ipa/ANTOO-IPA-Setup-1.1.2-x64.exe">Descargar para Windows <span class="arrow" aria-hidden="true">↓</span></a>
+          <a class="button button-primary" href="#descargar" id="download-latest">Descargar versión actual <span class="arrow" aria-hidden="true">↓</span></a>
           <div class="project-visual" role="img" aria-label="Ilustración de un ordenador conectado con un teléfono">
             <div class="device-a" aria-hidden="true"><span></span><span></span></div><span class="connecting" aria-hidden="true">↔</span><div class="device-b" aria-hidden="true"><span></span><span></span></div>
           </div>
@@ -340,6 +340,36 @@
       <div class="footer-right"><span>© <span id="copyright-year">2026</span> ANTOO</span><a href="#inicio">Volver arriba ↑</a></div>
     </div>
   </footer>
-  <script>document.getElementById('copyright-year').textContent=new Date().getFullYear();</script>
+  <script>
+document.getElementById('copyright-year').textContent=new Date().getFullYear();
+const downloadButton=document.getElementById('download-latest');
+downloadButton.addEventListener('click',async(event)=>{
+  event.preventDefault();
+  const original=downloadButton.innerHTML;
+  downloadButton.setAttribute('aria-busy','true');
+  downloadButton.textContent='Buscando la versión actual…';
+  try{
+    const response=await fetch('/antoo-ipa/stable.json',{cache:'no-store'});
+    if(!response.ok) throw new Error('No se pudo consultar la versión actual.');
+    const envelope=await response.json();
+    if(typeof envelope.payload!=='string') throw new Error('El manifiesto de versiones no es válido.');
+    const binary=atob(envelope.payload);
+    const bytes=Uint8Array.from(binary,char=>char.charCodeAt(0));
+    const release=JSON.parse(new TextDecoder().decode(bytes));
+    if(release.product!=='ANTOO IPA'||release.channel!=='stable') throw new Error('El manifiesto no corresponde a ANTOO IPA.');
+    if(release.disabled) throw new Error(release.control_message||'La descarga está temporalmente deshabilitada.');
+    const asset=release.assets?.find(item=>/^ANTOO-IPA-Setup-\\d+\\.\\d+\\.\\d+-x64\\.exe$/.test(item.name||''));
+    if(!asset||typeof asset.browser_download_url!=='string') throw new Error('No se encontró el instalador publicado.');
+    const target=new URL(asset.browser_download_url,location.origin);
+    if(target.protocol!=='https:'||target.origin!==location.origin||!target.pathname.startsWith('/antoo-ipa/')) throw new Error('La dirección de descarga no es válida.');
+    downloadButton.textContent='Abriendo descarga…';
+    location.assign(target.href);
+  }catch(error){
+    window.alert(error.message||'No se pudo iniciar la descarga.');
+    downloadButton.innerHTML=original;
+    downloadButton.removeAttribute('aria-busy');
+  }
+});
+</script>
 </body>
 </html>
